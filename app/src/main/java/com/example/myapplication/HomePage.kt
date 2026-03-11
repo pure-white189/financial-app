@@ -1,0 +1,506 @@
+package com.example.myapplication
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.example.myapplication.data.Category
+import com.example.myapplication.data.Expense
+import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
+import java.util.Calendar
+
+@Composable
+fun HomePage(viewModel: ExpenseViewModel,
+             onNavigateToEdit: (Expense) -> Unit = {},
+             onNavigateToRecord: () -> Unit = {},
+             monthlyBudget: Double? = null
+) {
+    val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val expenses by viewModel.expenses.collectAsState(initial = emptyList())
+    val categories by viewModel.categories.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    var selectedFilter by remember { mutableStateOf("全部") }
+
+    // 根据筛选条件过滤消费记录
+    val filteredExpenses = remember(expenses, selectedFilter) {
+        val calendar = Calendar.getInstance()
+        when (selectedFilter) {
+            "今日" -> {
+                val todayStart = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                }.timeInMillis
+                expenses.filter { it.date >= todayStart }
+            }
+            "本周" -> {
+                val weekStart = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                }.timeInMillis
+                expenses.filter { it.date >= weekStart }
+            }
+            "本月" -> {
+                val monthStart = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                }.timeInMillis
+                expenses.filter { it.date >= monthStart }
+            }
+            else -> expenses
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // 标题
+        Text(
+            text = "消费概览",
+            fontSize = 28.sp,
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        val todayTotal = remember(expenses) {
+            val todayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+            }.timeInMillis
+
+            expenses.filter { it.date >= todayStart }
+                .sumOf { it.amount }
+        }
+
+        Text(
+            text = "今日: ¥%.2f".format(todayTotal),
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // 本月总支出卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "本月总支出",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "¥ %.2f".format(monthlyTotal),
+                    fontSize = 32.sp,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 预算进度卡片（如果设置了预算）
+        if (monthlyBudget != null && monthlyBudget > 0) {
+            BudgetProgressCard(
+                monthlyTotal = monthlyTotal,
+                monthlyBudget = monthlyBudget
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 本周支出卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "本周支出",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                val weeklyTotal = remember(expenses) {
+                    val calendar = Calendar.getInstance()
+                    calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    val startOfWeek = calendar.timeInMillis
+
+                    expenses.filter { it.date >= startOfWeek }
+                        .sumOf { it.amount }
+                }
+
+                Text(
+                    text = "¥ %.2f".format(weeklyTotal),
+                    fontSize = 24.sp,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+        }
+
+        // ===== 筛选按钮 =====
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("今日", "本周", "本月", "全部").forEach { filter ->
+                FilterChip(
+                    selected = selectedFilter == filter,
+                    onClick = { selectedFilter = filter },
+                    label = { Text(filter) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 消费记录标题
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "最近消费",
+                fontSize = 20.sp,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                text = "${filteredExpenses.size} 条记录",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 消费记录列表
+        if (expenses.isEmpty()) {
+            // 空状态
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "还没有消费记录",
+                        fontSize = 18.sp,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "点击底部「记账」开始记录你的消费吧",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    FilledTonalButton(
+                        onClick = { onNavigateToRecord() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("开始记账")
+                    }
+                }
+            }
+        } else {
+            // 消费列表
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filteredExpenses) { expense ->
+                    val category = categories.find { it.id == expense.categoryId }
+                    ExpenseItem(
+                        expense = expense,
+                        category = category,
+                        onDelete = {
+                            scope.launch {
+                                viewModel.deleteExpense(expense)
+                            }
+                        },
+                        onEdit = {
+                            onNavigateToEdit(expense)  // 点击卡片时导航到编辑页面
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExpenseItem(
+    expense: Expense,
+    category: Category?,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit  // 添加编辑回调
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onEdit)  // 点击整个卡片可以编辑
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // 类别图标（优先显示自定义图片）
+                if (category?.iconPath != null) {
+                    AsyncImage(
+                        model = category.iconPath,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = getCategoryIcon(category?.iconName),
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = category?.name ?: "未知类别",
+                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = DateUtils.formatDate(expense.date),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (expense.note.isNotEmpty()) {
+                        Text(
+                            text = expense.note,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "¥ %.2f".format(expense.amount),
+                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+// 根据图标名称获取图标
+fun getCategoryIcon(iconName: String?): ImageVector {
+    return when (iconName) {
+        "restaurant" -> Icons.Default.Restaurant
+        "directions_car" -> Icons.Default.DirectionsCar
+        "shopping_cart" -> Icons.Default.ShoppingCart
+        "movie" -> Icons.Default.Movie
+        "local_hospital" -> Icons.Default.LocalHospital
+        "school" -> Icons.Default.School
+        "home" -> Icons.Default.Home
+        else -> Icons.Default.MoreHoriz
+    }
+}
+
+@Composable
+fun BudgetProgressCard(
+    monthlyTotal: Double,
+    monthlyBudget: Double
+) {
+    val percentage = (monthlyTotal / monthlyBudget * 100).coerceIn(0.0, 100.0)
+    val remaining = monthlyBudget - monthlyTotal
+
+    // 计算距离月底还有多少天
+    val calendar = java.util.Calendar.getInstance()
+    val today = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val daysInMonth = calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+    val remainingDays = daysInMonth - today + 1
+
+    // 每日可用金额
+    val dailyAvailable = if (remaining > 0 && remainingDays > 0) {
+        remaining / remainingDays
+    } else 0.0
+
+    // 根据进度决定颜色
+    val progressColor = when {
+        percentage >= 100 -> MaterialTheme.colorScheme.error
+        percentage >= 80 -> Color(0xFFFF9800)  // 橙色
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val containerColor = when {
+        percentage >= 100 -> MaterialTheme.colorScheme.errorContainer
+        percentage >= 80 -> Color(0xFFFF9800).copy(alpha = 0.1f)
+        else -> MaterialTheme.colorScheme.secondaryContainer
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "预算进度",
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Text(
+                    text = "${percentage.toInt()}%",
+                    fontSize = 18.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = progressColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 进度条
+            LinearProgressIndicator(
+                progress = { (percentage / 100).toFloat() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(MaterialTheme.shapes.small),
+                color = progressColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 详细信息
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = if (remaining >= 0) "还剩" else "超支",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "¥${"%.2f".format(kotlin.math.abs(remaining))}",
+                        fontSize = 16.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = if (remaining >= 0)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.error
+                    )
+                }
+
+                if (remaining > 0 && remainingDays > 0) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "每日可用",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "¥${"%.2f".format(dailyAvailable)}",
+                            fontSize = 16.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "距月底还有 $remainingDays 天",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+// 格式化日期
+// 格式化日期

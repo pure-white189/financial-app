@@ -1833,7 +1833,31 @@ CREATE TABLE accounts (
 
 
 ---
+## 当前开发进度
 
+### 已完成功能
+- 核心记账功能（100%）
+- 数据分析页面（100%）
+- 通知功能（100%）
+- 数据导出 CSV（100%）✅ 2026-03-11 完成
+
+### 新增文件
+- `utils/CsvExportHelper.kt` - CSV 生成和保存工具类
+- `ui/ExportPage.kt` - 导出功能 UI 页面
+
+### 修改的文件
+- `ExpenseViewModel.kt` - 添加了 getExpensesByDateRange、getAllCategories 方法
+- `SettingsPage.kt` - 添加了数据导出入口
+- `MainActivity.kt` - 添加了 export 导航路由
+
+### 下一步计划
+1. 借贷记录功能（优先级：高）
+2. 储蓄目标功能（优先级：中）
+
+### 环境配置
+- 模型：qwen-coder-plus（日常）/ qwen-max（复杂任务）
+- API：阿里云百炼 DashScope
+- Base URL：https://dashscope.aliyuncs.com/compatible-mode/v1
 
 
 \*\*这个文档包含了项目的所有关键信息，可以帮助 AI 快速理解你的项目！\*\* 📱✨

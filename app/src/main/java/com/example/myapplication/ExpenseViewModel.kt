@@ -197,6 +197,22 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         }
     }
 
+    // ===== 数据导出相关方法 =====
+
+    /**
+     * 获取指定时间范围的消费记录（同步方法，用于导出页面）
+     */
+    suspend fun getExpensesByDateRange(startDate: Long, endDate: Long): List<Expense> {
+        return repository.getExpensesByDateRange(startDate, endDate).first()
+    }
+
+    /**
+     * 获取所有类别的 Map（用于导出时查找类别名称）
+     */
+    suspend fun getAllCategories(): List<Category> {
+        return repository.getAllCategories().first()
+    }
+
 }
 
 class ExpenseViewModelFactory(private val repository: ExpenseRepository) : ViewModelProvider.Factory {

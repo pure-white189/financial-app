@@ -31,7 +31,8 @@ fun SettingsPage(
     currentAlertThreshold: Double?,
     onAlertThresholdChange: (Double?) -> Unit,
     showPersistentNotification: Boolean,
-    onPersistentNotificationChange: (Boolean) -> Unit
+    onPersistentNotificationChange: (Boolean) -> Unit,
+    onNavigateToExport: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -184,6 +185,21 @@ fun SettingsPage(
             DataManagementDialog(
                 viewModel = viewModel,
                 onDismiss = { showDataManagementDialog = false }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+// ===== 数据导出 =====
+        SettingsSectionTitle(title = "数据导出")
+
+        SettingsCard {
+            SettingsItem(
+                icon = Icons.Default.FileDownload,
+                title = "导出数据",
+                subtitle = "导出消费记录为 CSV 格式",
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = onNavigateToExport
             )
         }
 

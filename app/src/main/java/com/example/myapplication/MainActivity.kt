@@ -24,6 +24,7 @@ import com.example.myapplication.data.ThemeMode
 import com.example.myapplication.data.ThemePreferences
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.data.NotificationHelper
+import com.example.myapplication.ui.ExportPage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
@@ -288,12 +289,22 @@ fun MainScreen(
                         scope.launch {
                             themePreferences.setShowPersistentNotification(show)
                         }
+                    },
+                    onNavigateToExport = {
+                        navController.navigate("export")
                     }
                 )
             }
 
             composable("category_management") {
                 CategoryManagementPage(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("export") {
+                ExportPage(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )

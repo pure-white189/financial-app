@@ -31,11 +31,18 @@ import java.util.*
 /**
  * 导出时间范围
  */
-sealed class ExportTimeRange(val label: String) {
-    object ThisWeek : ExportTimeRange("本周")
-    object ThisMonth : ExportTimeRange("本月")
-    object All : ExportTimeRange("全部")
+enum class ExportTimeRange(val label: String) {
+    THIS_WEEK("本周"),
+    THIS_MONTH("本月"),
+    ALL("全部")
 }
+
+// 获取所有时间范围选项
+val EXPORT_TIME_RANGE_OPTIONS = listOf(
+    ExportTimeRange.THIS_WEEK,
+    ExportTimeRange.THIS_MONTH,
+    ExportTimeRange.ALL
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +54,7 @@ fun ExportPage(
     val scope = rememberCoroutineScope()
 
     // 当前选择的时间范围
-    var selectedTimeRange by remember { mutableStateOf<ExportTimeRange>(ExportTimeRange.ThisMonth) }
+    var selectedTimeRange by remember { mutableStateOf(ExportTimeRange.THIS_MONTH) }
 
     // 导出预览数据
     var previewCount by remember { mutableStateOf(0) }
@@ -165,7 +172,7 @@ fun ExportPage(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ExportTimeRange.entries.forEach { range ->
+                EXPORT_TIME_RANGE_OPTIONS.forEach { range ->
                     FilterChip(
                         selected = selectedTimeRange == range,
                         onClick = { selectedTimeRange = range },
@@ -422,7 +429,7 @@ fun ExportSuccessDialog(
 fun getTimeRange(range: ExportTimeRange): Pair<Long, Long> {
     val calendar = Calendar.getInstance()
     return when (range) {
-        is ExportTimeRange.ThisWeek -> {
+        ExportTimeRange.THIS_WEEK -> {
             // 本周一 00:00
             calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
             calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -435,7 +442,7 @@ fun getTimeRange(range: ExportTimeRange): Pair<Long, Long> {
             val end = System.currentTimeMillis()
             Pair(start, end)
         }
-        is ExportTimeRange.ThisMonth -> {
+        ExportTimeRange.THIS_MONTH -> {
             // 本月 1 日 00:00
             calendar.set(Calendar.DAY_OF_MONTH, 1)
             calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -448,7 +455,7 @@ fun getTimeRange(range: ExportTimeRange): Pair<Long, Long> {
             val end = System.currentTimeMillis()
             Pair(start, end)
         }
-        is ExportTimeRange.All -> {
+        ExportTimeRange.ALL -> {
             // 所有时间（从第一条记录到现在）
             Pair(0L, System.currentTimeMillis())
         }

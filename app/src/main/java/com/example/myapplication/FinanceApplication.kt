@@ -10,7 +10,8 @@ class FinanceApplication : Application() {
         ExpenseRepository(
             database.categoryDao(),
             database.expenseDao(),
-            database.expenseTemplateDao()
+            database.expenseTemplateDao(),
+            database.loanDao()
         )
     }
 }

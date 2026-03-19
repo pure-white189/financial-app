@@ -7,6 +7,7 @@ import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseRepository
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.data.Loan
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,7 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     // 所有消费记录
     val expenses = repository.getAllExpenses()
+    val loans = repository.getAllLoans()
 
     val templates = repository.getAllTemplates()
     // 本月总支出
@@ -131,6 +133,24 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     fun updateTemplate(template: ExpenseTemplate) {
         viewModelScope.launch {
             repository.updateTemplate(template)
+        }
+    }
+
+    fun addLoan(loan: Loan) {
+        viewModelScope.launch {
+            repository.insertLoan(loan)
+        }
+    }
+
+    fun deleteLoan(loan: Loan) {
+        viewModelScope.launch {
+            repository.deleteLoan(loan)
+        }
+    }
+
+    fun markAsRepaid(loan: Loan) {
+        viewModelScope.launch {
+            repository.updateLoan(loan.copy(isRepaid = true))
         }
     }
 

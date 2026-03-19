@@ -144,6 +144,7 @@ fun MainScreen(
     val bottomNavItems = listOf(
         BottomNavItem.Home,
         BottomNavItem.Record,
+        BottomNavItem.Debt,
         BottomNavItem.Analysis,
         BottomNavItem.Settings
     )
@@ -206,6 +207,7 @@ fun MainScreen(
             if (currentRoute in listOf(
                     BottomNavItem.Home.route,
                     BottomNavItem.Record.route,
+                    BottomNavItem.Debt.route,
                     BottomNavItem.Analysis.route,
                     BottomNavItem.Settings.route
                 )) {
@@ -294,6 +296,10 @@ fun MainScreen(
                         navController.navigate("export")
                     }
                 )
+            }
+
+            composable("debt") {
+                DebtPage(viewModel = viewModel)
             }
 
             composable("category_management") {

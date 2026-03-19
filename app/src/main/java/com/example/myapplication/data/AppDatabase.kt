@@ -11,14 +11,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Category::class, Expense::class, ExpenseTemplate::class],
-    version = 3,
+    entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun expenseDao(): ExpenseDao
     abstract fun expenseTemplateDao(): ExpenseTemplateDao
+    abstract fun loanDao(): LoanDao
 
     companion object {
         @Volatile

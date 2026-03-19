@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.Flow
 class ExpenseRepository(
     private val categoryDao: CategoryDao,
     private val expenseDao: ExpenseDao,
-    private val expenseTemplateDao: ExpenseTemplateDao
+    private val expenseTemplateDao: ExpenseTemplateDao,
+    private val loanDao: LoanDao
 ) {
     // 类别相关
     fun getAllCategories(): Flow<List<Category>> = categoryDao.getAllCategories()
@@ -26,6 +27,12 @@ class ExpenseRepository(
     suspend fun insertTemplate(template: ExpenseTemplate) = expenseTemplateDao.insertTemplate(template)
     suspend fun deleteTemplate(template: ExpenseTemplate) = expenseTemplateDao.deleteTemplate(template)
     suspend fun updateTemplate(template: ExpenseTemplate) = expenseTemplateDao.updateTemplate(template)
+
+    fun getAllLoans(): Flow<List<Loan>> = loanDao.getAllLoans()
+    fun getUnrepaidLoans(): Flow<List<Loan>> = loanDao.getUnrepaidLoans()
+    suspend fun insertLoan(loan: Loan) = loanDao.insertLoan(loan)
+    suspend fun updateLoan(loan: Loan) = loanDao.updateLoan(loan)
+    suspend fun deleteLoan(loan: Loan) = loanDao.deleteLoan(loan)
 
     // 清除所有消费记录
     suspend fun clearAllExpenses() {

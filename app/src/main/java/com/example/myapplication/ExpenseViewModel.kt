@@ -9,6 +9,7 @@ import com.example.myapplication.data.ExpenseRepository
 import com.example.myapplication.data.ExpenseTemplate
 import com.example.myapplication.data.Loan
 import com.example.myapplication.data.SavingGoal
+import com.example.myapplication.data.Stock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
@@ -25,14 +26,27 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     val expenses = repository.getAllExpenses()
     val loans = repository.getAllLoans()
     val savingGoals = repository.getAllGoals()
+    val stocks = repository.getAllStocks()
 
     val templates = repository.getAllTemplates()
     // 本月总支出
     private val _monthlyTotal = MutableStateFlow(0.0)
     val monthlyTotal: StateFlow<Double> = _monthlyTotal.asStateFlow()
 
+    private val _totalStockValue = MutableStateFlow(0.0)
+    val totalStockValue: StateFlow<Double> = _totalStockValue.asStateFlow()
+
     init {
         loadMonthlyTotal()
+        loadTotalStockValue()
+    }
+
+    private fun loadTotalStockValue() {
+        viewModelScope.launch {
+            repository.getAllStocks().collect { stockList ->
+                _totalStockValue.value = stockList.sumOf { it.currentPrice * it.shares }
+            }
+        }
     }
 
     // 加载本月总支出
@@ -181,6 +195,29 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
                 goal.copy(
                     currentAmount = nextAmount,
                     isCompleted = nextAmount >= goal.targetAmount
+                )
+            )
+        }
+    }
+
+    fun addStock(stock: Stock) {
+        viewModelScope.launch {
+            repository.insertStock(stock)
+        }
+    }
+
+    fun deleteStock(stock: Stock) {
+        viewModelScope.launch {
+            repository.deleteStock(stock)
+        }
+    }
+
+    fun updateStockPrice(stock: Stock, newPrice: Double) {
+        viewModelScope.launch {
+            repository.updateStock(
+                stock.copy(
+                    currentPrice = newPrice,
+                    lastUpdated = System.currentTimeMillis()
                 )
             )
         }

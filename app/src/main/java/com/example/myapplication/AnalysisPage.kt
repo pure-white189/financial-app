@@ -26,7 +26,10 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalysisPage(viewModel: ExpenseViewModel) {
+fun AnalysisPage(
+    viewModel: ExpenseViewModel,
+    onNavigateToStock: () -> Unit = {}
+) {
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
@@ -209,6 +212,20 @@ fun AnalysisPage(viewModel: ExpenseViewModel) {
                         }
                     }
                 }
+            }
+        }
+
+        item {
+            OutlinedButton(
+                onClick = onNavigateToStock,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ShowChart,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("查看股票持仓")
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.SavingGoal
+import com.example.myapplication.data.Stock
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -28,8 +29,10 @@ fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToEdit: (Expense) -> Unit = {},
              onNavigateToRecord: () -> Unit = {},
              onNavigateToSaving: () -> Unit = {},
+             onNavigateToStock: () -> Unit = {},
              monthlyBudget: Double? = null,
-             savingGoals: List<SavingGoal> = emptyList()
+             savingGoals: List<SavingGoal> = emptyList(),
+             stocks: List<Stock> = emptyList()
 ) {
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
@@ -146,6 +149,14 @@ fun HomePage(viewModel: ExpenseViewModel,
             SavingGoalSummaryCard(
                 ongoingGoals = ongoingSavingGoals,
                 onClick = onNavigateToSaving
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (stocks.isNotEmpty()) {
+            StockOverviewCard(
+                stocks = stocks,
+                onClick = onNavigateToStock
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -294,6 +305,66 @@ fun HomePage(viewModel: ExpenseViewModel,
             }
         }
     }
+}
+
+@Composable
+private fun StockOverviewCard(
+    stocks: List<Stock>,
+    onClick: () -> Unit
+) {
+    val totalValue = remember(stocks) { stocks.sumOf { it.currentPrice * it.shares } }
+    val totalProfit = remember(stocks) { stocks.sumOf { (it.currentPrice - it.costPrice) * it.shares } }
+    val profitColor = if (totalProfit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "股票持仓",
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "共 ${stocks.size} 只",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "总市值 HK$${String.format(Locale.getDefault(), "%.2f", totalValue)}",
+                fontSize = 20.sp,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "总盈亏 ${formatSignedHkAmount(totalProfit)}",
+                fontSize = 14.sp,
+                color = profitColor
+            )
+        }
+    }
+}
+
+private fun formatSignedHkAmount(amount: Double): String {
+    val sign = if (amount >= 0) "+" else "-"
+    return "${sign}HK$${String.format(Locale.getDefault(), "%.2f", kotlin.math.abs(amount))}"
 }
 
 @Composable

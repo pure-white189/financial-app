@@ -131,6 +131,7 @@ fun MainScreen(
 // 处理快速模板记账
     val templates by viewModel.templates.collectAsState(initial = emptyList())
     val savingGoals by viewModel.savingGoals.collectAsState(initial = emptyList())
+    val stocks by viewModel.stocks.collectAsState(initial = emptyList())
 
     LaunchedEffect(quickTemplateId) {
         if (quickTemplateId != null && quickTemplateId > 0) {
@@ -255,8 +256,12 @@ fun MainScreen(
                             launchSingleTop = true
                         }
                     },
+                    onNavigateToStock = {
+                        navController.navigate("stock")
+                    },
                     monthlyBudget = currentBudget,
-                    savingGoals = savingGoals.filter { !it.isCompleted }
+                    savingGoals = savingGoals.filter { !it.isCompleted },
+                    stocks = stocks
                 )
             }
 
@@ -271,7 +276,12 @@ fun MainScreen(
             }
 
             composable(BottomNavItem.Analysis.route) {
-                AnalysisPage(viewModel = viewModel)
+                AnalysisPage(
+                    viewModel = viewModel,
+                    onNavigateToStock = {
+                        navController.navigate("stock")
+                    }
+                )
             }
 
             composable(BottomNavItem.Settings.route) {
@@ -313,6 +323,13 @@ fun MainScreen(
 
             composable("saving") {
                 SavingGoalPage(viewModel = viewModel)
+            }
+
+            composable("stock") {
+                StockPage(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
 
             composable("category_management") {

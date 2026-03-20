@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -8,8 +9,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -20,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,10 +32,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.myapplication.data.Category
+import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
 import kotlinx.coroutines.launch
@@ -61,6 +68,10 @@ fun RecordPage(
     var templateToDelete by remember { mutableStateOf<ExpenseTemplate?>(null) }
     var showAlertConfirm by remember { mutableStateOf(false) }
     var pendingExpense by remember { mutableStateOf<Expense?>(null) }
+    var aiInput by remember { mutableStateOf("") }
+    var isAiLoading by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+    var aiSuccess by remember { mutableStateOf<String?>(null) }
 
     val recentExpenses = remember(expenses) {
         expenses.take(5)
@@ -160,6 +171,200 @@ fun RecordPage(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+
+            // AI 自然语言输入区
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        brush = Brush.linearGradient(
+                            listOf(
+                                PurpleStart.copy(alpha = 0.1f),
+                                PurpleEnd.copy(alpha = 0.1f)
+                            )
+                        )
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = PurpleStart,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = aiInput,
+                    onValueChange = { aiInput = it },
+                    placeholder = {
+                        Text(
+                            text = "用自然语言描述，如：今天午饭花了45块",
+                            fontSize = 13.sp
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (aiInput.isNotBlank()) {
+                                scope.launch {
+                                    isAiLoading = true
+                                    aiError = null
+                                    aiSuccess = null
+                                    val result = AiExpenseParser.parseExpense(aiInput)
+                                    result.onSuccess { parsed ->
+                                        Log.d(
+                                            "AiParser",
+                                            "解析结果: amount=${parsed.amount} category=${parsed.category} note=${parsed.note}"
+                                        )
+
+                                        if (parsed.amount > 0) {
+                                            amount = parsed.amount.toString()
+                                        }
+
+                                        val matchedCategory = categories.find {
+                                            it.name.contains(parsed.category) ||
+                                                parsed.category.contains(it.name)
+                                        }
+                                        if (matchedCategory != null) {
+                                            selectedCategory = matchedCategory
+                                        }
+
+                                        if (parsed.note.isNotEmpty()) {
+                                            note = parsed.note
+                                        }
+
+                                        aiSuccess = "AI 已识别：¥${parsed.amount}，${parsed.category}"
+                                        aiInput = ""
+                                        delay(2000)
+                                        aiSuccess = null
+                                    }
+                                    result.onFailure { error ->
+                                        val message = error.message?.lowercase() ?: ""
+                                        val isNetworkFailure = message.contains("failed to connect") ||
+                                            message.contains("timeout") ||
+                                            message.contains("unable to resolve host") ||
+                                            message.contains("connection")
+                                        if (isNetworkFailure) {
+                                            aiError = "解析失败"
+                                        }
+                                    }
+                                    isAiLoading = false
+                                }
+                            }
+                        }
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PurpleStart,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(PurpleStart, PurpleEnd)
+                            )
+                        )
+                        .clickable {
+                            Log.d("AiParser", "发送按钮被点击，aiInput=$aiInput, isLoading=$isAiLoading")
+                            scope.launch {
+                                if (aiInput.isBlank() || isAiLoading) {
+                                    return@launch
+                                }
+                                isAiLoading = true
+                                aiError = null
+                                aiSuccess = null
+                                val result = AiExpenseParser.parseExpense(aiInput)
+                                result.onSuccess { parsed ->
+                                    Log.d(
+                                        "AiParser",
+                                        "解析结果: amount=${parsed.amount} category=${parsed.category} note=${parsed.note}"
+                                    )
+
+                                    if (parsed.amount > 0) {
+                                        amount = parsed.amount.toString()
+                                    }
+
+                                    val matchedCategory = categories.find {
+                                        it.name.contains(parsed.category) ||
+                                            parsed.category.contains(it.name)
+                                    }
+                                    if (matchedCategory != null) {
+                                        selectedCategory = matchedCategory
+                                    }
+
+                                    if (parsed.note.isNotEmpty()) {
+                                        note = parsed.note
+                                    }
+
+                                    aiSuccess = "AI 已识别：¥${parsed.amount}，${parsed.category}"
+                                    aiInput = ""
+                                    delay(2000)
+                                    aiSuccess = null
+                                }
+                                result.onFailure { error ->
+                                    val message = error.message?.lowercase() ?: ""
+                                    val isNetworkFailure = message.contains("failed to connect") ||
+                                        message.contains("timeout") ||
+                                        message.contains("unable to resolve host") ||
+                                        message.contains("connection")
+                                    if (isNetworkFailure) {
+                                        aiError = "解析失败"
+                                    }
+                                }
+                                isAiLoading = false
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isAiLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "解析",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            if (aiError != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = aiError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+
+            if (aiSuccess != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = aiSuccess!!,
+                    color = IncomeGreen,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // 金额显示（由自定义键盘输入）
             Card(

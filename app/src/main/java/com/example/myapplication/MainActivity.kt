@@ -24,6 +24,8 @@ import com.example.myapplication.data.ThemeMode
 import com.example.myapplication.data.ThemePreferences
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.data.NotificationHelper
+import com.example.myapplication.ui.theme.PurpleStart
+import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -215,12 +217,21 @@ fun MainScreen(
                     BottomNavItem.Analysis.route,
                     BottomNavItem.Settings.route
                 )) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.title) },
                             label = { Text(item.title) },
                             selected = currentRoute == item.route,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = PurpleStart,
+                                selectedTextColor = PurpleStart,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextSecondary,
+                                indicatorColor = PurpleStart.copy(alpha = 0.15f)
+                            ),
                             onClick = {
                                 navController.navigate(item.route) {
                                     // 弹出到根节点
@@ -278,6 +289,7 @@ fun MainScreen(
             composable(BottomNavItem.Analysis.route) {
                 AnalysisPage(
                     viewModel = viewModel,
+                    monthlyBudget = currentBudget,
                     onNavigateToStock = {
                         navController.navigate("stock")
                     }

@@ -1,7 +1,10 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,11 +56,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.myapplication.data.Loan
+import com.example.myapplication.ui.theme.ExpenseRed
+import com.example.myapplication.ui.theme.IncomeGreen
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
 import java.util.Calendar
 import java.util.Locale
 
@@ -90,8 +99,19 @@ fun DebtPage(viewModel: ExpenseViewModel) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "添加借贷")
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                        shape = CircleShape
+                    )
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = Color.Transparent
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加借贷", tint = Color.White)
+                }
             }
         }
     ) { innerPadding ->
@@ -107,28 +127,30 @@ fun DebtPage(viewModel: ExpenseViewModel) {
             ) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "待收总额", fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidOut),
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = PurpleStart
                         )
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ExpenseRed.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "待还总额", fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidIn),
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.error
+                            color = ExpenseRed
                         )
                     }
                 }
@@ -248,9 +270,12 @@ private fun LoanItemCard(
 ) {
     val isLoanOut = loan.type == LOAN_TYPE_OUT
     val isOverdue = !loan.isRepaid && loan.dueDate != null && loan.dueDate < System.currentTimeMillis()
-    val amountColor = if (isLoanOut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val amountColor = if (isLoanOut) IncomeGreen else ExpenseRed
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -333,10 +358,11 @@ private fun LoanItemCard(
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
+                            tint = IncomeGreen
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("标记已还")
+                        Text("标记已还", color = IncomeGreen)
                     }
                 }
 

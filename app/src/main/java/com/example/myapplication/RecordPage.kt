@@ -32,6 +32,8 @@ import coil.compose.AsyncImage
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -159,65 +161,31 @@ fun RecordPage(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 金额输入
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = { Text("金额") },
-                placeholder = { Text("请输入金额") },
-                leadingIcon = { Text("¥", fontSize = 20.sp) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            // 金额显示（由自定义键盘输入）
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 日期时间选择
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showDateTimePicker = true }
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "日期时间",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = DateUtils.formatDateForDisplay(selectedDate),
-                            fontSize = 16.sp
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (selectedDate != System.currentTimeMillis()) {
-                            TextButton(
-                                onClick = { selectedDate = System.currentTimeMillis() }
-                            ) {
-                                Text("现在", fontSize = 12.sp)
-                            }
-                        }
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "选择日期",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "金额",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (amount.isEmpty()) "¥ 0" else "¥ $amount",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PurpleStart
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // 类别选择
             Row(
@@ -246,7 +214,7 @@ fun RecordPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp),  // 保持固定高度
+                    .height(180.dp),
                 userScrollEnabled = true  // 禁用内部滚动，使用外部滚动
             ) {
                 items(categories) { category ->
@@ -258,7 +226,45 @@ fun RecordPage(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 紧凑日期选择行
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDateTimePicker = true },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = PurpleStart,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = DateUtils.formatDateForDisplay(selectedDate),
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    if (selectedDate != System.currentTimeMillis()) {
+                        TextButton(onClick = { selectedDate = System.currentTimeMillis() }) {
+                            Text("现在", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 备注输入
             OutlinedTextField(
@@ -267,10 +273,33 @@ fun RecordPage(
                 label = { Text("备注（可选）") },
                 placeholder = { Text("添加备注说明") },
                 modifier = Modifier.fillMaxWidth(),
-                maxLines = 3
+                singleLine = true,
+                maxLines = 1
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CalculatorKeyboard(
+                onNumberClick = { digit ->
+                    if (amount.length < 10) {
+                        if (amount == "0") amount = digit
+                        else amount += digit
+                    }
+                },
+                onDeleteClick = {
+                    if (amount.isNotEmpty()) {
+                        amount = amount.dropLast(1)
+                    }
+                },
+                onDotClick = {
+                    if (!amount.contains(".")) {
+                        if (amount.isEmpty()) amount = "0."
+                        else amount += "."
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // 按钮组
             Row(
@@ -295,40 +324,57 @@ fun RecordPage(
                 }
 
                 // 添加记录
-                Button(
-                    onClick = {
-                        val amountValue = amount.toDoubleOrNull()
-                        if (amountValue != null && amountValue > 0 && selectedCategory != null) {
-                            val expense = Expense(
-                                amount = amountValue,
-                                categoryId = selectedCategory!!.id,
-                                date = selectedDate,
-                                note = note
-                            )
+                Box(
+                    modifier = Modifier
+                        .weight(2f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                ) {
+                    Button(
+                        onClick = {
+                            val amountValue = amount.toDoubleOrNull()
+                            if (amountValue != null && amountValue > 0 && selectedCategory != null) {
+                                val expense = Expense(
+                                    amount = amountValue,
+                                    categoryId = selectedCategory!!.id,
+                                    date = selectedDate,
+                                    note = note
+                                )
 
-                            // 检查是否超过提醒阈值
-                            if (alertThreshold != null && amountValue >= alertThreshold) {
-                                pendingExpense = expense
-                                showAlertConfirm = true
-                            } else {
-                                // 直接添加
-                                scope.launch {
-                                    viewModel.addExpense(expense)
-                                    amount = ""
-                                    selectedCategory = null
-                                    note = ""
-                                    selectedDate = System.currentTimeMillis()
-                                    showSuccess = true
+                                // 检查是否超过提醒阈值
+                                if (alertThreshold != null && amountValue >= alertThreshold) {
+                                    pendingExpense = expense
+                                    showAlertConfirm = true
+                                } else {
+                                    // 直接添加
+                                    scope.launch {
+                                        viewModel.addExpense(expense)
+                                        amount = ""
+                                        selectedCategory = null
+                                        note = ""
+                                        selectedDate = System.currentTimeMillis()
+                                        showSuccess = true
+                                    }
                                 }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(2f),
-                    enabled = amount.toDoubleOrNull() != null &&
-                            amount.toDoubleOrNull()!! > 0 &&
-                            selectedCategory != null
-                ) {
-                    Text("添加消费记录", fontSize = 16.sp)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = amount.toDoubleOrNull() != null &&
+                                amount.toDoubleOrNull()!! > 0 &&
+                                selectedCategory != null,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.Transparent,
+                            disabledContentColor = Color.White.copy(alpha = 0.6f)
+                        )
+                    ) {
+                        Text("添加消费记录", fontSize = 16.sp, color = Color.White)
+                    }
                 }
             }
 
@@ -622,6 +668,70 @@ fun RecordPage(
                 showDateTimePicker = false
             }
         )
+    }
+}
+
+@Composable
+fun CalculatorKeyboard(
+    onNumberClick: (String) -> Unit,
+    onDeleteClick: () -> Unit,
+    onDotClick: () -> Unit
+) {
+    val keys = listOf(
+        listOf("1", "2", "3"),
+        listOf("4", "5", "6"),
+        listOf("7", "8", "9"),
+        listOf(".", "0", "⌫")
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        keys.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { key ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (key == "⌫") {
+                                    MaterialTheme.colorScheme.errorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                            .clickable {
+                                when (key) {
+                                    "⌫" -> onDeleteClick()
+                                    "." -> onDotClick()
+                                    else -> onNumberClick(key)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (key == "⌫") {
+                            Icon(
+                                Icons.Default.Backspace,
+                                contentDescription = "删除",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(
+                                text = key,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1191,16 +1301,23 @@ fun CategoryChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .size(80.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        )
+    val baseModifier = Modifier
+        .size(80.dp)
+        .clip(RoundedCornerShape(16.dp))
+        .clickable(onClick = onClick)
+
+    Box(
+        modifier = if (isSelected) {
+            baseModifier.background(
+                brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                shape = RoundedCornerShape(16.dp)
+            )
+        } else {
+            baseModifier.background(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp)
+            )
+        }
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -1218,20 +1335,14 @@ fun CategoryChip(
                     imageVector = getCategoryIcon(category.iconName),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = category.name,
                 fontSize = 12.sp,
-                color = if (isSelected)
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

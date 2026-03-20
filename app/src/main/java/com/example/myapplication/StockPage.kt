@@ -1,7 +1,10 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,17 +53,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.Stock
+import com.example.myapplication.ui.theme.ExpenseRed
+import com.example.myapplication.ui.theme.IncomeGreen
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
+import com.example.myapplication.ui.theme.StockGreen
+import com.example.myapplication.ui.theme.StockRed
+import com.example.myapplication.ui.theme.WarningOrange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-private val ProfitColor = Color(0xFF4CAF50)
+private val ProfitColor = IncomeGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,8 +132,19 @@ fun StockPage(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "添加股票")
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                        shape = CircleShape
+                    )
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = Color.Transparent
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加股票", tint = Color.White)
+                }
             }
         }
     ) { innerPadding ->
@@ -137,20 +160,22 @@ fun StockPage(
             ) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "总市值", fontSize = 13.sp)
                         Text(
                             text = formatMoney("HK", totalStockValue),
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = PurpleStart
                         )
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -158,7 +183,7 @@ fun StockPage(
                         Text(
                             text = formatSignedMoney("HK", totalProfit),
                             fontSize = 20.sp,
-                            color = if (totalProfit >= 0) ProfitColor else MaterialTheme.colorScheme.error
+                            color = if (totalProfit >= 0) IncomeGreen else ExpenseRed
                         )
                     }
                 }
@@ -268,9 +293,18 @@ private fun StockItemCard(
     val diffPercent = if (stock.costPrice > 0) (diffAmount / stock.costPrice * 100) else 0.0
     val pnl = diffAmount * stock.shares
     val value = stock.currentPrice * stock.shares
-    val upColor = if (diffAmount >= 0) ProfitColor else MaterialTheme.colorScheme.error
+    val upColor = if (diffAmount >= 0) StockGreen else StockRed
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val marketColor = when (stock.market) {
+        "HK" -> PurpleStart
+        "US" -> WarningOrange
+        else -> ExpenseRed
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -287,7 +321,11 @@ private fun StockItemCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         AssistChip(
                             onClick = { },
-                            label = { Text(stock.market) }
+                            label = { Text(stock.market, color = Color.White) },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = marketColor,
+                                labelColor = Color.White
+                            )
                         )
                     }
                     Text(
@@ -322,7 +360,7 @@ private fun StockItemCard(
             Text(
                 text = "持仓盈亏 ${formatSignedMoney(stock.market, pnl)}",
                 fontSize = 12.sp,
-                color = if (pnl >= 0) ProfitColor else MaterialTheme.colorScheme.error
+                color = if (pnl >= 0) IncomeGreen else ExpenseRed
             )
 
             Spacer(modifier = Modifier.height(6.dp))

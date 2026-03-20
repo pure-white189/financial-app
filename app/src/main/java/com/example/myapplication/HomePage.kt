@@ -1,8 +1,10 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,15 +12,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
+import com.example.myapplication.ui.theme.ExpenseRed
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -42,7 +49,6 @@ fun HomePage(viewModel: ExpenseViewModel,
 
     // 根据筛选条件过滤消费记录
     val filteredExpenses = remember(expenses, selectedFilter) {
-        val calendar = Calendar.getInstance()
         when (selectedFilter) {
             "今日" -> {
                 val todayStart = Calendar.getInstance().apply {
@@ -99,44 +105,56 @@ fun HomePage(viewModel: ExpenseViewModel,
                 .sumOf { it.amount }
         }
 
-        Text(
-            text = "今日: ¥%.2f".format(todayTotal),
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        val weeklyTotal = remember(expenses) {
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            val startOfWeek = calendar.timeInMillis
 
-        // 本月总支出卡片
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
+            expenses.filter { it.date >= startOfWeek }
+                .sumOf { it.amount }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(PurpleStart, PurpleEnd)
+                    )
+                )
+                .padding(24.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column {
+                Text("本月支出", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                 Text(
-                    text = "本月总支出",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    "¥ %.2f".format(monthlyTotal),
+                    color = Color.White,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "¥ %.2f".format(monthlyTotal),
-                    fontSize = 32.sp,
-                    style = MaterialTheme.typography.headlineMedium
-                )
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    HeroStatItem("今日", "¥%.0f".format(todayTotal))
+                    HeroStatItem("本周", "¥%.0f".format(weeklyTotal))
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 预算进度卡片（如果设置了预算）
+        // 预算进度网格（紧凑样式）
         if (monthlyBudget != null && monthlyBudget > 0) {
-            BudgetProgressCard(
-                monthlyTotal = monthlyTotal,
-                monthlyBudget = monthlyBudget
-            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                BudgetProgressCard(
+                    monthlyTotal = monthlyTotal,
+                    monthlyBudget = monthlyBudget,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -161,44 +179,6 @@ fun HomePage(viewModel: ExpenseViewModel,
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 本周支出卡片
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "本周支出",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-
-                val weeklyTotal = remember(expenses) {
-                    val calendar = Calendar.getInstance()
-                    calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    val startOfWeek = calendar.timeInMillis
-
-                    expenses.filter { it.date >= startOfWeek }
-                        .sumOf { it.amount }
-                }
-
-                Text(
-                    text = "¥ %.2f".format(weeklyTotal),
-                    fontSize = 24.sp,
-                    style = MaterialTheme.typography.headlineSmall
-                )
-            }
-        }
-
         // ===== 筛选按钮 =====
         Row(
             modifier = Modifier
@@ -207,11 +187,34 @@ fun HomePage(viewModel: ExpenseViewModel,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             listOf("今日", "本周", "本月", "全部").forEach { filter ->
+                val selected = selectedFilter == filter
                 FilterChip(
-                    selected = selectedFilter == filter,
+                    selected = selected,
                     onClick = { selectedFilter = filter },
-                    label = { Text(filter) },
-                    modifier = Modifier.weight(1f)
+                    label = {
+                        Text(
+                            text = filter,
+                            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (selected) {
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                                        shape = RoundedCornerShape(50)
+                                    )
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color.Transparent,
+                        selectedLabelColor = Color.White
+                    )
                 )
             }
         }
@@ -242,7 +245,9 @@ fun HomePage(viewModel: ExpenseViewModel,
         if (expenses.isEmpty()) {
             // 空状态
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -320,6 +325,7 @@ private fun StockOverviewCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         )
@@ -333,7 +339,8 @@ private fun StockOverviewCard(
                 Text(
                     text = "股票持仓",
                     fontSize = 16.sp,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "共 ${stocks.size} 只",
@@ -380,6 +387,7 @@ private fun SavingGoalSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         )
@@ -393,7 +401,8 @@ private fun SavingGoalSummaryCard(
                 Text(
                     text = "储蓄目标",
                     fontSize = 16.sp,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "共 ${ongoingGoals.size} 个目标",
@@ -463,7 +472,9 @@ fun ExpenseItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onEdit)  // 点击整个卡片可以编辑
+            .clickable(onClick = onEdit),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -522,7 +533,7 @@ fun ExpenseItem(
                     text = "¥ %.2f".format(expense.amount),
                     fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.error
+                    color = ExpenseRed
                 )
 
                 IconButton(
@@ -537,6 +548,14 @@ fun ExpenseItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun HeroStatItem(label: String, value: String) {
+    Column {
+        Text(label, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 // 根据图标名称获取图标
@@ -556,7 +575,8 @@ fun getCategoryIcon(iconName: String?): ImageVector {
 @Composable
 fun BudgetProgressCard(
     monthlyTotal: Double,
-    monthlyBudget: Double
+    monthlyBudget: Double,
+    modifier: Modifier = Modifier
 ) {
     val percentage = (monthlyTotal / monthlyBudget * 100).coerceIn(0.0, 100.0)
     val remaining = monthlyBudget - monthlyTotal
@@ -586,13 +606,14 @@ fun BudgetProgressCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = containerColor
+            containerColor = containerColor.copy(alpha = 0.9f)
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -601,14 +622,14 @@ fun BudgetProgressCard(
             ) {
                 Text(
                     text = "预算进度",
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     style = MaterialTheme.typography.titleMedium
                 )
 
                 Text(
                     text = "${percentage.toInt()}%",
-                    fontSize = 18.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
                     color = progressColor
                 )
             }
@@ -620,13 +641,13 @@ fun BudgetProgressCard(
                 progress = { (percentage / 100).toFloat() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
+                    .height(6.dp)
                     .clip(MaterialTheme.shapes.small),
                 color = progressColor,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // 详细信息
             Row(
@@ -641,8 +662,8 @@ fun BudgetProgressCard(
                     )
                     Text(
                         text = "¥${"%.2f".format(kotlin.math.abs(remaining))}",
-                        fontSize = 16.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (remaining >= 0)
                             MaterialTheme.colorScheme.onSurface
                         else
@@ -659,8 +680,8 @@ fun BudgetProgressCard(
                         )
                         Text(
                             text = "¥${"%.2f".format(dailyAvailable)}",
-                            fontSize = 16.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

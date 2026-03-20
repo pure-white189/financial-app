@@ -1,7 +1,10 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,14 +48,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.SavingGoal
+import com.example.myapplication.ui.theme.IncomeGreen
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
 import java.util.Locale
 
-private val GoalDoneColor = Color(0xFF4CAF50)
+private val GoalDoneColor = IncomeGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,8 +78,19 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
             TopAppBar(title = { Text("储蓄目标") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "添加目标")
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                        shape = CircleShape
+                    )
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = Color.Transparent
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加目标", tint = Color.White)
+                }
             }
         }
     ) { innerPadding ->
@@ -88,28 +106,30 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
             ) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "进行中目标数", fontSize = 13.sp)
                         Text(
                             text = ongoingCount.toString(),
                             fontSize = 24.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = PurpleStart
                         )
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = IncomeGreen.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "总已存金额", fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", totalSaved),
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = IncomeGreen
                         )
                     }
                 }
@@ -238,7 +258,10 @@ private fun SavingGoalItemCard(
     val percent = (progress * 100).toInt()
     val isOverdue = !goal.isCompleted && goal.deadline != null && goal.deadline < System.currentTimeMillis()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -257,7 +280,15 @@ private fun SavingGoalItemCard(
                 }
 
                 if (goal.isCompleted) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(
+                                color = IncomeGreen.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = null,
@@ -292,7 +323,7 @@ private fun SavingGoalItemCard(
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth(),
-                color = if (goal.isCompleted) GoalDoneColor else MaterialTheme.colorScheme.primary,
+                color = if (goal.isCompleted) GoalDoneColor else PurpleStart,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
@@ -301,7 +332,7 @@ private fun SavingGoalItemCard(
             Text(
                 text = "$percent%",
                 fontSize = 12.sp,
-                color = if (goal.isCompleted) GoalDoneColor else MaterialTheme.colorScheme.primary
+                color = if (goal.isCompleted) GoalDoneColor else PurpleStart
             )
 
             goal.deadline?.let { deadline ->

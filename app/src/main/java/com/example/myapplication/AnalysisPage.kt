@@ -1,18 +1,34 @@
 package com.example.myapplication
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
+import com.example.myapplication.ui.theme.ExpenseRed
+import com.example.myapplication.ui.theme.IncomeGreen
+import com.example.myapplication.ui.theme.PurpleEnd
+import com.example.myapplication.ui.theme.PurpleStart
+import com.example.myapplication.ui.theme.WarningOrange
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
@@ -28,6 +44,7 @@ import kotlin.math.roundToInt
 @Composable
 fun AnalysisPage(
     viewModel: ExpenseViewModel,
+    monthlyBudget: Double? = null,
     onNavigateToStock: () -> Unit = {}
 ) {
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
@@ -94,11 +111,24 @@ fun AnalysisPage(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                text = "消费分析",
-                fontSize = 28.sp,
-                style = MaterialTheme.typography.headlineLarge
-            )
+            Column {
+                Text(
+                    text = "消费分析",
+                    fontSize = 28.sp,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.45f)
+                        .height(4.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(listOf(PurpleStart, PurpleEnd)),
+                            shape = RoundedCornerShape(50)
+                        )
+                )
+            }
         }
 
         // 统计卡片
@@ -111,7 +141,7 @@ fun AnalysisPage(
                     title = "本月支出",
                     value = "¥%.2f".format(monthlyTotal),
                     icon = Icons.Default.ShoppingCart,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = PurpleStart,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -119,9 +149,57 @@ fun AnalysisPage(
                     title = "消费笔数",
                     value = "${thisMonthExpenses.size}",
                     icon = Icons.Default.Receipt,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = PurpleEnd,
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+
+        if (monthlyBudget != null && monthlyBudget > 0) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "预算概览",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            BudgetDonutChart(
+                                spent = monthlyTotal,
+                                budget = monthlyBudget,
+                                modifier = Modifier.size(140.dp)
+                            )
+                            Spacer(Modifier.width(24.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                BudgetStatRow(
+                                    label = "已支出",
+                                    value = "¥%.2f".format(monthlyTotal),
+                                    color = ExpenseRed
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                BudgetStatRow(
+                                    label = "总预算",
+                                    value = "¥%.2f".format(monthlyBudget),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                BudgetStatRow(
+                                    label = "剩余",
+                                    value = "¥%.2f".format(monthlyBudget - monthlyTotal),
+                                    color = if (monthlyBudget > monthlyTotal) IncomeGreen else ExpenseRed
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -138,7 +216,7 @@ fun AnalysisPage(
                         else 0.0
                     ),
                     icon = Icons.Default.CalendarToday,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = WarningOrange,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -146,7 +224,7 @@ fun AnalysisPage(
                     title = "最大类别",
                     value = categoryStats.firstOrNull()?.category?.name ?: "-",
                     icon = Icons.Default.Category,
-                    color = MaterialTheme.colorScheme.error,
+                    color = ExpenseRed,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -155,7 +233,8 @@ fun AnalysisPage(
         // 最近7天趋势图
         item {
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -163,7 +242,8 @@ fun AnalysisPage(
                     Text(
                         text = "最近7天趋势",
                         fontSize = 18.sp,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -184,7 +264,8 @@ fun AnalysisPage(
         // 类别消费排行
         item {
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -192,7 +273,8 @@ fun AnalysisPage(
                     Text(
                         text = "类别消费排行",
                         fontSize = 18.sp,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -216,16 +298,31 @@ fun AnalysisPage(
         }
 
         item {
-            OutlinedButton(
-                onClick = onNavigateToStock,
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                        shape = RoundedCornerShape(16.dp)
+                    )
             ) {
-                Icon(
-                    imageVector = Icons.Default.ShowChart,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("查看股票持仓")
+                Button(
+                    onClick = onNavigateToStock,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShowChart,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("查看股票持仓", color = Color.White)
+                }
             }
         }
     }
@@ -241,6 +338,7 @@ fun StatCard(
 ) {
     Card(
         modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = color.copy(alpha = 0.1f)
         )
@@ -362,6 +460,7 @@ fun CategoryStatItem(stat: CategoryStat) {
         modifier = Modifier
             .fillMaxWidth()
             .height(8.dp),
+        color = PurpleStart,
     )
 }
 
@@ -371,3 +470,85 @@ data class CategoryStat(
     val count: Int,
     val percentage: Double
 )
+
+@Composable
+fun BudgetDonutChart(
+    spent: Double,
+    budget: Double,
+    modifier: Modifier = Modifier
+) {
+    val percentage = (spent / budget).coerceIn(0.0, 1.0).toFloat()
+    val animatedPercentage by animateFloatAsState(
+        targetValue = percentage,
+        animationSpec = tween(1000),
+        label = "budget_arc"
+    )
+
+    val color = when {
+        percentage >= 1.0f -> ExpenseRed
+        percentage >= 0.8f -> WarningOrange
+        else -> PurpleStart
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 24.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2
+            val center = Offset(size.width / 2, size.height / 2)
+
+            drawArc(
+                color = Color.Gray.copy(alpha = 0.2f),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = 360f * animatedPercentage,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "${(percentage * 100).toInt()}%",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Text(
+                text = "已使用",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun BudgetStatRow(label: String, value: String, color: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+    }
+}

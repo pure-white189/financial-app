@@ -168,6 +168,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         }
     }
 
+    fun updateGoal(goal: SavingGoal) {
+        viewModelScope.launch {
+            repository.updateGoal(goal)
+        }
+    }
+
     fun addDeposit(goal: SavingGoal, amount: Double) {
         viewModelScope.launch {
             val nextAmount = goal.currentAmount + amount

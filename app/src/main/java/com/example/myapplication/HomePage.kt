@@ -2,8 +2,8 @@ package com.example.myapplication
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,15 +17,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
+import com.example.myapplication.data.SavingGoal
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToEdit: (Expense) -> Unit = {},
              onNavigateToRecord: () -> Unit = {},
-             monthlyBudget: Double? = null
+             onNavigateToSaving: () -> Unit = {},
+             monthlyBudget: Double? = null,
+             savingGoals: List<SavingGoal> = emptyList()
 ) {
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
@@ -70,6 +74,7 @@ fun HomePage(viewModel: ExpenseViewModel,
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         // 标题
@@ -130,6 +135,18 @@ fun HomePage(viewModel: ExpenseViewModel,
                 monthlyBudget = monthlyBudget
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        val ongoingSavingGoals = remember(savingGoals) {
+            savingGoals.filter { !it.isCompleted }
+        }
+
+        if (ongoingSavingGoals.isNotEmpty()) {
+            SavingGoalSummaryCard(
+                ongoingGoals = ongoingSavingGoals,
+                onClick = onNavigateToSaving
+            )
             Spacer(modifier = Modifier.height(12.dp))
         }
 
@@ -256,10 +273,10 @@ fun HomePage(viewModel: ExpenseViewModel,
             }
         } else {
             // 消费列表
-            LazyColumn(
+            Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredExpenses) { expense ->
+                filteredExpenses.forEach { expense ->
                     val category = categories.find { it.id == expense.categoryId }
                     ExpenseItem(
                         expense = expense,
@@ -274,6 +291,92 @@ fun HomePage(viewModel: ExpenseViewModel,
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavingGoalSummaryCard(
+    ongoingGoals: List<SavingGoal>,
+    onClick: () -> Unit
+) {
+    val latestGoal = remember(ongoingGoals) { ongoingGoals.maxByOrNull { it.createdAt } } ?: return
+    val progress = (latestGoal.currentAmount / latestGoal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+    val percentage = (progress * 100).toInt()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "储蓄目标",
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "共 ${ongoingGoals.size} 个目标",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = latestGoal.name,
+                fontSize = 16.sp,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = String.format(
+                    Locale.getDefault(),
+                    "%s / %s",
+                    String.format(Locale.getDefault(), "¥ %.2f", latestGoal.currentAmount),
+                    String.format(Locale.getDefault(), "¥ %.2f", latestGoal.targetAmount)
+                ),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(MaterialTheme.shapes.small),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surface
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "$percentage%",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            if (ongoingGoals.size > 1) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "还有 ${ongoingGoals.size - 1} 个目标进行中",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

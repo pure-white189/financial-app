@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -60,6 +61,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var depositTarget by remember { mutableStateOf<SavingGoal?>(null) }
     var deleteTarget by remember { mutableStateOf<SavingGoal?>(null) }
+    var editTarget by remember { mutableStateOf<SavingGoal?>(null) }
 
     val ongoingCount = goals.count { !it.isCompleted }
     val totalSaved = goals.sumOf { it.currentAmount }
@@ -160,6 +162,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                         SavingGoalItemCard(
                             goal = goal,
                             onDeposit = { depositTarget = goal },
+                            onEdit = { editTarget = goal },
                             onDelete = { deleteTarget = goal }
                         )
                     }
@@ -185,6 +188,17 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
             onConfirm = { amount ->
                 viewModel.addDeposit(target, amount)
                 depositTarget = null
+            }
+        )
+    }
+
+    editTarget?.let { target ->
+        EditSavingGoalDialog(
+            goal = target,
+            onDismiss = { editTarget = null },
+            onConfirm = { updatedGoal ->
+                viewModel.updateGoal(updatedGoal)
+                editTarget = null
             }
         )
     }
@@ -217,6 +231,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
 private fun SavingGoalItemCard(
     goal: SavingGoal,
     onDeposit: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val progress = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
@@ -322,6 +337,16 @@ private fun SavingGoalItemCard(
                     }
                 }
 
+                TextButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("编辑")
+                }
+
                 TextButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -333,6 +358,127 @@ private fun SavingGoalItemCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EditSavingGoalDialog(
+    goal: SavingGoal,
+    onDismiss: () -> Unit,
+    onConfirm: (SavingGoal) -> Unit
+) {
+    var name by remember(goal.id) { mutableStateOf(goal.name) }
+    var targetAmountText by remember(goal.id) { mutableStateOf(String.format(Locale.getDefault(), "%.2f", goal.targetAmount)) }
+    var deadline by remember(goal.id) { mutableStateOf(goal.deadline) }
+    var note by remember(goal.id) { mutableStateOf(goal.note) }
+    var showError by remember { mutableStateOf(false) }
+    var showDueDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("编辑目标") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        showError = false
+                    },
+                    label = { Text("目标名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = targetAmountText,
+                    onValueChange = {
+                        targetAmountText = it
+                        showError = false
+                    },
+                    label = { Text("目标金额") },
+                    prefix = { Text("¥") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showError
+                )
+
+                OutlinedButton(
+                    onClick = { showDueDatePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val deadlineLabel = deadline?.let { "截止日期：${DateUtils.formatDate(it)}" } ?: "截止日期：未设置"
+                    Text(deadlineLabel)
+                }
+
+                if (deadline != null) {
+                    TextButton(
+                        onClick = { deadline = null },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("清除截止日期")
+                    }
+                }
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("备注（可选）") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (showError) {
+                    Text(
+                        text = "请填写目标名称并输入大于 0 的目标金额",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val newAmount = targetAmountText.toDoubleOrNull()
+                    if (name.isBlank() || newAmount == null || newAmount <= 0) {
+                        showError = true
+                        return@TextButton
+                    }
+
+                    onConfirm(
+                        goal.copy(
+                            name = name.trim(),
+                            targetAmount = newAmount,
+                            deadline = deadline,
+                            note = note.trim(),
+                            isCompleted = goal.currentAmount >= newAmount
+                        )
+                    )
+                }
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+
+    if (showDueDatePicker) {
+        DueDatePickerDialog(
+            initialDateTime = deadline ?: System.currentTimeMillis(),
+            onDismiss = { showDueDatePicker = false },
+            onConfirm = { selectedTime ->
+                deadline = selectedTime
+                showDueDatePicker = false
+            }
+        )
     }
 }
 

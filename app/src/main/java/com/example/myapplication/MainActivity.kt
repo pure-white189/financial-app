@@ -130,6 +130,7 @@ fun MainScreen(
 
 // 处理快速模板记账
     val templates by viewModel.templates.collectAsState(initial = emptyList())
+    val savingGoals by viewModel.savingGoals.collectAsState(initial = emptyList())
 
     LaunchedEffect(quickTemplateId) {
         if (quickTemplateId != null && quickTemplateId > 0) {
@@ -249,7 +250,13 @@ fun MainScreen(
                     onNavigateToRecord = {
                         navController.navigate(BottomNavItem.Record.route)
                     },
-                    monthlyBudget = currentBudget
+                    onNavigateToSaving = {
+                        navController.navigate(BottomNavItem.Saving.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    monthlyBudget = currentBudget,
+                    savingGoals = savingGoals.filter { !it.isCompleted }
                 )
             }
 

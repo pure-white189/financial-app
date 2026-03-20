@@ -8,6 +8,7 @@ import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseRepository
 import com.example.myapplication.data.ExpenseTemplate
 import com.example.myapplication.data.Loan
+import com.example.myapplication.data.SavingGoal
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     // 所有消费记录
     val expenses = repository.getAllExpenses()
     val loans = repository.getAllLoans()
+    val savingGoals = repository.getAllGoals()
 
     val templates = repository.getAllTemplates()
     // 本月总支出
@@ -151,6 +153,30 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     fun markAsRepaid(loan: Loan) {
         viewModelScope.launch {
             repository.updateLoan(loan.copy(isRepaid = true))
+        }
+    }
+
+    fun addGoal(goal: SavingGoal) {
+        viewModelScope.launch {
+            repository.insertGoal(goal)
+        }
+    }
+
+    fun deleteGoal(goal: SavingGoal) {
+        viewModelScope.launch {
+            repository.deleteGoal(goal)
+        }
+    }
+
+    fun addDeposit(goal: SavingGoal, amount: Double) {
+        viewModelScope.launch {
+            val nextAmount = goal.currentAmount + amount
+            repository.updateGoal(
+                goal.copy(
+                    currentAmount = nextAmount,
+                    isCompleted = nextAmount >= goal.targetAmount
+                )
+            )
         }
     }
 

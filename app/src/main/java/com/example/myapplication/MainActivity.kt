@@ -145,6 +145,7 @@ fun MainScreen(
         BottomNavItem.Home,
         BottomNavItem.Record,
         BottomNavItem.Debt,
+        BottomNavItem.Saving,
         BottomNavItem.Analysis,
         BottomNavItem.Settings
     )
@@ -208,6 +209,7 @@ fun MainScreen(
                     BottomNavItem.Home.route,
                     BottomNavItem.Record.route,
                     BottomNavItem.Debt.route,
+                    BottomNavItem.Saving.route,
                     BottomNavItem.Analysis.route,
                     BottomNavItem.Settings.route
                 )) {
@@ -300,6 +302,10 @@ fun MainScreen(
 
             composable("debt") {
                 DebtPage(viewModel = viewModel)
+            }
+
+            composable("saving") {
+                SavingGoalPage(viewModel = viewModel)
             }
 
             composable("category_management") {

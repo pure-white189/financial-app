@@ -514,7 +514,7 @@ private fun AddLoanDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueDatePickerDialog(
+fun DueDatePickerDialog(
     initialDateTime: Long,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit

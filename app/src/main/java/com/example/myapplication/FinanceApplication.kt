@@ -11,7 +11,8 @@ class FinanceApplication : Application() {
             database.categoryDao(),
             database.expenseDao(),
             database.expenseTemplateDao(),
-            database.loanDao()
+            database.loanDao(),
+            database.savingGoalDao()
         )
     }
 }

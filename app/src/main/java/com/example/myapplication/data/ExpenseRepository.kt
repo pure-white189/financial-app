@@ -6,7 +6,8 @@ class ExpenseRepository(
     private val categoryDao: CategoryDao,
     private val expenseDao: ExpenseDao,
     private val expenseTemplateDao: ExpenseTemplateDao,
-    private val loanDao: LoanDao
+    private val loanDao: LoanDao,
+    private val savingGoalDao: SavingGoalDao
 ) {
     // 类别相关
     fun getAllCategories(): Flow<List<Category>> = categoryDao.getAllCategories()
@@ -33,6 +34,11 @@ class ExpenseRepository(
     suspend fun insertLoan(loan: Loan) = loanDao.insertLoan(loan)
     suspend fun updateLoan(loan: Loan) = loanDao.updateLoan(loan)
     suspend fun deleteLoan(loan: Loan) = loanDao.deleteLoan(loan)
+
+    fun getAllGoals(): Flow<List<SavingGoal>> = savingGoalDao.getAllGoals()
+    suspend fun insertGoal(goal: SavingGoal) = savingGoalDao.insertGoal(goal)
+    suspend fun updateGoal(goal: SavingGoal) = savingGoalDao.updateGoal(goal)
+    suspend fun deleteGoal(goal: SavingGoal) = savingGoalDao.deleteGoal(goal)
 
     // 清除所有消费记录
     suspend fun clearAllExpenses() {

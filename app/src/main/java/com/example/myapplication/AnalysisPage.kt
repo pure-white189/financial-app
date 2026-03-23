@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.ui.theme.ExpenseRed
@@ -39,17 +40,21 @@ import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisPage(
     viewModel: ExpenseViewModel,
     monthlyBudget: Double? = null,
-    onNavigateToStock: () -> Unit = {}
+    onNavigateToStock: () -> Unit = {},
+    expenses: List<Expense> = emptyList(),
+    categories: List<Category> = emptyList()
 ) {
-    val expenses by viewModel.expenses.collectAsState(initial = emptyList())
-    val categories by viewModel.categories.collectAsState(initial = emptyList())
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val scope = rememberCoroutineScope()
+    var aiAnalysis by remember { mutableStateOf<String?>(null) }
+    var isAnalyzing by remember { mutableStateOf(false) }
 
     // 计算本月数据
     val thisMonthExpenses = remember(expenses) {
@@ -322,6 +327,123 @@ fun AnalysisPage(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("查看股票持仓", color = Color.White)
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = PurpleStart
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "AI 消费分析",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                        ) {
+                            TextButton(
+                                enabled = !isAnalyzing,
+                                onClick = {
+                                    scope.launch {
+                                        isAnalyzing = true
+                                        val summaries = thisMonthExpenses.map { expense ->
+                                            val categoryName = categories.find {
+                                                it.id == expense.categoryId
+                                            }?.name ?: "其他"
+
+                                            AiExpenseParser.ExpenseSummary(
+                                                amount = expense.amount,
+                                                category = categoryName
+                                            )
+                                        }
+
+                                        val result = AiExpenseParser.analyzeExpenses(
+                                            expenses = summaries,
+                                            month = "本月"
+                                        )
+
+                                        result.onSuccess { analysis ->
+                                            aiAnalysis = analysis
+                                        }
+                                        result.onFailure {
+                                            aiAnalysis = "分析生成失败，请检查网络连接"
+                                        }
+                                        isAnalyzing = false
+                                    }
+                                },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = Color.White,
+                                    disabledContentColor = Color.White.copy(alpha = 0.7f)
+                                )
+                            ) {
+                                Text(text = if (isAnalyzing) "分析中..." else "生成报告")
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    when {
+                        isAnalyzing -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "AI 分析中...",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        !aiAnalysis.isNullOrBlank() -> {
+                            Text(
+                                text = aiAnalysis.orEmpty(),
+                                fontSize = 14.sp,
+                                lineHeight = 22.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        else -> {
+                            Text(
+                                text = "点击「生成报告」获取本月消费分析",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }

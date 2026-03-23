@@ -134,6 +134,8 @@ fun MainScreen(
     val templates by viewModel.templates.collectAsState(initial = emptyList())
     val savingGoals by viewModel.savingGoals.collectAsState(initial = emptyList())
     val stocks by viewModel.stocks.collectAsState(initial = emptyList())
+    val expenses by viewModel.expenses.collectAsState(initial = emptyList())
+    val categories by viewModel.categories.collectAsState(initial = emptyList())
 
     LaunchedEffect(quickTemplateId) {
         if (quickTemplateId != null && quickTemplateId > 0) {
@@ -292,7 +294,9 @@ fun MainScreen(
                     monthlyBudget = currentBudget,
                     onNavigateToStock = {
                         navController.navigate("stock")
-                    }
+                    },
+                    expenses = expenses,
+                    categories = categories
                 )
             }
 

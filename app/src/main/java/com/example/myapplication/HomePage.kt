@@ -1,11 +1,13 @@
 package com.example.myapplication
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -147,7 +149,7 @@ fun HomePage(viewModel: ExpenseViewModel,
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(28.dp))
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(PurpleStart, PurpleEnd)
@@ -156,12 +158,17 @@ fun HomePage(viewModel: ExpenseViewModel,
                 .padding(24.dp)
         ) {
             Column {
-                Text("本月支出", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                Text(
+                    "本月支出",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
                 Text(
                     "¥ %.2f".format(monthlyTotal),
                     color = Color.White,
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -175,14 +182,14 @@ fun HomePage(viewModel: ExpenseViewModel,
             savingGoals.filter { !it.isCompleted }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
         // 判断是否有数据需要展示在概览区
         val hasBudget = monthlyBudget != null && monthlyBudget > 0
         val hasGoals = ongoingSavingGoals.isNotEmpty()
         val hasStocks = stocks.isNotEmpty()
 
         if (hasBudget || hasGoals || hasStocks) {
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
                 text = "资产与预算",
                 fontSize = 18.sp,
@@ -201,7 +208,9 @@ fun HomePage(viewModel: ExpenseViewModel,
                         BudgetProgressCard(
                             monthlyTotal = monthlyTotal,
                             monthlyBudget = monthlyBudget,
-                            modifier = Modifier.width(280.dp)
+                            modifier = Modifier
+                                .width(320.dp)
+                                .height(176.dp)
                         )
                     }
                 }
@@ -210,7 +219,9 @@ fun HomePage(viewModel: ExpenseViewModel,
                         SavingGoalSummaryCard(
                             ongoingGoals = ongoingSavingGoals,
                             onClick = onNavigateToSaving,
-                            modifier = Modifier.width(260.dp)
+                            modifier = Modifier
+                                .width(300.dp)
+                                .height(176.dp)
                         )
                     }
                 }
@@ -219,7 +230,9 @@ fun HomePage(viewModel: ExpenseViewModel,
                         StockOverviewCard(
                             stocks = stocks,
                             onClick = onNavigateToStock,
-                            modifier = Modifier.width(260.dp)
+                            modifier = Modifier
+                                .width(300.dp)
+                                .height(176.dp)
                         )
                     }
                 }
@@ -227,6 +240,8 @@ fun HomePage(viewModel: ExpenseViewModel,
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // ===== 筛选按钮 =====
         Row(
@@ -263,7 +278,9 @@ fun HomePage(viewModel: ExpenseViewModel,
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color.Transparent,
                         selectedLabelColor = Color.White
-                    )
+                    ),
+                    border = null,
+                    shape = CircleShape
                 )
             }
         }
@@ -278,13 +295,14 @@ fun HomePage(viewModel: ExpenseViewModel,
         ) {
             Text(
                 text = "最近消费",
-                fontSize = 20.sp,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
                 text = "${filteredExpenses.size} 条记录",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
 
@@ -388,10 +406,14 @@ private fun StockOverviewCard(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -401,7 +423,8 @@ private fun StockOverviewCard(
                     text = "股票持仓",
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
                 Text(
                     text = "共 ${stocks.size} 只",
@@ -414,7 +437,8 @@ private fun StockOverviewCard(
 
             Text(
                 text = "总市值 HK$${String.format(Locale.getDefault(), "%.2f", totalValue)}",
-                fontSize = 20.sp,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -449,10 +473,14 @@ private fun SavingGoalSummaryCard(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -460,9 +488,10 @@ private fun SavingGoalSummaryCard(
             ) {
                 Text(
                     text = "储蓄目标",
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
                     text = "共 ${ongoingGoals.size} 个目标",
@@ -750,7 +779,7 @@ fun BudgetProgressCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -771,7 +800,7 @@ fun BudgetProgressCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // 进度条
             LinearProgressIndicator(
@@ -784,7 +813,7 @@ fun BudgetProgressCard(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // 详细信息
             Row(
@@ -824,10 +853,11 @@ fun BudgetProgressCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = "距月底还有 $remainingDays 天",
+                modifier = Modifier.padding(top = 2.dp),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )

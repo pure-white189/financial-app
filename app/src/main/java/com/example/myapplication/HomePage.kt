@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -170,39 +171,61 @@ fun HomePage(viewModel: ExpenseViewModel,
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 预算进度网格（紧凑样式）
-        if (monthlyBudget != null && monthlyBudget > 0) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                BudgetProgressCard(
-                    monthlyTotal = monthlyTotal,
-                    monthlyBudget = monthlyBudget,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
         val ongoingSavingGoals = remember(savingGoals) {
             savingGoals.filter { !it.isCompleted }
         }
 
-        if (ongoingSavingGoals.isNotEmpty()) {
-            SavingGoalSummaryCard(
-                ongoingGoals = ongoingSavingGoals,
-                onClick = onNavigateToSaving
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+        Spacer(modifier = Modifier.height(12.dp))
 
-        if (stocks.isNotEmpty()) {
-            StockOverviewCard(
-                stocks = stocks,
-                onClick = onNavigateToStock
+        // 判断是否有数据需要展示在概览区
+        val hasBudget = monthlyBudget != null && monthlyBudget > 0
+        val hasGoals = ongoingSavingGoals.isNotEmpty()
+        val hasStocks = stocks.isNotEmpty()
+
+        if (hasBudget || hasGoals || hasStocks) {
+            Text(
+                text = "资产与预算",
+                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 8.dp)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 8.dp)
+            ) {
+                if (hasBudget) {
+                    item {
+                        BudgetProgressCard(
+                            monthlyTotal = monthlyTotal,
+                            monthlyBudget = monthlyBudget,
+                            modifier = Modifier.width(280.dp)
+                        )
+                    }
+                }
+                if (hasGoals) {
+                    item {
+                        SavingGoalSummaryCard(
+                            ongoingGoals = ongoingSavingGoals,
+                            onClick = onNavigateToSaving,
+                            modifier = Modifier.width(260.dp)
+                        )
+                    }
+                }
+                if (hasStocks) {
+                    item {
+                        StockOverviewCard(
+                            stocks = stocks,
+                            onClick = onNavigateToStock,
+                            modifier = Modifier.width(260.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // ===== 筛选按钮 =====
@@ -230,7 +253,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                                 Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(
-                                        brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
+                                        color = MaterialTheme.colorScheme.primary,
                                         shape = RoundedCornerShape(50)
                                     )
                             } else {
@@ -354,16 +377,15 @@ fun HomePage(viewModel: ExpenseViewModel,
 @Composable
 private fun StockOverviewCard(
     stocks: List<Stock>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val totalValue = remember(stocks) { stocks.sumOf { it.currentPrice * it.shares } }
     val totalProfit = remember(stocks) { stocks.sumOf { (it.currentPrice - it.costPrice) * it.shares } }
     val profitColor = if (totalProfit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
@@ -416,16 +438,15 @@ private fun formatSignedHkAmount(amount: Double): String {
 @Composable
 private fun SavingGoalSummaryCard(
     ongoingGoals: List<SavingGoal>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val latestGoal = remember(ongoingGoals) { ongoingGoals.maxByOrNull { it.createdAt } } ?: return
     val progress = (latestGoal.currentAmount / latestGoal.targetAmount).coerceIn(0.0, 1.0).toFloat()
     val percentage = (progress * 100).toInt()
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)

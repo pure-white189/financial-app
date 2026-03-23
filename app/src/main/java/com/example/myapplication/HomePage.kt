@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,9 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +43,7 @@ fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToSaving: () -> Unit = {},
              onNavigateToStock: () -> Unit = {},
              monthlyBudget: Double? = null,
+             requireDeleteConfirm: Boolean = true,
              savingGoals: List<SavingGoal> = emptyList(),
              stocks: List<Stock> = emptyList()
 ) {
@@ -46,6 +51,7 @@ fun HomePage(viewModel: ExpenseViewModel,
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var selectedFilter by remember { mutableStateOf("全部") }
 
     // 根据筛选条件过滤消费记录
@@ -81,12 +87,16 @@ fun HomePage(viewModel: ExpenseViewModel,
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -308,20 +318,33 @@ fun HomePage(viewModel: ExpenseViewModel,
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                filteredExpenses.forEach { expense ->
-                    val category = categories.find { it.id == expense.categoryId }
-                    ExpenseItem(
-                        expense = expense,
-                        category = category,
-                        onDelete = {
-                            scope.launch {
-                                viewModel.deleteExpense(expense)
+                    filteredExpenses.forEach { expense ->
+                        val category = categories.find { it.id == expense.categoryId }
+                        ExpenseItem(
+                            expense = expense,
+                            category = category,
+                            requireDeleteConfirm = requireDeleteConfirm,
+                            onDelete = {
+                                scope.launch {
+                                    viewModel.deleteExpense(expense)
+
+                                    if (!requireDeleteConfirm) {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "已删除消费记录",
+                                            actionLabel = "撤销",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.addExpense(expense)
+                                        }
+                                    }
+                                }
+                            },
+                            onEdit = {
+                                onNavigateToEdit(expense)
                             }
-                        },
-                        onEdit = {
-                            onNavigateToEdit(expense)  // 点击卡片时导航到编辑页面
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -478,28 +501,64 @@ private fun SavingGoalSummaryCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseItem(
     expense: Expense,
     category: Category?,
     onDelete: () -> Unit,
-    onEdit: () -> Unit  // 添加编辑回调
+    onEdit: () -> Unit,
+    requireDeleteConfirm: Boolean
 ) {
+    val haptic = LocalHapticFeedback.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
             when (dismissValue) {
                 SwipeToDismissBoxValue.EndToStart -> {
-                    onDelete()
-                    true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (requireDeleteConfirm) {
+                        showDeleteDialog = true
+                    } else {
+                        onDelete()
+                    }
+                    false
                 }
                 SwipeToDismissBoxValue.StartToEnd -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onEdit()
                     false
                 }
                 SwipeToDismissBoxValue.Settled -> false
             }
-        }
+        },
+        positionalThreshold = { totalDistance -> totalDistance * 0.4f }
     )
+
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除这笔消费记录吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 
     SwipeToDismissBox(
         state = dismissState,
@@ -530,7 +589,16 @@ fun ExpenseItem(
                     .padding(horizontal = 20.dp),
                 contentAlignment = alignment
             ) {
-                Icon(icon, contentDescription = null, tint = Color.White)
+                val scale by animateFloatAsState(
+                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) 0.8f else 1.2f,
+                    label = "icon_scale"
+                )
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.scale(scale)
+                )
             }
         }
     ) {
@@ -550,7 +618,6 @@ fun ExpenseItem(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // 类别图标（优先显示自定义图片）
                     if (category?.iconPath != null) {
                         AsyncImage(
                             model = category.iconPath,

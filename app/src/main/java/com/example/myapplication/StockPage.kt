@@ -694,6 +694,9 @@ private fun EditHoldingDialog(
     var costPriceText by remember(stock.id) {
         mutableStateOf(if (stock.costPrice > 0) String.format("%.2f", stock.costPrice) else "")
     }
+    var currentPriceText by remember(stock.id) {
+        mutableStateOf(if (stock.currentPrice > 0) String.format("%.2f", stock.currentPrice) else "")
+    }
     var showError by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -740,6 +743,20 @@ private fun EditHoldingDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                OutlinedTextField(
+                    value = currentPriceText,
+                    onValueChange = {
+                        currentPriceText = it
+                        showError = false
+                    },
+                    label = { Text("当前最新价") },
+                    placeholder = { Text("输入最新价格") },
+                    prefix = { Text(marketPrefix(stock.market)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 if (showError) {
                     Text(
                         text = "请填写名称并输入有效持股数量",
@@ -754,6 +771,7 @@ private fun EditHoldingDialog(
                 onClick = {
                     val newShares = sharesText.toDoubleOrNull()
                     val newCostPrice = costPriceText.toDoubleOrNull() ?: 0.0
+                    val newCurrentPrice = currentPriceText.toDoubleOrNull() ?: stock.currentPrice
                     if (name.isBlank() || newShares == null || newShares <= 0) {
                         showError = true
                         return@TextButton
@@ -762,7 +780,8 @@ private fun EditHoldingDialog(
                         stock.copy(
                             name = name.trim(),
                             shares = newShares,
-                            costPrice = newCostPrice
+                            costPrice = newCostPrice,
+                            currentPrice = newCurrentPrice
                         )
                     )
                 }

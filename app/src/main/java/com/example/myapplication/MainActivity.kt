@@ -139,6 +139,8 @@ fun MainScreen(
     val stocks by viewModel.stocks.collectAsState(initial = emptyList())
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
+    val requireDeleteConfirm by themePreferences.requireDeleteConfirm
+        .collectAsStateWithLifecycle(initialValue = true)
 
     LaunchedEffect(quickTemplateId) {
         if (quickTemplateId != null && quickTemplateId > 0) {
@@ -284,6 +286,7 @@ fun MainScreen(
                         navController.navigate("stock")
                     },
                     monthlyBudget = currentBudget,
+                    requireDeleteConfirm = requireDeleteConfirm,
                     savingGoals = savingGoals.filter { !it.isCompleted },
                     stocks = stocks
                 )
@@ -337,6 +340,12 @@ fun MainScreen(
                     onPersistentNotificationChange = { show ->
                         scope.launch {
                             themePreferences.setShowPersistentNotification(show)
+                        }
+                    },
+                    requireDeleteConfirm = requireDeleteConfirm,
+                    onRequireDeleteConfirmChange = { req ->
+                        scope.launch {
+                            themePreferences.setRequireDeleteConfirm(req)
                         }
                     },
                     onBack = { navController.popBackStack() },

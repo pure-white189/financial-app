@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,6 +33,8 @@ fun SettingsPage(
     onAlertThresholdChange: (Double?) -> Unit,
     showPersistentNotification: Boolean,
     onPersistentNotificationChange: (Boolean) -> Unit,
+    requireDeleteConfirm: Boolean,
+    onRequireDeleteConfirmChange: (Boolean) -> Unit,
     onBack: () -> Unit = {},
     onNavigateToExport: () -> Unit = {}
 ) {
@@ -48,7 +51,7 @@ fun SettingsPage(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
             }
             Text(
                 text = "设置",
@@ -142,6 +145,51 @@ fun SettingsPage(
             Switch(
                 checked = showPersistentNotification,
                 onCheckedChange = onPersistentNotificationChange
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onRequireDeleteConfirmChange(!requireDeleteConfirm) }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Swipe,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "滑动删除确认",
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "防误触，滑动删除时弹出确认框",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Switch(
+                checked = requireDeleteConfirm,
+                onCheckedChange = onRequireDeleteConfirmChange
             )
         }
 

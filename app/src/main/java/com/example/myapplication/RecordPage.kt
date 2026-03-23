@@ -50,6 +50,7 @@ import java.util.Calendar
 fun RecordPage(
     viewModel: ExpenseViewModel,
     onNavigateToCategory: () -> Unit = {},
+    onBack: () -> Unit = {},
     alertThreshold: Double? = null
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
@@ -87,15 +88,22 @@ fun RecordPage(
         ) {
             // 标题栏
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "添加消费记录",
-                    fontSize = 28.sp,
-                    style = MaterialTheme.typography.headlineLarge
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                    Text(
+                        text = "记账",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Row {
                     IconButton(onClick = { showTemplatesSheet = true }) {
@@ -115,7 +123,6 @@ fun RecordPage(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
             // 快速模板 - 只显示置顶的
             val pinnedTemplates = remember(templates) {

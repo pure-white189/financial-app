@@ -295,6 +295,7 @@ fun MainScreen(
                     onNavigateToCategory = {
                         navController.navigate("category_management")
                     },
+                    onBack = { navController.popBackStack() },
                     alertThreshold = currentAlertThreshold
                 )
             }
@@ -338,6 +339,7 @@ fun MainScreen(
                             themePreferences.setShowPersistentNotification(show)
                         }
                     },
+                    onBack = { navController.popBackStack() },
                     onNavigateToExport = {
                         navController.navigate("export")
                     }

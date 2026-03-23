@@ -485,83 +485,116 @@ fun ExpenseItem(
     onDelete: () -> Unit,
     onEdit: () -> Unit  // 添加编辑回调
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onEdit),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            when (dismissValue) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDelete()
+                    true
+                }
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onEdit()
+                    false
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val color = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Color(0xFF2196F3)
+                SwipeToDismissBoxValue.EndToStart -> Color.Red
+                SwipeToDismissBoxValue.Settled -> Color.Transparent
+            }
+            val alignment = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                SwipeToDismissBoxValue.Settled -> Alignment.CenterStart
+            }
+            val icon = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Edit
+                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
+                SwipeToDismissBoxValue.Settled -> Icons.Default.Delete
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(color)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment
+            ) {
+                Icon(icon, contentDescription = null, tint = Color.White)
+            }
+        }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 类别图标（优先显示自定义图片）
-                if (category?.iconPath != null) {
-                    AsyncImage(
-                        model = category.iconPath,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = getCategoryIcon(category?.iconName),
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // 类别图标（优先显示自定义图片）
+                    if (category?.iconPath != null) {
+                        AsyncImage(
+                            model = category.iconPath,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = getCategoryIcon(category?.iconName),
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                Column {
-                    Text(
-                        text = category?.name ?: "未知类别",
-                        fontSize = 16.sp,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = DateUtils.formatDate(expense.date),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (expense.note.isNotEmpty()) {
+                    Column {
                         Text(
-                            text = expense.note,
+                            text = category?.name ?: "未知类别",
+                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = DateUtils.formatDate(expense.date),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (expense.note.isNotEmpty()) {
+                            Text(
+                                text = expense.note,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            }
 
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
                 Text(
                     text = "¥ %.2f".format(expense.amount),
                     fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
                     color = ExpenseRed
                 )
-
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
             }
         }
     }

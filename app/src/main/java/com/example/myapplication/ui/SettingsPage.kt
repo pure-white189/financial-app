@@ -32,6 +32,7 @@ fun SettingsPage(
     onAlertThresholdChange: (Double?) -> Unit,
     showPersistentNotification: Boolean,
     onPersistentNotificationChange: (Boolean) -> Unit,
+    onBack: () -> Unit = {},
     onNavigateToExport: () -> Unit = {}
 ) {
     Column(
@@ -40,14 +41,21 @@ fun SettingsPage(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // 标题
-        Text(
-            text = "设置",
-            fontSize = 28.sp,
-            style = MaterialTheme.typography.headlineLarge
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+            }
+            Text(
+                text = "设置",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         // ===== 外观设置 =====
         SettingsSectionTitle(title = "外观")

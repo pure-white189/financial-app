@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.AlertDialog
@@ -32,6 +33,8 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -411,12 +414,13 @@ private fun StockItemCard(
     }
     val scope = rememberCoroutineScope()
     var isSingleRefreshing by remember(stock.id) { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -446,21 +450,72 @@ private fun StockItemCard(
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatMoney(stock.market, stock.currentPrice),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "${formatSignedMoney(stock.market, diffAmount)} (${formatSignedPercent(diffPercent)})",
-                        fontSize = 12.sp,
-                        color = upColor
-                    )
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = formatMoney(stock.market, stock.currentPrice),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${formatSignedMoney(stock.market, diffAmount)} (${formatSignedPercent(diffPercent)})",
+                            fontSize = 12.sp,
+                            color = upColor
+                        )
+                    }
+
+                    Box {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多选项"
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(if (isSingleRefreshing) "刷新中..." else "刷新价格")
+                                },
+                                enabled = !isSingleRefreshing,
+                                onClick = {
+                                    expanded = false
+                                    scope.launch {
+                                        isSingleRefreshing = true
+                                        val updated = onRefreshPrice(stock)
+                                        isSingleRefreshing = false
+                                        onShowMessage(if (updated) "已更新" else "获取失败")
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("更新价格") },
+                                onClick = {
+                                    expanded = false
+                                    onEdit()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = "删除",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    expanded = false
+                                    onDelete()
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "持股 ${formatDouble(stock.shares)} | 成本 ${formatMoney(stock.market, stock.costPrice)} | 市值 ${formatMoney(stock.market, value)}",
@@ -473,58 +528,6 @@ private fun StockItemCard(
                 fontSize = 12.sp,
                 color = if (pnl >= 0) IncomeGreen else ExpenseRed
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(
-                    enabled = !isSingleRefreshing,
-                    onClick = {
-                        scope.launch {
-                            isSingleRefreshing = true
-                            val updated = onRefreshPrice(stock)
-                            isSingleRefreshing = false
-                            onShowMessage(if (updated) "已更新" else "获取失败")
-                        }
-                    }
-                ) {
-                    if (isSingleRefreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "刷新价格",
-                            tint = PurpleStart
-                        )
-                    }
-                }
-
-                TextButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("编辑")
-                }
-
-                TextButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("删除")
-                }
-            }
         }
     }
 }

@@ -18,8 +18,8 @@ object AiExpenseParser {
     private const val BASE_URL = "http://10.0.2.2:8000"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     data class ParseResult(
@@ -31,6 +31,12 @@ object AiExpenseParser {
     data class ExpenseSummary(
         val amount: Double,
         val category: String
+    )
+
+    data class StockPrice(
+        val symbol: String,
+        val price: Double,
+        val currency: String
     )
 
     suspend fun parseExpense(text: String): Result<ParseResult> =
@@ -110,5 +116,49 @@ object AiExpenseParser {
             Result.failure(e)
         }
     }
+
+    suspend fun fetchStockPrices(symbols: List<String>): Result<Map<String, StockPrice>> =
+        withContext(Dispatchers.IO) {
+            try {
+                if (symbols.isEmpty()) return@withContext Result.success(emptyMap())
+
+                val symbolsParam = symbols.joinToString(",")
+                val request = Request.Builder()
+                    .url("$BASE_URL/stock-prices?symbols=$symbolsParam")
+                    .build()
+
+                Log.d("AiParser", "获取股票价格: $symbolsParam")
+
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                        ?: return@withContext Result.failure(Exception("空响应"))
+
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(Exception("HTTP ${response.code}: $body"))
+                    }
+
+                    Log.d("AiParser", "股票响应: $body")
+                    val json = JSONObject(body)
+                    val result = mutableMapOf<String, StockPrice>()
+
+                    for (symbol in symbols) {
+                        if (json.has(symbol)) {
+                            val stockJson = json.getJSONObject(symbol)
+                            if (!stockJson.has("error")) {
+                                result[symbol] = StockPrice(
+                                    symbol = symbol,
+                                    price = stockJson.optDouble("price", 0.0),
+                                    currency = stockJson.optString("currency", "HKD")
+                                )
+                            }
+                        }
+                    }
+                    Result.success(result)
+                }
+            } catch (e: Exception) {
+                Log.e("AiParser", "股票价格获取失败: ${e.message}")
+                Result.failure(e)
+            }
+        }
 }
 

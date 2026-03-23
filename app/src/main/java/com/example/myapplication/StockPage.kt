@@ -41,6 +41,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.Stock
+import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
@@ -69,7 +72,9 @@ import com.example.myapplication.ui.theme.StockRed
 import com.example.myapplication.ui.theme.WarningOrange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.random.Random
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val ProfitColor = IncomeGreen
 
@@ -84,13 +89,16 @@ fun StockPage(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Stock?>(null) }
-    var updateTarget by remember { mutableStateOf<Stock?>(null) }
+    var editTarget by remember { mutableStateOf<Stock?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val totalProfit = stocks.sumOf { (it.currentPrice - it.costPrice) * it.shares }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("股票追踪") },
@@ -108,12 +116,40 @@ fun StockPage(
                         onClick = {
                             scope.launch {
                                 isRefreshing = true
-                                // TODO: 对接真实股票行情 API 后，在这里替换为真实接口刷新
-                                stocks.forEach { stock ->
-                                    val change = (Random.nextDouble() * 0.10) - 0.05
-                                    val newPrice = stock.currentPrice * (1 + change)
-                                    viewModel.updateStockPrice(stock, newPrice)
+
+                                if (stocks.isNotEmpty()) {
+                                    val symbols = stocks.map { stock ->
+                                        toApiSymbol(stock.symbol, stock.market)
+                                    }
+
+                                    val result = AiExpenseParser.fetchStockPrices(symbols)
+                                    val priceMap = result.getOrNull()
+
+                                    if (priceMap != null) {
+                                        var updatedCount = 0
+                                        stocks.forEachIndexed { index, stock ->
+                                            val symbol = symbols[index]
+                                            priceMap[symbol]?.let { stockPrice ->
+                                                if (stockPrice.price > 0) {
+                                                    viewModel.updateStockPrice(stock, stockPrice.price)
+                                                    updatedCount++
+                                                }
+                                            }
+                                        }
+
+                                        if (updatedCount > 0) {
+                                            lastRefreshTime = SimpleDateFormat(
+                                                "HH:mm",
+                                                Locale.getDefault()
+                                            ).format(Date())
+                                        } else {
+                                            snackbarHostState.showSnackbar("未获取到可用价格，请稍后重试")
+                                        }
+                                    } else {
+                                        snackbarHostState.showSnackbar("获取股票价格失败，请检查网络连接")
+                                    }
                                 }
+
                                 delay(1000)
                                 isRefreshing = false
                             }
@@ -191,6 +227,15 @@ fun StockPage(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            if (lastRefreshTime.isNotBlank()) {
+                Text(
+                    text = "最后更新：$lastRefreshTime",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             if (stocks.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -230,7 +275,27 @@ fun StockPage(
                         StockItemCard(
                             stock = stock,
                             onDelete = { deleteTarget = stock },
-                            onUpdatePrice = { updateTarget = stock }
+                            onEdit = { editTarget = stock },
+                            onRefreshPrice = { target ->
+                                val symbol = toApiSymbol(target.symbol, target.market)
+                                val result = AiExpenseParser.fetchStockPrices(listOf(symbol))
+                                val stockPrice = result.getOrNull()?.get(symbol)
+                                if (stockPrice != null && stockPrice.price > 0) {
+                                    viewModel.updateStockPrice(target, stockPrice.price)
+                                    lastRefreshTime = SimpleDateFormat(
+                                        "HH:mm",
+                                        Locale.getDefault()
+                                    ).format(Date())
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                            onShowMessage = { message ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
                         )
                     }
                 }
@@ -241,9 +306,44 @@ fun StockPage(
     if (showAddDialog) {
         AddStockDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { stock ->
-                viewModel.addStock(stock)
+            onConfirm = { newStock ->
+                viewModel.addStock(newStock)
                 showAddDialog = false
+
+                if (newStock.currentPrice == 0.0) {
+                    scope.launch {
+                        val targetStock = run {
+                            var found: Stock? = null
+                            repeat(10) {
+                                found = stocks.firstOrNull {
+                                    it.createdAt == newStock.createdAt &&
+                                        it.symbol == newStock.symbol &&
+                                        it.market == newStock.market
+                                }
+                                if (found == null) {
+                                    delay(120)
+                                }
+                            }
+                            found
+                        }
+
+                        if (targetStock != null) {
+                            val symbol = toApiSymbol(targetStock.symbol, targetStock.market)
+                            val result = AiExpenseParser.fetchStockPrices(listOf(symbol))
+                            result.onSuccess { priceMap ->
+                                priceMap[symbol]?.let { stockPrice ->
+                                    if (stockPrice.price > 0) {
+                                        viewModel.updateStockPrice(targetStock, stockPrice.price)
+                                        lastRefreshTime = SimpleDateFormat(
+                                            "HH:mm",
+                                            Locale.getDefault()
+                                        ).format(Date())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         )
     }
@@ -271,13 +371,13 @@ fun StockPage(
         )
     }
 
-    updateTarget?.let { stock ->
-        UpdatePriceDialog(
+    editTarget?.let { stock ->
+        EditHoldingDialog(
             stock = stock,
-            onDismiss = { updateTarget = null },
-            onConfirm = { newPrice ->
-                viewModel.updateStockPrice(stock, newPrice)
-                updateTarget = null
+            onDismiss = { editTarget = null },
+            onConfirm = { updated ->
+                viewModel.updateStock(updated)
+                editTarget = null
             }
         )
     }
@@ -287,7 +387,9 @@ fun StockPage(
 private fun StockItemCard(
     stock: Stock,
     onDelete: () -> Unit,
-    onUpdatePrice: () -> Unit
+    onEdit: () -> Unit,
+    onRefreshPrice: suspend (Stock) -> Boolean,
+    onShowMessage: (String) -> Unit
 ) {
     val diffAmount = stock.currentPrice - stock.costPrice
     val diffPercent = if (stock.costPrice > 0) (diffAmount / stock.costPrice * 100) else 0.0
@@ -298,8 +400,17 @@ private fun StockItemCard(
     val marketColor = when (stock.market) {
         "HK" -> PurpleStart
         "US" -> WarningOrange
+        "SS" -> ExpenseRed
+        "SZ" -> ExpenseRed
         else -> ExpenseRed
     }
+    val marketLabel = when (stock.market) {
+        "SS" -> "沪"
+        "SZ" -> "深"
+        else -> stock.market
+    }
+    val scope = rememberCoroutineScope()
+    var isSingleRefreshing by remember(stock.id) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -321,7 +432,7 @@ private fun StockItemCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         AssistChip(
                             onClick = { },
-                            label = { Text(stock.market, color = Color.White) },
+                            label = { Text(marketLabel, color = Color.White) },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = marketColor,
                                 labelColor = Color.White
@@ -369,14 +480,39 @@ private fun StockItemCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onUpdatePrice) {
+                IconButton(
+                    enabled = !isSingleRefreshing,
+                    onClick = {
+                        scope.launch {
+                            isSingleRefreshing = true
+                            val updated = onRefreshPrice(stock)
+                            isSingleRefreshing = false
+                            onShowMessage(if (updated) "已更新" else "获取失败")
+                        }
+                    }
+                ) {
+                    if (isSingleRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "刷新价格",
+                            tint = PurpleStart
+                        )
+                    }
+                }
+
+                TextButton(onClick = onEdit) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("更新价格")
+                    Text("编辑")
                 }
 
                 TextButton(onClick = onDelete) {
@@ -405,6 +541,9 @@ private fun AddStockDialog(
     var costPriceText by remember { mutableStateOf("") }
     var currentPriceText by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
+    val canSave = symbol.isNotBlank() &&
+        name.isNotBlank() &&
+        (sharesText.toDoubleOrNull() ?: 0.0) > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -441,11 +580,16 @@ private fun AddStockDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("HK", "US", "CN").forEach { marketOption ->
+                    listOf(
+                        "HK" to "HK",
+                        "US" to "US",
+                        "SS" to "沪",
+                        "SZ" to "深"
+                    ).forEach { (marketOption, label) ->
                         FilterChip(
                             selected = market == marketOption,
                             onClick = { market = marketOption },
-                            label = { Text(marketOption) }
+                            label = { Text(label) }
                         )
                     }
                 }
@@ -466,12 +610,10 @@ private fun AddStockDialog(
                     value = costPriceText,
                     onValueChange = {
                         costPriceText = it
-                        if (currentPriceText.isBlank()) {
-                            currentPriceText = it
-                        }
                         showError = false
                     },
                     label = { Text("买入均价") },
+                    placeholder = { Text("买入均价（可选）") },
                     prefix = { Text(marketPrefix(market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -485,6 +627,7 @@ private fun AddStockDialog(
                         showError = false
                     },
                     label = { Text("当前价格") },
+                    placeholder = { Text("当前价格（可选）") },
                     prefix = { Text(marketPrefix(market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -493,7 +636,7 @@ private fun AddStockDialog(
 
                 if (showError) {
                     Text(
-                        text = "请完整填写并输入有效数值",
+                        text = "请填写股票代码、名称和有效持股数量",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -502,14 +645,13 @@ private fun AddStockDialog(
         },
         confirmButton = {
             TextButton(
+                enabled = canSave,
                 onClick = {
                     val shares = sharesText.toDoubleOrNull()
-                    val costPrice = costPriceText.toDoubleOrNull()
-                    val currentPrice = currentPriceText.toDoubleOrNull()
+                    val costPrice = costPriceText.toDoubleOrNull() ?: 0.0
+                    val currentPrice = currentPriceText.toDoubleOrNull() ?: 0.0
 
-                    if (symbol.isBlank() || name.isBlank() || shares == null || shares <= 0 ||
-                        costPrice == null || costPrice <= 0 || currentPrice == null || currentPrice <= 0
-                    ) {
+                    if (symbol.isBlank() || name.isBlank() || shares == null || shares <= 0) {
                         showError = true
                         return@TextButton
                     }
@@ -539,36 +681,65 @@ private fun AddStockDialog(
 }
 
 @Composable
-private fun UpdatePriceDialog(
+private fun EditHoldingDialog(
     stock: Stock,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (Stock) -> Unit
 ) {
-    var priceText by remember(stock.id) { mutableStateOf(String.format("%.2f", stock.currentPrice)) }
+    var name by remember(stock.id) { mutableStateOf(stock.name) }
+    var sharesText by remember(stock.id) { mutableStateOf(String.format("%.2f", stock.shares)) }
+    var costPriceText by remember(stock.id) {
+        mutableStateOf(if (stock.costPrice > 0) String.format("%.2f", stock.costPrice) else "")
+    }
     var showError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("更新价格 - ${stock.symbol}") },
+        title = { Text("编辑持仓 - ${stock.symbol}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = priceText,
+                    value = name,
                     onValueChange = {
-                        priceText = it
+                        name = it
                         showError = false
                     },
-                    label = { Text("当前价格") },
-                    prefix = { Text(marketPrefix(stock.market)) },
+                    label = { Text("股票名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showError
+                )
+
+                OutlinedTextField(
+                    value = sharesText,
+                    onValueChange = {
+                        sharesText = it
+                        showError = false
+                    },
+                    label = { Text("持股数量") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     isError = showError
                 )
 
+                OutlinedTextField(
+                    value = costPriceText,
+                    onValueChange = {
+                        costPriceText = it
+                        showError = false
+                    },
+                    label = { Text("买入均价") },
+                    placeholder = { Text("买入均价（可选）") },
+                    prefix = { Text(marketPrefix(stock.market)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 if (showError) {
                     Text(
-                        text = "请输入大于 0 的价格",
+                        text = "请填写名称并输入有效持股数量",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -578,12 +749,19 @@ private fun UpdatePriceDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val newPrice = priceText.toDoubleOrNull()
-                    if (newPrice == null || newPrice <= 0) {
+                    val newShares = sharesText.toDoubleOrNull()
+                    val newCostPrice = costPriceText.toDoubleOrNull() ?: 0.0
+                    if (name.isBlank() || newShares == null || newShares <= 0) {
                         showError = true
                         return@TextButton
                     }
-                    onConfirm(newPrice)
+                    onConfirm(
+                        stock.copy(
+                            name = name.trim(),
+                            shares = newShares,
+                            costPrice = newCostPrice
+                        )
+                    )
                 }
             ) {
                 Text("确认")
@@ -620,5 +798,24 @@ private fun formatSignedPercent(percent: Double): String {
 
 private fun formatDouble(value: Double): String {
     return String.format("%.2f", value)
+}
+
+private fun toApiSymbol(symbol: String, market: String): String {
+    val cleaned = symbol.trim().uppercase()
+    return when (market) {
+        // 港股：0700.HK（腾讯）、9988.HK（阿里）
+        "HK" -> "${cleaned.padStart(4, '0')}.HK"
+
+        // 美股：AAPL、TSLA、MSFT
+        "US" -> cleaned
+
+        // A股上交所：600519.SS（茅台）
+        // A股深交所：000858.SZ（五粮液）
+        "SS" -> "$cleaned.SS"
+        "SZ" -> "$cleaned.SZ"
+        "CN" -> if (cleaned.startsWith("6")) "$cleaned.SS" else "$cleaned.SZ"
+
+        else -> cleaned
+    }
 }
 

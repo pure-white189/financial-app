@@ -1866,3 +1866,45 @@ CREATE TABLE accounts (
 2. AI消费分析 - DeepSeek API对接
 3. 股票追踪
 2026-03-20记录截止
+
+### 借贷记录功能（100%）✅ 2026-03-20 完成
+- 完整 CRUD：Loan / LoanDao / AppDatabase v4
+- 借入/借出分类、Tab筛选、统计卡片
+- 逾期红色高亮、删除二次确认
+- 底部导航栏扩展为5个tab（首页/记账/借贷/分析/设置）
+
+### 储蓄目标功能（100%）✅ 2026-03-20 完成
+- 完整 CRUD：SavingGoal / SavingGoalDao / AppDatabase v5
+- 存入金额、进度条、逾期高亮、编辑目标
+- 首页储蓄摘要卡片
+
+### 股票追踪功能（100%）✅ 2026-03-20 完成
+- 完整 CRUD：Stock / StockDao / AppDatabase v6
+- 市场支持：HK / US / 沪(SS) / 深(SZ)
+- 从分析页进入，首页股票总览卡片
+
+### UI 重设计（100%）✅ 2026-03-20 完成
+- Revolut/Monzo 风格：渐变色、大数字、现代感
+- 计算器键盘记账、预算圆环图
+- 统一所有页面配色
+
+### AI 自然语言记账（100%）✅ 2026-03-20 完成
+- FastAPI 后端 + qwen-plus
+- 自然语言→金额/分类/备注自动填充
+
+### AI 月度消费分析（100%）✅ 2026-03-21 完成
+- POST /analyze-expenses 接口
+- 分析页"生成报告"按钮
+
+### 股票真实价格 API（进行中）⚠️
+- Yahoo Finance via yfinance
+- 后端接口正常：/stock-price /stock-prices
+- HK港股、US美股：获取成功
+- CN A股（SS/SZ）：后端可以，app端获取失败
+- 问题：symbol拼接或网络传递有误，待排查
+
+### 下一步计划
+1. 修复A股价格获取问题
+2. 后端部署到Azure VM
+3. Stage 2文档完善
+2026-03-23记录截止

@@ -223,6 +223,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         }
     }
 
+    fun updateStock(stock: Stock) {
+        viewModelScope.launch {
+            repository.updateStock(stock)
+        }
+    }
+
     // 切换模板置顶状态
     fun toggleTemplatePinned(template: ExpenseTemplate) {
         viewModelScope.launch {

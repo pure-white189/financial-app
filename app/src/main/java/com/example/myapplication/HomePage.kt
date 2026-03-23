@@ -35,6 +35,7 @@ import java.util.Locale
 fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToEdit: (Expense) -> Unit = {},
              onNavigateToRecord: () -> Unit = {},
+             onNavigateToSettings: () -> Unit = {},
              onNavigateToSaving: () -> Unit = {},
              onNavigateToStock: () -> Unit = {},
              monthlyBudget: Double? = null,
@@ -86,13 +87,28 @@ fun HomePage(viewModel: ExpenseViewModel,
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // 标题
-        Text(
-            text = "消费概览",
-            fontSize = 28.sp,
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "消费概览",
+                fontSize = 28.sp,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(onClick = onNavigateToSettings) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "设置",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
 
         val todayTotal = remember(expenses) {
             val todayStart = Calendar.getInstance().apply {

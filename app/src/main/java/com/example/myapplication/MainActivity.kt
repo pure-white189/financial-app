@@ -9,11 +9,14 @@ import androidx.activity.viewModels
 import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -125,7 +128,7 @@ fun MainScreen(
     LaunchedEffect(navigationRoute) {
         navigationRoute?.let { route ->
             when (route) {
-                "record" -> navController.navigate(BottomNavItem.Record.route)
+                "record" -> navController.navigate("record")
             }
         }
     }
@@ -149,11 +152,9 @@ fun MainScreen(
 
     val bottomNavItems = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Record,
         BottomNavItem.Debt,
         BottomNavItem.Saving,
-        BottomNavItem.Analysis,
-        BottomNavItem.Settings
+        BottomNavItem.Analysis
     )
 
     LaunchedEffect(monthlyTotal, currentBudget, showPersistentNotification) {
@@ -206,19 +207,13 @@ fun MainScreen(
         }
     }
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val showBottomBarAndFab = currentRoute in bottomNavItems.map { it.route }
+
     Scaffold(
         bottomBar = {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute = navBackStackEntry?.destination?.route
-
-            if (currentRoute in listOf(
-                    BottomNavItem.Home.route,
-                    BottomNavItem.Record.route,
-                    BottomNavItem.Debt.route,
-                    BottomNavItem.Saving.route,
-                    BottomNavItem.Analysis.route,
-                    BottomNavItem.Settings.route
-                )) {
+            if (showBottomBarAndFab) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
@@ -248,6 +243,19 @@ fun MainScreen(
                     }
                 }
             }
+        },
+        floatingActionButton = {
+
+            if (showBottomBarAndFab) {
+                FloatingActionButton(
+                    onClick = { navController.navigate("record") },
+                    containerColor = PurpleStart,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "记账")
+                }
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -262,7 +270,10 @@ fun MainScreen(
                         navController.navigate("edit_expense/${expense.id}")
                     },
                     onNavigateToRecord = {
-                        navController.navigate(BottomNavItem.Record.route)
+                        navController.navigate("record")
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate("settings")
                     },
                     onNavigateToSaving = {
                         navController.navigate(BottomNavItem.Saving.route) {
@@ -278,7 +289,7 @@ fun MainScreen(
                 )
             }
 
-            composable(BottomNavItem.Record.route) {
+            composable("record") {
                 RecordPage(
                     viewModel = viewModel,
                     onNavigateToCategory = {
@@ -300,7 +311,7 @@ fun MainScreen(
                 )
             }
 
-            composable(BottomNavItem.Settings.route) {
+            composable("settings") {
                 SettingsPage(
                     currentTheme = currentTheme,
                     onThemeChange = { newTheme ->

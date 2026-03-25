@@ -228,12 +228,14 @@ fun MainScreen(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBarAndFab = currentRoute in bottomNavItems.map { it.route }
+    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+    val showGlobalFab = currentRoute == BottomNavItem.Home.route ||
+        currentRoute == BottomNavItem.Analysis.route
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
-                if (showBottomBarAndFab) {
+                if (showBottomBar) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
@@ -272,7 +274,7 @@ fun MainScreen(
                 }
             },
             floatingActionButton = {
-                if (showBottomBarAndFab) {
+                if (showGlobalFab) {
                     FloatingActionButton(
                         onClick = { navController.navigate("record") },
                         modifier = Modifier.onGloballyPositioned { coordinates ->

@@ -123,7 +123,12 @@ fun AnalysisPage(
         dailyMap.toList().sortedBy { it.first }
     }
 
-    val runAiAnalysis: () -> Unit = {
+    val canGenerateAnalysis = thisMonthExpenses.isNotEmpty()
+
+    val runAiAnalysis: () -> Unit = runAiAnalysis@{
+        if (!canGenerateAnalysis) {
+            return@runAiAnalysis
+        }
         scope.launch {
             isAnalyzing = true
             val summaries = thisMonthExpenses.map { expense ->
@@ -499,17 +504,27 @@ fun AnalysisPage(
                             }
                         }
                     } else {
-                        Text(
-                            text = "点击下方按钮，AI 将根据你本月的 ${thisMonthExpenses.size} 笔支出（共 ¥%.2f）生成一份专属的财务诊断报告。它会帮你发现潜在的浪费，并提供优化建议。".format(monthlyTotal),
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (thisMonthExpenses.isEmpty()) {
+                            Text(
+                                text = "本月还没有消费记录。建议先记几笔账，DeepSeek 才能为你生成准确的财务诊断报告哦！",
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                text = "将基于本月已记录的 ${thisMonthExpenses.size} 笔支出（共 ¥%.2f）生成专属的财务诊断报告。AI 会帮你发现潜在的浪费，并提供优化建议。".format(monthlyTotal),
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(32.dp))
 
                         Button(
                             onClick = runAiAnalysis,
+                            enabled = canGenerateAnalysis,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),

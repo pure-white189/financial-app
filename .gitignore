@@ -32,3 +32,29 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# ───────────────────────────────────────
+# Backend (finance-backend/)
+# ───────────────────────────────────────
+
+# Environment variables — NEVER commit API keys
+.env
+*.env
+.env.local
+
+# Python virtual environment
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Python packaging
+*.egg-info/
+dist/
+
+# Personal notes - do not publish
+CLAUDE.md
+技术栈.md
+finance-backend-记录.md
+ui-improve.md

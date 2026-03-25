@@ -11,10 +11,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -45,6 +49,8 @@ fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToSettings: () -> Unit = {},
              onNavigateToSaving: () -> Unit = {},
              onNavigateToStock: () -> Unit = {},
+             onRequestShowTutorial: () -> Unit = {},
+             onFirstExpenseBoundsChanged: (Rect?) -> Unit = {},
              monthlyBudget: Double? = null,
              requireDeleteConfirm: Boolean = true,
              savingGoals: List<SavingGoal> = emptyList(),
@@ -114,12 +120,25 @@ fun HomePage(viewModel: ExpenseViewModel,
                 fontWeight = FontWeight.Bold
             )
 
-            IconButton(onClick = onNavigateToSettings) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "设置",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FilledTonalIconButton(
+                    onClick = onRequestShowTutorial,
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = "查看新手引导",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "设置",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
 
@@ -310,6 +329,9 @@ fun HomePage(viewModel: ExpenseViewModel,
 
         // 消费记录列表
         if (expenses.isEmpty()) {
+            LaunchedEffect(Unit) {
+                onFirstExpenseBoundsChanged(null)
+            }
             // 空状态
             Box(
                 modifier = Modifier
@@ -360,31 +382,42 @@ fun HomePage(viewModel: ExpenseViewModel,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                     filteredExpenses.forEach { expense ->
+                        val isFirst = expense == filteredExpenses.firstOrNull()
                         val category = categories.find { it.id == expense.categoryId }
-                        ExpenseItem(
-                            expense = expense,
-                            category = category,
-                            requireDeleteConfirm = requireDeleteConfirm,
-                            onDelete = {
-                                scope.launch {
-                                    viewModel.deleteExpense(expense)
+                        Box(
+                            modifier = if (isFirst) {
+                                Modifier.onGloballyPositioned { coordinates ->
+                                    onFirstExpenseBoundsChanged(coordinates.boundsInWindow())
+                                }
+                            } else {
+                                Modifier
+                            }
+                        ) {
+                            ExpenseItem(
+                                expense = expense,
+                                category = category,
+                                requireDeleteConfirm = requireDeleteConfirm,
+                                onDelete = {
+                                    scope.launch {
+                                        viewModel.deleteExpense(expense)
 
-                                    if (!requireDeleteConfirm) {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "已删除消费记录",
-                                            actionLabel = "撤销",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            viewModel.addExpense(expense)
+                                        if (!requireDeleteConfirm) {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "已删除消费记录",
+                                                actionLabel = "撤销",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                viewModel.addExpense(expense)
+                                            }
                                         }
                                     }
+                                },
+                                onEdit = {
+                                    onNavigateToEdit(expense)
                                 }
-                            },
-                            onEdit = {
-                                onNavigateToEdit(expense)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

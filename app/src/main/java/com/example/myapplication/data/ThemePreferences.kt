@@ -29,6 +29,7 @@ class ThemePreferences(private val context: Context) {
         val EXPENSE_ALERT_THRESHOLD_KEY = stringPreferencesKey("expense_alert_threshold")
         val SHOW_PERSISTENT_NOTIFICATION_KEY = booleanPreferencesKey("show_persistent_notification")  // 添加这行
         val REQUIRE_DELETE_CONFIRM_KEY = booleanPreferencesKey("require_delete_confirm")
+        val HAS_SEEN_ONBOARDING_KEY = booleanPreferencesKey("has_seen_onboarding")
     }
 
     // 读取主题设置
@@ -63,6 +64,10 @@ class ThemePreferences(private val context: Context) {
         preferences[REQUIRE_DELETE_CONFIRM_KEY] ?: true
     }
 
+    val hasSeenOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HAS_SEEN_ONBOARDING_KEY] ?: false
+    }
+
     // 保存常驻通知开关
     suspend fun setShowPersistentNotification(show: Boolean) {
         context.dataStore.edit { preferences ->
@@ -73,6 +78,12 @@ class ThemePreferences(private val context: Context) {
     suspend fun setRequireDeleteConfirm(require: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[REQUIRE_DELETE_CONFIRM_KEY] = require
+        }
+    }
+
+    suspend fun setHasSeenOnboarding(seen: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HAS_SEEN_ONBOARDING_KEY] = seen
         }
     }
 

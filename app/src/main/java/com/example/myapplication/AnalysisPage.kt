@@ -4,10 +4,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +40,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import java.text.SimpleDateFormat
 import java.util.*
@@ -55,6 +60,16 @@ fun AnalysisPage(
     val scope = rememberCoroutineScope()
     var aiAnalysis by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
+    var showAiSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetScrollState = rememberScrollState()
+
+    // 每次打开抽屉时重置到顶部
+    LaunchedEffect(showAiSheet) {
+        if (showAiSheet) {
+            sheetScrollState.scrollTo(0)
+        }
+    }
 
     // 计算本月数据
     val thisMonthExpenses = remember(expenses) {
@@ -86,7 +101,6 @@ fun AnalysisPage(
 
     // 按日期统计（最近7天）
     val dailyStats = remember(thisMonthExpenses) {
-        val calendar = Calendar.getInstance()
         val dailyMap = mutableMapOf<String, Double>()
 
         // 初始化最近7天
@@ -109,32 +123,96 @@ fun AnalysisPage(
         dailyMap.toList().sortedBy { it.first }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Column {
-                Text(
-                    text = "消费分析",
-                    fontSize = 28.sp,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.45f)
-                        .height(4.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(listOf(PurpleStart, PurpleEnd)),
-                            shape = RoundedCornerShape(50)
-                        )
-                )
+    val runAiAnalysis: () -> Unit = {
+        scope.launch {
+            isAnalyzing = true
+            val summaries = thisMonthExpenses.map { expense ->
+                val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "其他"
+                AiExpenseParser.ExpenseSummary(amount = expense.amount, category = categoryName)
             }
+            val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = "本月")
+            result.onSuccess { analysis -> aiAnalysis = analysis }
+            result.onFailure { aiAnalysis = "分析生成失败，请检查网络连接" }
+            isAnalyzing = false
         }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Column {
+                    Text(
+                        text = "消费分析",
+                        fontSize = 28.sp,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.45f)
+                            .height(4.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(listOf(PurpleStart, PurpleEnd)),
+                                shape = RoundedCornerShape(50)
+                            )
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAiSheet = true },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        PurpleStart.copy(alpha = 0.1f),
+                                        PurpleEnd.copy(alpha = 0.1f)
+                                    )
+                                )
+                            )
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = PurpleStart)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("AI 深度消费报告", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "让 AI 为你诊断本月的财务健康状况",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = PurpleStart
+                            )
+                        }
+                    }
+                }
+            }
 
         // 统计卡片
         item {
@@ -331,119 +409,120 @@ fun AnalysisPage(
             }
         }
 
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+        }
+
+        if (showAiSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAiSheet = false },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .verticalScroll(sheetScrollState)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = PurpleStart
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "AI 消费分析",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    brush = Brush.linearGradient(listOf(PurpleStart, PurpleEnd)),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                        ) {
-                            TextButton(
-                                enabled = !isAnalyzing,
-                                onClick = {
-                                    scope.launch {
-                                        isAnalyzing = true
-                                        val summaries = thisMonthExpenses.map { expense ->
-                                            val categoryName = categories.find {
-                                                it.id == expense.categoryId
-                                            }?.name ?: "其他"
-
-                                            AiExpenseParser.ExpenseSummary(
-                                                amount = expense.amount,
-                                                category = categoryName
-                                            )
-                                        }
-
-                                        val result = AiExpenseParser.analyzeExpenses(
-                                            expenses = summaries,
-                                            month = "本月"
-                                        )
-
-                                        result.onSuccess { analysis ->
-                                            aiAnalysis = analysis
-                                        }
-                                        result.onFailure {
-                                            aiAnalysis = "分析生成失败，请检查网络连接"
-                                        }
-                                        isAnalyzing = false
-                                    }
-                                },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = Color.White,
-                                    disabledContentColor = Color.White.copy(alpha = 0.7f)
-                                )
-                            ) {
-                                Text(text = if (isAnalyzing) "分析中..." else "生成报告")
-                            }
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = PurpleStart,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("AI 消费洞察", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    when {
-                        isAnalyzing -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Text(
-                                    text = "AI 分析中...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-
-                        !aiAnalysis.isNullOrBlank() -> {
+                    if (isAnalyzing) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(color = PurpleStart, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = aiAnalysis.orEmpty(),
-                                fontSize = 14.sp,
-                                lineHeight = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        else -> {
-                            Text(
-                                text = "点击「生成报告」获取本月消费分析",
-                                fontSize = 14.sp,
+                                "AI 正在分析你的账单...",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else if (!aiAnalysis.isNullOrBlank()) {
+                        Text(
+                            text = aiAnalysis.orEmpty(),
+                            fontSize = 15.sp,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    aiAnalysis = null
+                                    runAiAnalysis()
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("重新分析")
+                            }
+
+                            Button(
+                                onClick = { showAiSheet = false },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
+                                Text("完成阅读")
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "点击下方按钮，AI 将根据你本月的 ${thisMonthExpenses.size} 笔支出（共 ¥%.2f）生成一份专属的财务诊断报告。它会帮你发现潜在的浪费，并提供优化建议。".format(monthlyTotal),
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Button(
+                            onClick = runAiAnalysis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PurpleStart)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("开始生成报告", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }
@@ -501,6 +580,19 @@ fun StatCard(
 @Composable
 fun DailyTrendChart(dailyStats: List<Pair<String, Double>>) {
     val modelProducer = remember { CartesianChartModelProducer() }
+    val xLabels = remember(dailyStats) { dailyStats.map { it.first } }
+
+    val yAxisFormatter = remember {
+        CartesianValueFormatter { value, _, _ ->
+            "HK$${value.roundToInt()}"
+        }
+    }
+
+    val xAxisFormatter = remember(xLabels) {
+        CartesianValueFormatter { value, _, _ ->
+            xLabels.getOrNull(value.roundToInt()) ?: ""
+        }
+    }
 
     LaunchedEffect(dailyStats) {
         modelProducer.runTransaction {
@@ -513,8 +605,8 @@ fun DailyTrendChart(dailyStats: List<Pair<String, Double>>) {
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberColumnCartesianLayer(),
-            startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis()
+            startAxis = rememberStartAxis(valueFormatter = yAxisFormatter),
+            bottomAxis = rememberBottomAxis(valueFormatter = xAxisFormatter)
         ),
         modelProducer = modelProducer,
         modifier = Modifier

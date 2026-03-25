@@ -1907,4 +1907,41 @@ CREATE TABLE accounts (
 1. 修复A股价格获取问题
 2. 后端部署到Azure VM
 3. Stage 2文档完善
-2026-03-23记录截止
+
+
+### 🎨 UI/UX 深度重构与体验打磨 (Phase 1 - 4) ✅ [2026-03-23] 完成
+
+本次重构对标现代顶级金融 Fintech App (如 Monzo / Revolut)，大幅提升了界面的高级感、空间感与交互的物理真实感。
+
+**1. 导航架构重组 (Phase 1)**
+- **底部导航瘦身**：从拥挤的 6 Tab 精简为经典的 4 Tab (`首页` | `借贷` | `储蓄` | `分析`)。
+- **FAB 记账悬浮钮**：将“记账”功能移出底部 Tab，改为 Scaffold 右下角的全局悬浮动作按钮 (Floating Action Button)，提高操作优先级。
+- **独立设置页**：将“设置”移至首页右上角作为二级页面入口，并修复了 `RecordPage` 和 `SettingsPage` 作为独立层级时的返回键 (`ArrowBack`) 问题。
+
+**2. 极致的滑动交互与防误触 (Phase 2 & 2.1 & 2.2)**
+- **引入 SwipeToDismissBox**：废弃了列表项右侧突兀的红色删除按钮，全面改用手势滑动（左滑删除，右滑编辑）。
+- **增加物理阻尼与震动**：加入 `positionalThreshold`，要求划过 40% 宽度才触发动作；动作触发瞬间辅以 `HapticFeedback` (长按/轻触震动) 和图标缩放动画，手感达到 iOS 原生级别。
+- **状态机防卡死重构**：修复了滑动弹窗导致 Compose 状态机卡死的问题。采用“始终拒绝滑走（返回 false）+ 瞬间触发操作 + 平滑自动回弹”的策略。
+- **可配置的防误触系统**：在 `SettingsPage` 与 `DataStore` 中新增“滑动删除二次确认”开关。开启时弹窗确认，关闭时直接删除并弹出带“撤销”按钮的 Snackbar 后悔药。
+
+**3. 首页视觉减负与横向画廊排版 (Phase 3 & 3.1)**
+- **化纵为横 (LazyRow)**：将原本在首页垂直堆叠的 `预算进度`、`储蓄目标` 和 `股票概览` 卡片，重构为可横向滑动的画廊，让“最近消费”流水直接在首屏可见。
+- **视觉排版微调 (Typography & Spacing)**：
+    - 加大首页核心金额字号（48.sp）和字重（ExtraBold），拉开视觉层级。
+    - 移除 `FilterChip` 杂乱的渐变色，改用纯色胶囊形状，提升克制的高级感。
+    - 加大卡片外边距与内留白（Padding），消除堆砌感。
+- **股票卡片瘦身**：将原本平铺在股票卡片底部的三个按钮折叠至右上角的 `DropdownMenu` 菜单中，并补回了“更新价格”时手动输入当前价的文本框。
+
+**4. 沉浸式 AI 分析弹窗 (Phase 4)**
+- **移除底部生硬文本**：废弃了 `AnalysisPage` 底部的纯文本 AI 报告展示。
+- **引入 ModalBottomSheet**：在页面顶部新增高亮引导入口，点击后呼出半屏抽屉进行沉浸式分析。
+- **状态保持与优化**：包含打字机等待动画（CircularProgressIndicator），优化了长文本排版行距。支持状态缓存，二次打开抽屉自动滚至顶端并直接显示已有报告，免除重复请求；同时提供“重新分析”按钮强制刷新。
+
+**涉及修改的主要文件：**
+- `MainActivity.kt` & `BottomNavItem.kt`
+- `HomePage.kt`
+- `RecordPage.kt` & `EditExpensePage.kt`
+- `AnalysisPage.kt`
+- `StockPage.kt`
+- `ui/SettingsPage.kt` & `data/ThemePreferences.kt`
+  2026-03-23记录截止

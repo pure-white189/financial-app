@@ -39,6 +39,7 @@ import com.example.myapplication.ui.ExportPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
 
@@ -149,14 +150,15 @@ fun MainScreen(
     val requireDeleteConfirm by themePreferences.requireDeleteConfirm
         .collectAsStateWithLifecycle(initialValue = true)
     val hasSeenOnboarding by themePreferences.hasSeenOnboarding
-        .collectAsStateWithLifecycle(initialValue = false)
+        .map { it as Boolean? }
+        .collectAsStateWithLifecycle(initialValue = null)
     var currentTutorialStep by rememberSaveable { mutableIntStateOf(0) }
     var fabRect by remember { mutableStateOf<Rect?>(null) }
     var firstExpenseRect by remember { mutableStateOf<Rect?>(null) }
     var analysisTabRect by remember { mutableStateOf<Rect?>(null) }
 
     LaunchedEffect(hasSeenOnboarding) {
-        if (!hasSeenOnboarding) currentTutorialStep = 1
+        if (hasSeenOnboarding == false) currentTutorialStep = 1
     }
 
     LaunchedEffect(quickTemplateId) {

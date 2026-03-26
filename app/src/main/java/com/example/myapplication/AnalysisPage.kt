@@ -599,13 +599,18 @@ fun DailyTrendChart(dailyStats: List<Pair<String, Double>>) {
 
     val yAxisFormatter = remember {
         CartesianValueFormatter { value, _, _ ->
-            "HK$${value.roundToInt()}"
+            if (value >= 1000.0) {
+                String.format(Locale.US, "%.1fk", value / 1000.0)
+            } else {
+                value.roundToInt().toString()
+            }
         }
     }
 
     val xAxisFormatter = remember(xLabels) {
         CartesianValueFormatter { value, _, _ ->
-            xLabels.getOrNull(value.roundToInt()) ?: ""
+            val label = xLabels.getOrNull(value.roundToInt()) ?: return@CartesianValueFormatter ""
+            label.substringAfter('-', label)
         }
     }
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.example.myapplication.data.ThemeMode
 import kotlinx.coroutines.launch
 
@@ -38,6 +39,9 @@ fun SettingsPage(
     onBack: () -> Unit = {},
     onNavigateToExport: () -> Unit = {}
 ) {
+    val authViewModel: AuthViewModel = composeViewModel()
+    var showSignOutDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -280,6 +284,43 @@ fun SettingsPage(
                 title = "技术栈",
                 subtitle = "Kotlin + Jetpack Compose + Room",
                 showArrow = false
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsSectionTitle(title = "账号")
+
+        SettingsCard {
+            SettingsItem(
+                icon = Icons.Default.Logout,
+                title = "Sign Out",
+                subtitle = "退出当前账号并返回登录页",
+                iconTint = MaterialTheme.colorScheme.error,
+                onClick = { showSignOutDialog = true }
+            )
+        }
+
+        if (showSignOutDialog) {
+            AlertDialog(
+                onDismissRequest = { showSignOutDialog = false },
+                title = { Text("Sign Out") },
+                text = { Text("Are you sure you want to sign out?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showSignOutDialog = false
+                            authViewModel.signOut()
+                        }
+                    ) {
+                        Text("Sign Out")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSignOutDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }

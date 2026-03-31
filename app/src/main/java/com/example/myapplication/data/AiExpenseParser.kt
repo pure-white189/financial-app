@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 object AiExpenseParser {
 
     // 本地测试用 10.0.2.2，部署后改为云端地址
-    private const val BASE_URL = "http://10.0.2.2:8000"
+    private const val BASE_URL = "http://20.199.169.108"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)

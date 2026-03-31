@@ -98,6 +98,13 @@ cd financial-app
 
 ---
 
+## ⚠️ Backend Status
+
+**Current:** Backend runs locally only (`http://10.0.2.2:8000`)
+**AI features will fail** if backend is offline — this is expected.
+
+---
+
 ## 🔧 Backend Setup (for AI features)
 
 The backend is a lightweight FastAPI server that handles natural language expense parsing, AI monthly analysis, and stock price fetching.
@@ -224,6 +231,17 @@ app/src/main/java/com/example/myapplication/
 - [ ] Subscription model for AI features
 - [ ] Proper Room database migrations
 
+
+---
+
+## 🤖 Development Approach
+
+This project uses AI-assisted development (Claude Code, GitHub Copilot, Zed Agent):
+- I designed all features, architecture, and user experience
+- AI tools generated most of the code based on my requirements
+- I handled integration, testing, and iteration
+
+This approach allowed rapid prototyping while learning modern Android development patterns.
 
 ---
 

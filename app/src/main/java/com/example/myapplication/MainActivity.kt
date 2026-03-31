@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import android.content.Context
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,6 +28,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -37,6 +40,9 @@ import com.example.myapplication.ui.theme.PurpleStart
 import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -79,6 +85,32 @@ class MainActivity : ComponentActivity() {
         val themePreferences = ThemePreferences(this)
 
         setContent {
+            val authViewModel: AuthViewModel = viewModel()
+            val authState by authViewModel.authState.collectAsStateWithLifecycle()
+
+            val googleSignInClient = remember {
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(getString(R.string.default_web_client_id))
+                    .requestEmail()
+                    .build()
+                GoogleSignIn.getClient(this, gso)
+            }
+
+            val googleSignInLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                try {
+                    val account = task.getResult(ApiException::class.java)
+                    val idToken = account.idToken
+                    if (!idToken.isNullOrBlank()) {
+                        authViewModel.signInWithGoogle(idToken)
+                    }
+                } catch (_: ApiException) {
+                    // Keep user on auth screen; AuthPage handles explicit Firebase errors.
+                }
+            }
+
             // 读取主题设置
             val themeMode by themePreferences.themeMode
                 .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
@@ -100,18 +132,45 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(darkTheme = isDarkTheme) {
+                when (authState) {
+                    AuthState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
 
-                MainScreen(
-                    viewModel = viewModel,
-                    themePreferences = themePreferences,
-                    currentTheme = themeMode,
-                    currentBudget = monthlyBudget,
-                    currentAlertThreshold = expenseAlertThreshold,
-                    showPersistentNotification = showPersistentNotification,
-                    context = this,
-                    navigationRoute = intent?.getStringExtra("navigate_to"),
-                    quickTemplateId = intent?.getIntExtra("quick_template_id", -1)
-                )
+                    is AuthState.Authenticated -> {
+                        MainScreen(
+                            viewModel = viewModel,
+                            themePreferences = themePreferences,
+                            currentTheme = themeMode,
+                            currentBudget = monthlyBudget,
+                            currentAlertThreshold = expenseAlertThreshold,
+                            showPersistentNotification = showPersistentNotification,
+                            context = this,
+                            navigationRoute = intent?.getStringExtra("navigate_to"),
+                            quickTemplateId = intent?.getIntExtra("quick_template_id", -1)
+                        )
+                    }
+
+                    is AuthState.EmailNotVerified -> {
+                        EmailVerificationPage(authViewModel = authViewModel)
+                    }
+
+                    AuthState.Unauthenticated,
+                    is AuthState.Error -> {
+                        AuthPage(
+                            authViewModel = authViewModel,
+                            onLoginSuccess = {},
+                            onGoogleSignInClick = {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            }
+                        )
+                    }
+                }
             }
         }
     }

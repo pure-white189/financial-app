@@ -54,7 +54,9 @@ fun AnalysisPage(
     monthlyBudget: Double? = null,
     onNavigateToStock: () -> Unit = {},
     expenses: List<Expense> = emptyList(),
-    categories: List<Category> = emptyList()
+    categories: List<Category> = emptyList(),
+    isGuest: Boolean = false,
+    onNavigateToLogin: (() -> Unit)? = null
 ) {
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val scope = rememberCoroutineScope()
@@ -126,6 +128,10 @@ fun AnalysisPage(
     val canGenerateAnalysis = thisMonthExpenses.isNotEmpty()
 
     val runAiAnalysis: () -> Unit = runAiAnalysis@{
+        if (isGuest) {
+            aiAnalysis = "Guest mode does not support AI analysis"
+            return@runAiAnalysis
+        }
         if (!canGenerateAnalysis) {
             return@runAiAnalysis
         }
@@ -174,7 +180,7 @@ fun AnalysisPage(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showAiSheet = true },
+                        .clickable { if (!isGuest) showAiSheet = true },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -204,10 +210,20 @@ fun AnalysisPage(
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "让 AI 为你诊断本月的财务健康状况",
+                                    if (isGuest) {
+                                        "Guest mode cannot use AI report"
+                                    } else {
+                                        "让 AI 为你诊断本月的财务健康状况"
+                                    },
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+
+                                if (isGuest && onNavigateToLogin != null) {
+                                    TextButton(onClick = onNavigateToLogin) {
+                                        Text("Login")
+                                    }
+                                }
                             }
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowForward,

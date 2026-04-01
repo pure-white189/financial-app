@@ -1,25 +1,39 @@
 package com.example.myapplication
 
+import android.app.Application
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.dataStore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuth.AuthStateListener
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 sealed class AuthState {
     data object Loading : AuthState()
     data class Authenticated(val user: FirebaseUser) : AuthState()
     data class EmailNotVerified(val user: FirebaseUser) : AuthState()
+    data object Guest : AuthState()
     data object Unauthenticated : AuthState()
     data class Error(val message: String) : AuthState()
 }
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private val IS_GUEST_MODE_KEY = booleanPreferencesKey("is_guest_mode")
+    }
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private var isGuestMode = false
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
@@ -28,6 +42,7 @@ class AuthViewModel : ViewModel() {
 
     private fun toAuthState(user: FirebaseUser?): AuthState {
         return when {
+            user == null && isGuestMode -> AuthState.Guest
             user == null -> AuthState.Unauthenticated
             user.isEmailVerified -> AuthState.Authenticated(user)
             else -> AuthState.EmailNotVerified(user)
@@ -36,19 +51,44 @@ class AuthViewModel : ViewModel() {
 
     private val authStateListener = AuthStateListener { firebaseAuth ->
         val currentUser = firebaseAuth.currentUser
-        _authState.value = toAuthState(currentUser)
+        if (currentUser != null) {
+            _authState.value = toAuthState(currentUser)
+        } else {
+            viewModelScope.launch {
+                isGuestMode = readGuestModeFlag()
+                _authState.value = toAuthState(null)
+            }
+        }
     }
 
     init {
+        viewModelScope.launch {
+            isGuestMode = readGuestModeFlag()
+        }
         auth.addAuthStateListener(authStateListener)
     }
 
+    private suspend fun readGuestModeFlag(): Boolean {
+        return getApplication<Application>().dataStore.data.first()[IS_GUEST_MODE_KEY] ?: false
+    }
+
+    private suspend fun setGuestModeFlag(enabled: Boolean) {
+        isGuestMode = enabled
+        getApplication<Application>().dataStore.edit { preferences ->
+            preferences[IS_GUEST_MODE_KEY] = enabled
+        }
+    }
+
     fun signInWithEmail(email: String, password: String) {
+        isGuestMode = false
         _authState.value = AuthState.Loading
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    _authState.value = toAuthState(auth.currentUser)
+                    viewModelScope.launch {
+                        setGuestModeFlag(false)
+                        _authState.value = toAuthState(auth.currentUser)
+                    }
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Email sign-in failed")
                 }
@@ -56,12 +96,16 @@ class AuthViewModel : ViewModel() {
     }
 
     fun signUpWithEmail(email: String, password: String) {
+        isGuestMode = false
         _authState.value = AuthState.Loading
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     sendEmailVerification()
-                    _authState.value = toAuthState(auth.currentUser)
+                    viewModelScope.launch {
+                        setGuestModeFlag(false)
+                        _authState.value = toAuthState(auth.currentUser)
+                    }
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Email sign-up failed")
                 }
@@ -69,12 +113,16 @@ class AuthViewModel : ViewModel() {
     }
 
     fun signInWithGoogle(idToken: String) {
+        isGuestMode = false
         _authState.value = AuthState.Loading
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    _authState.value = toAuthState(auth.currentUser)
+                    viewModelScope.launch {
+                        setGuestModeFlag(false)
+                        _authState.value = toAuthState(auth.currentUser)
+                    }
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Google sign-in failed")
                 }
@@ -105,8 +153,27 @@ class AuthViewModel : ViewModel() {
     }
 
     fun signOut() {
+        isGuestMode = false
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
+    }
+
+    fun enterGuestMode() {
+        viewModelScope.launch {
+            setGuestModeFlag(true)
+            _authState.value = AuthState.Guest
+        }
+    }
+
+    fun signOutWithClearData(clearLocal: Boolean) {
+        viewModelScope.launch {
+            if (clearLocal) {
+                // Placeholder: local data clearing will be implemented later.
+            }
+            setGuestModeFlag(false)
+            auth.signOut()
+            _authState.value = AuthState.Unauthenticated
+        }
     }
 
     fun sendPasswordResetEmail(email: String) {

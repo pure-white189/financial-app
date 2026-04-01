@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.example.myapplication.data.ThemeMode
 import kotlinx.coroutines.launch
 
@@ -36,12 +35,12 @@ fun SettingsPage(
     onPersistentNotificationChange: (Boolean) -> Unit,
     requireDeleteConfirm: Boolean,
     onRequireDeleteConfirmChange: (Boolean) -> Unit,
+    isGuest: Boolean = false,
     onBack: () -> Unit = {},
-    onNavigateToExport: () -> Unit = {}
+    onNavigateToExport: () -> Unit = {},
+    onNavigateToAccount: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
-    val authViewModel: AuthViewModel = composeViewModel()
-    var showSignOutDialog by remember { mutableStateOf(false) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -63,6 +62,26 @@ fun SettingsPage(
                 fontWeight = FontWeight.Bold
             )
         }
+
+        SettingsSectionTitle(title = "账号")
+
+        SettingsCard {
+            SettingsItem(
+                icon = Icons.Default.Person,
+                title = "账户与备份",
+                subtitle = "Account & Backup",
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = {
+                    if (isGuest) {
+                        onNavigateToLogin()
+                    } else {
+                        onNavigateToAccount()
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 外观设置 =====
         SettingsSectionTitle(title = "外观")
@@ -284,43 +303,6 @@ fun SettingsPage(
                 title = "技术栈",
                 subtitle = "Kotlin + Jetpack Compose + Room",
                 showArrow = false
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsSectionTitle(title = "账号")
-
-        SettingsCard {
-            SettingsItem(
-                icon = Icons.Default.Logout,
-                title = "Sign Out",
-                subtitle = "退出当前账号并返回登录页",
-                iconTint = MaterialTheme.colorScheme.error,
-                onClick = { showSignOutDialog = true }
-            )
-        }
-
-        if (showSignOutDialog) {
-            AlertDialog(
-                onDismissRequest = { showSignOutDialog = false },
-                title = { Text("Sign Out") },
-                text = { Text("Are you sure you want to sign out?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showSignOutDialog = false
-                            authViewModel.signOut()
-                        }
-                    ) {
-                        Text("Sign Out")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSignOutDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
             )
         }
     }

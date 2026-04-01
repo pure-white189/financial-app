@@ -52,7 +52,9 @@ fun RecordPage(
     viewModel: ExpenseViewModel,
     onNavigateToCategory: () -> Unit = {},
     onBack: () -> Unit = {},
-    alertThreshold: Double? = null
+    alertThreshold: Double? = null,
+    isGuest: Boolean = false,
+    onNavigateToLogin: (() -> Unit)? = null
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val templates by viewModel.templates.collectAsState(initial = emptyList())
@@ -218,6 +220,10 @@ fun RecordPage(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
+                            if (isGuest) {
+                                onNavigateToLogin?.invoke()
+                                return@KeyboardActions
+                            }
                             if (aiInput.isNotBlank()) {
                                 scope.launch {
                                     isAiLoading = true
@@ -284,6 +290,10 @@ fun RecordPage(
                             )
                         )
                         .clickable {
+                            if (isGuest) {
+                                onNavigateToLogin?.invoke()
+                                return@clickable
+                            }
                             Log.d("AiParser", "发送按钮被点击，aiInput=$aiInput, isLoading=$isAiLoading")
                             scope.launch {
                                 if (aiInput.isBlank() || isAiLoading) {
@@ -360,6 +370,26 @@ fun RecordPage(
                     fontSize = 12.sp,
                     modifier = Modifier.padding(start = 4.dp)
                 )
+            }
+
+            if (isGuest) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 4.dp)
+                ) {
+                    Text(
+                        text = "Guest mode: AI parsing requires an account",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (onNavigateToLogin != null) {
+                        TextButton(onClick = onNavigateToLogin) {
+                            Text("Login")
+                        }
+                    }
+                }
             }
 
             if (aiSuccess != null) {

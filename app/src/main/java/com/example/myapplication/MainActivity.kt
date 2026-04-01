@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +41,7 @@ import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.ui.theme.PurpleStart
 import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
+import com.example.myapplication.ui.AccountPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -87,6 +90,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val authViewModel: AuthViewModel = viewModel()
             val authState by authViewModel.authState.collectAsStateWithLifecycle()
+            var showAccountPage by remember { mutableStateOf(false) }
+            var showAuthModal by remember { mutableStateOf(false) }
 
             val googleSignInClient = remember {
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -124,6 +129,18 @@ class MainActivity : ComponentActivity() {
             val showPersistentNotification by themePreferences.showPersistentNotification
                 .collectAsStateWithLifecycle(initialValue = false)
 
+            val autoBackupEnabled by themePreferences.autoBackupEnabled
+                .collectAsStateWithLifecycle(initialValue = false)
+
+            LaunchedEffect(authState) {
+                if (authState !is AuthState.Authenticated) {
+                    showAccountPage = false
+                }
+                if (authState !is AuthState.Guest) {
+                    showAuthModal = false
+                }
+            }
+
             // 根据设置决定是否使用深色模式
             val isDarkTheme = when (themeMode) {
                 ThemeMode.DARK -> true
@@ -143,17 +160,75 @@ class MainActivity : ComponentActivity() {
                     }
 
                     is AuthState.Authenticated -> {
-                        MainScreen(
-                            viewModel = viewModel,
-                            themePreferences = themePreferences,
-                            currentTheme = themeMode,
-                            currentBudget = monthlyBudget,
-                            currentAlertThreshold = expenseAlertThreshold,
-                            showPersistentNotification = showPersistentNotification,
-                            context = this,
-                            navigationRoute = intent?.getStringExtra("navigate_to"),
-                            quickTemplateId = intent?.getIntExtra("quick_template_id", -1)
-                        )
+                        if (showAccountPage) {
+                            AccountPage(
+                                authViewModel = authViewModel,
+                                autoBackupEnabled = autoBackupEnabled,
+                                onAutoBackupToggle = { enabled ->
+                                    lifecycleScope.launch {
+                                        themePreferences.setAutoBackupEnabled(enabled)
+                                    }
+                                },
+                                onBackupNow = {},
+                                onNavigateBack = { showAccountPage = false }
+                            )
+                        } else {
+                            MainScreen(
+                                viewModel = viewModel,
+                                themePreferences = themePreferences,
+                                currentTheme = themeMode,
+                                currentBudget = monthlyBudget,
+                                currentAlertThreshold = expenseAlertThreshold,
+                                showPersistentNotification = showPersistentNotification,
+                                context = this@MainActivity,
+                                navigationRoute = intent?.getStringExtra("navigate_to"),
+                                quickTemplateId = intent?.getIntExtra("quick_template_id", -1),
+                                isGuest = false,
+                                onNavigateToAccount = { showAccountPage = true },
+                                onNavigateToLogin = {}
+                            )
+                        }
+                    }
+
+                    AuthState.Guest -> {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            MainScreen(
+                                viewModel = viewModel,
+                                themePreferences = themePreferences,
+                                currentTheme = themeMode,
+                                currentBudget = monthlyBudget,
+                                currentAlertThreshold = expenseAlertThreshold,
+                                showPersistentNotification = showPersistentNotification,
+                                context = this@MainActivity,
+                                navigationRoute = intent?.getStringExtra("navigate_to"),
+                                quickTemplateId = intent?.getIntExtra("quick_template_id", -1),
+                                isGuest = true,
+                                onNavigateToAccount = {},
+                                onNavigateToLogin = { showAuthModal = true }
+                            )
+
+                            if (showAuthModal) {
+                                Dialog(
+                                    onDismissRequest = { showAuthModal = false },
+                                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                                ) {
+                                    Surface(modifier = Modifier.fillMaxSize()) {
+                                        AuthPage(
+                                            authViewModel = authViewModel,
+                                            onLoginSuccess = {},
+                                            onGoogleSignInClick = {
+                                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                                            },
+                                            onContinueAsGuest = {
+                                                showAuthModal = false
+                                                authViewModel.enterGuestMode()
+                                            },
+                                            onDismiss = { showAuthModal = false }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     is AuthState.EmailNotVerified -> {
@@ -167,7 +242,9 @@ class MainActivity : ComponentActivity() {
                             onLoginSuccess = {},
                             onGoogleSignInClick = {
                                 googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                            }
+                            },
+                            onContinueAsGuest = { authViewModel.enterGuestMode() },
+                            onDismiss = null
                         )
                     }
                 }
@@ -186,7 +263,10 @@ fun MainScreen(
     showPersistentNotification: Boolean,
     context: Context,
     navigationRoute: String? = null,
-    quickTemplateId: Int? = null
+    quickTemplateId: Int? = null,
+    isGuest: Boolean = false,
+    onNavigateToAccount: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
@@ -391,7 +471,9 @@ fun MainScreen(
                         navController.navigate("category_management")
                     },
                     onBack = { navController.popBackStack() },
-                    alertThreshold = currentAlertThreshold
+                    alertThreshold = currentAlertThreshold,
+                    isGuest = isGuest,
+                    onNavigateToLogin = onNavigateToLogin
                 )
             }
 
@@ -403,7 +485,9 @@ fun MainScreen(
                         navController.navigate("stock")
                     },
                     expenses = expenses,
-                    categories = categories
+                    categories = categories,
+                    isGuest = isGuest,
+                    onNavigateToLogin = onNavigateToLogin
                 )
             }
 
@@ -440,10 +524,13 @@ fun MainScreen(
                             themePreferences.setRequireDeleteConfirm(req)
                         }
                     },
+                    isGuest = isGuest,
                     onBack = { navController.popBackStack() },
                     onNavigateToExport = {
                         navController.navigate("export")
-                    }
+                    },
+                    onNavigateToAccount = onNavigateToAccount,
+                    onNavigateToLogin = onNavigateToLogin
                 )
             }
 

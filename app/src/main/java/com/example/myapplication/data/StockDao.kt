@@ -1,16 +1,12 @@
 package com.example.myapplication.data
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StockDao {
 
-    @Query("SELECT * FROM stocks ORDER BY createdAt DESC")
+    @Query("SELECT * FROM stocks WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllStocks(): Flow<List<Stock>>
 
     @Insert
@@ -21,5 +17,21 @@ interface StockDao {
 
     @Delete
     suspend fun deleteStock(stock: Stock)
-}
 
+    // --- 云同步新增 ---
+
+    @Query("SELECT * FROM stocks WHERE isDeleted = 0")
+    suspend fun getAllStocksSnapshot(): List<Stock>
+
+    @Query("SELECT * FROM stocks WHERE isDeleted = 1")
+    suspend fun getDeletedStocks(): List<Stock>
+
+    @Query("SELECT * FROM stocks WHERE firestoreId = :fid LIMIT 1")
+    suspend fun getByFirestoreId(fid: String): Stock?
+
+    @Query("DELETE FROM stocks WHERE isDeleted = 1")
+    suspend fun purgeDeleted()
+
+    @Query("UPDATE stocks SET firestoreId = :fid WHERE id = :localId")
+    suspend fun updateFirestoreId(localId: Int, fid: String)
+}

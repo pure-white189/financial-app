@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,12 +28,28 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // Example for next migration (v6 -> v7):
-        // val MIGRATION_6_7 = object : Migration(6, 7) {
-        //     override fun migrate(db: SupportSQLiteDatabase) {
-        //         db.execSQL("ALTER TABLE expenses ADD COLUMN new_column TEXT")
-        //     }
-        // }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE expenses ADD COLUMN firestoreId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE expenses ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE expenses ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+
+                db.execSQL("ALTER TABLE loans ADD COLUMN firestoreId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE loans ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE loans ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+
+                db.execSQL("ALTER TABLE saving_goals ADD COLUMN firestoreId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE saving_goals ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE saving_goals ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+
+                db.execSQL("ALTER TABLE stocks ADD COLUMN firestoreId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE stocks ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE stocks ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+
+
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -40,8 +57,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "finance_app_database"
+
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+                    .addMigrations(MIGRATION_6_7)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

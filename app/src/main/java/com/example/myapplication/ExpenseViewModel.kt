@@ -79,7 +79,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     // 删除消费记录
     fun deleteExpense(expense: Expense) {
         viewModelScope.launch {
-            repository.deleteExpense(expense)
+            repository.updateExpense(
+                expense.copy(
+                    isDeleted = true,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
     fun updateExpense(expense: Expense) {
@@ -160,7 +165,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     fun deleteLoan(loan: Loan) {
         viewModelScope.launch {
-            repository.deleteLoan(loan)
+            repository.updateLoan(
+                loan.copy(
+                    isDeleted = true,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 
@@ -178,7 +188,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     fun deleteGoal(goal: SavingGoal) {
         viewModelScope.launch {
-            repository.deleteGoal(goal)
+            repository.updateGoal(
+                goal.copy(
+                    isDeleted = true,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 
@@ -208,7 +223,12 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     fun deleteStock(stock: Stock) {
         viewModelScope.launch {
-            repository.deleteStock(stock)
+            repository.updateStock(
+                stock.copy(
+                    isDeleted = true,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 

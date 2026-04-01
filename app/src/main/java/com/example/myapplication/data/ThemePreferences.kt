@@ -30,7 +30,7 @@ class ThemePreferences(private val context: Context) {
         val SHOW_PERSISTENT_NOTIFICATION_KEY = booleanPreferencesKey("show_persistent_notification")  // 添加这行
         val REQUIRE_DELETE_CONFIRM_KEY = booleanPreferencesKey("require_delete_confirm")
         val HAS_SEEN_ONBOARDING_KEY = booleanPreferencesKey("has_seen_onboarding")
-        val AUTO_BACKUP_KEY = booleanPreferencesKey("auto_backup")
+        val AUTO_SYNC_ENABLED_KEY = booleanPreferencesKey("auto_sync_enabled")
     }
 
     // 读取主题设置
@@ -69,8 +69,8 @@ class ThemePreferences(private val context: Context) {
         preferences[HAS_SEEN_ONBOARDING_KEY] ?: false
     }
 
-    val autoBackupEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[AUTO_BACKUP_KEY] ?: false
+    val autoSyncEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AUTO_SYNC_ENABLED_KEY] ?: false
     }
 
     // 保存常驻通知开关
@@ -92,9 +92,9 @@ class ThemePreferences(private val context: Context) {
         }
     }
 
-    suspend fun setAutoBackupEnabled(enabled: Boolean) {
+    suspend fun setAutoSyncEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[AUTO_BACKUP_KEY] = enabled
+            preferences[AUTO_SYNC_ENABLED_KEY] = enabled
         }
     }
 

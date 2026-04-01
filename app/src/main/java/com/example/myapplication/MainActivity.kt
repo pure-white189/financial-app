@@ -43,6 +43,8 @@ import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
 import com.example.myapplication.ui.AccountPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
+import com.example.myapplication.ui.SyncViewModel
+import com.example.myapplication.ui.SyncState
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -92,6 +94,12 @@ class MainActivity : ComponentActivity() {
             val authState by authViewModel.authState.collectAsStateWithLifecycle()
             var showAccountPage by remember { mutableStateOf(false) }
             var showAuthModal by remember { mutableStateOf(false) }
+            val syncViewModel: SyncViewModel = viewModel(
+                factory = SyncViewModel.Factory(
+                    (application as FinanceApplication).syncRepository
+                )
+            )
+            val syncState by syncViewModel.syncState.collectAsStateWithLifecycle()
 
             val googleSignInClient = remember {
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -129,7 +137,7 @@ class MainActivity : ComponentActivity() {
             val showPersistentNotification by themePreferences.showPersistentNotification
                 .collectAsStateWithLifecycle(initialValue = false)
 
-            val autoBackupEnabled by themePreferences.autoBackupEnabled
+            val autoSyncEnabled by themePreferences.autoSyncEnabled
                 .collectAsStateWithLifecycle(initialValue = false)
 
             LaunchedEffect(authState) {
@@ -138,6 +146,13 @@ class MainActivity : ComponentActivity() {
                 }
                 if (authState !is AuthState.Guest) {
                     showAuthModal = false
+                }
+            }
+
+            // 自动同步：登录状态下且开关开启时，启动时触发一次
+            LaunchedEffect(authState, autoSyncEnabled) {
+                if (authState is AuthState.Authenticated && autoSyncEnabled) {
+                    syncViewModel.syncNow()
                 }
             }
 
@@ -163,13 +178,19 @@ class MainActivity : ComponentActivity() {
                         if (showAccountPage) {
                             AccountPage(
                                 authViewModel = authViewModel,
-                                autoBackupEnabled = autoBackupEnabled,
-                                onAutoBackupToggle = { enabled ->
+                                autoSyncEnabled = autoSyncEnabled,
+                                onAutoSyncToggle = { enabled: Boolean ->
                                     lifecycleScope.launch {
-                                        themePreferences.setAutoBackupEnabled(enabled)
+                                        themePreferences.setAutoSyncEnabled(enabled)
                                     }
                                 },
-                                onBackupNow = {},
+                                onSyncNow = { syncViewModel.syncNow() },
+                                isSyncing = syncState is SyncState.Syncing,
+                                syncMessage = when (val s = syncState) {
+                                    is SyncState.Success -> s.message
+                                    is SyncState.Error -> "同步失败：${s.message}"
+                                    else -> ""
+                                },
                                 onNavigateBack = { showAccountPage = false }
                             )
                         } else {

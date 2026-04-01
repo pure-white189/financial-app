@@ -75,6 +75,11 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
+    // Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    // coroutines + Tasks 支持（await()）
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

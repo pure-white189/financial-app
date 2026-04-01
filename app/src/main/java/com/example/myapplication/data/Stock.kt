@@ -14,6 +14,9 @@ data class Stock(
     val currentPrice: Double = 0.0,
     val lastUpdated: Long = 0L,
     val market: String = "HK",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val firestoreId: String = "",
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )
 

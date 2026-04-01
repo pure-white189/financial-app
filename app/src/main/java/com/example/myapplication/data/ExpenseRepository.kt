@@ -21,7 +21,12 @@ class ExpenseRepository(
     fun getExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>> =
         expenseDao.getExpensesByDateRange(startDate, endDate)
     suspend fun insertExpense(expense: Expense) = expenseDao.insertExpense(expense)
-    suspend fun deleteExpense(expense: Expense) = expenseDao.deleteExpense(expense)
+    suspend fun deleteExpense(expense: Expense) = expenseDao.updateExpense(
+        expense.copy(
+            isDeleted = true,
+            updatedAt = System.currentTimeMillis()
+        )
+    )
     fun getTotalExpenseByDateRange(startDate: Long, endDate: Long): Flow<Double?> =
         expenseDao.getTotalExpenseByDateRange(startDate, endDate)
 
@@ -34,17 +39,32 @@ class ExpenseRepository(
     fun getUnrepaidLoans(): Flow<List<Loan>> = loanDao.getUnrepaidLoans()
     suspend fun insertLoan(loan: Loan) = loanDao.insertLoan(loan)
     suspend fun updateLoan(loan: Loan) = loanDao.updateLoan(loan)
-    suspend fun deleteLoan(loan: Loan) = loanDao.deleteLoan(loan)
+    suspend fun deleteLoan(loan: Loan) = loanDao.updateLoan(
+        loan.copy(
+            isDeleted = true,
+            updatedAt = System.currentTimeMillis()
+        )
+    )
 
     fun getAllGoals(): Flow<List<SavingGoal>> = savingGoalDao.getAllGoals()
     suspend fun insertGoal(goal: SavingGoal) = savingGoalDao.insertGoal(goal)
     suspend fun updateGoal(goal: SavingGoal) = savingGoalDao.updateGoal(goal)
-    suspend fun deleteGoal(goal: SavingGoal) = savingGoalDao.deleteGoal(goal)
+    suspend fun deleteGoal(goal: SavingGoal) = savingGoalDao.updateGoal(
+        goal.copy(
+            isDeleted = true,
+            updatedAt = System.currentTimeMillis()
+        )
+    )
 
     fun getAllStocks(): Flow<List<Stock>> = stockDao.getAllStocks()
     suspend fun insertStock(stock: Stock) = stockDao.insertStock(stock)
     suspend fun updateStock(stock: Stock) = stockDao.updateStock(stock)
-    suspend fun deleteStock(stock: Stock) = stockDao.deleteStock(stock)
+    suspend fun deleteStock(stock: Stock) = stockDao.updateStock(
+        stock.copy(
+            isDeleted = true,
+            updatedAt = System.currentTimeMillis()
+        )
+    )
 
     // 清除所有消费记录
     suspend fun clearAllExpenses() {

@@ -60,9 +60,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountPage(
     authViewModel: AuthViewModel = viewModel(),
-    autoBackupEnabled: Boolean,
-    onAutoBackupToggle: (Boolean) -> Unit,
-    onBackupNow: () -> Unit,
+    autoSyncEnabled: Boolean,
+    onAutoSyncToggle: (Boolean) -> Unit,
+    onSyncNow: () -> Unit,
+    isSyncing: Boolean = false,
+    syncMessage: String = "",
     onNavigateBack: () -> Unit
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
@@ -182,16 +184,29 @@ fun AccountPage(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Backup",
+                        text = "数据备份与同步",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
 
                     Button(
-                        onClick = onBackupNow,
+                        onClick = { onSyncNow() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Backup Now")
+                        Text("立即同步")
+                    }
+
+                    if (isSyncing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+
+                    if (syncMessage.isNotEmpty()) {
+                        Text(
+                            text = syncMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
 
                     Row(
@@ -200,18 +215,18 @@ fun AccountPage(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Auto Backup",
+                                text = "自动同步",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = "Automatically back up your cloud data",
+                                text = "每次启动时自动同步数据",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
-                            checked = autoBackupEnabled,
-                            onCheckedChange = onAutoBackupToggle
+                            checked = autoSyncEnabled,
+                            onCheckedChange = onAutoSyncToggle
                         )
                     }
                 }

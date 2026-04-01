@@ -13,6 +13,8 @@ data class SavingGoal(
     val deadline: Long? = null,
     val note: String = "",
     val isCompleted: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val firestoreId: String = "",
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )
-

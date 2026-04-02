@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit
 
 object AiExpenseParser {
 
-    // 本地测试用 10.0.2.2，部署后改为云端地址
     private const val BASE_URL = "http://20.199.169.108"
 
     private val client = OkHttpClient.Builder()
@@ -80,21 +79,25 @@ object AiExpenseParser {
         }
     }
 
-    suspend fun parseExpense(text: String): Result<ParseResult> =
+    /**
+     * 解析自然语言记账输入。
+     * @param text 用户输入的自然语言
+     * @param lang AI 回复语言，取自 R.string.ai_prompt_language（"zh"/"en"/"zh-Hant"）
+     */
+    suspend fun parseExpense(text: String, lang: String = "zh"): Result<ParseResult> =
         withContext(Dispatchers.IO) {
             try {
                 val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
-                Log.d("AiParser", "开始请求，text=$text")  // 加这行
+                Log.d("AiParser", "开始请求，text=$text, lang=$lang")
                 val encodedText = URLEncoder.encode(text, "UTF-8")
-                Log.d("AiParser", "请求URL: $BASE_URL/parse-expense?text=$encodedText")  // 加这行
                 val request = Request.Builder()
-                    .url("$BASE_URL/parse-expense?text=$encodedText")
+                    .url("$BASE_URL/parse-expense?text=$encodedText&lang=$lang")
                     .header("Authorization", "Bearer $token")
                     .build()
-                Log.d("AiParser", "发送请求中...")  // 加这行
+                Log.d("AiParser", "请求URL: $BASE_URL/parse-expense?text=$encodedText&lang=$lang")
 
                 client.newCall(request).execute().use { response ->
-                    Log.d("AiParser", "收到响应: ${response.code}")  // 加这行
+                    Log.d("AiParser", "收到响应: ${response.code}")
                     val body = response.body?.string()
                         ?: return@withContext Result.failure(Exception("空响应"))
 
@@ -119,18 +122,25 @@ object AiExpenseParser {
                     Result.success(result)
                 }
             } catch (e: Exception) {
-                Log.e("AiParser", "请求异常: ${e.javaClass.simpleName}: ${e.message}")  // 加这行
+                Log.e("AiParser", "请求异常: ${e.javaClass.simpleName}: ${e.message}")
                 Result.failure(Exception(e.message ?: "未知错误"))
             }
         }
 
+    /**
+     * 生成月度消费分析报告。
+     * @param expenses 消费汇总列表
+     * @param month 月份描述，如"本月"/"This Month"
+     * @param lang AI 回复语言，取自 R.string.ai_prompt_language（"zh"/"en"/"zh-Hant"）
+     */
     suspend fun analyzeExpenses(
         expenses: List<ExpenseSummary>,
-        month: String = "本月"
+        month: String = "本月",
+        lang: String = "zh"
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
-            Log.d("AiParser", "开始分析，共${expenses.size}条记录")
+            Log.d("AiParser", "开始分析，共${expenses.size}条记录，lang=$lang")
 
             val expenseJsonArray = JSONArray(
                 expenses.map {
@@ -144,6 +154,7 @@ object AiExpenseParser {
             val requestBody = JSONObject().apply {
                 put("expenses", expenseJsonArray)
                 put("month", month)
+                put("lang", lang)   // 传递语言给后端
             }
 
             val body = requestBody.toString()
@@ -168,9 +179,7 @@ object AiExpenseParser {
                     } else {
                         "HTTP ${response.code}: $responseBody"
                     }
-                    return@withContext Result.failure(
-                        Exception(message)
-                    )
+                    return@withContext Result.failure(Exception(message))
                 }
 
                 val json = JSONObject(responseBody)
@@ -227,4 +236,3 @@ object AiExpenseParser {
             }
         }
 }
-

@@ -50,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +77,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("储蓄目标") })
+            TopAppBar(title = { Text(stringResource(R.string.saving_title)) })
         },
         floatingActionButton = {
             Box(
@@ -89,7 +91,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                     onClick = { showAddDialog = true },
                     containerColor = Color.Transparent
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加目标", tint = Color.White)
+                    Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.saving_add), tint = Color.White)
                 }
             }
         }
@@ -110,7 +112,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                     colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "进行中目标数", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.saving_ongoing_count), fontSize = 13.sp)
                         Text(
                             text = ongoingCount.toString(),
                             fontSize = 24.sp,
@@ -125,7 +127,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                     colors = CardDefaults.cardColors(containerColor = IncomeGreen.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "总已存金额", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.saving_total_saved), fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", totalSaved),
                             fontSize = 20.sp,
@@ -151,13 +153,13 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "还没有储蓄目标",
+                            text = stringResource(R.string.saving_no_goals),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "点击右下角按钮添加你的第一个目标",
+                            text = stringResource(R.string.saving_empty_hint),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -169,7 +171,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("添加目标")
+                            Text(stringResource(R.string.saving_add))
                         }
                     }
                 }
@@ -226,8 +228,8 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
     deleteTarget?.let { target ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("删除储蓄目标") },
-            text = { Text("确定要删除「${target.name}」吗？此操作无法撤销。") },
+            title = { Text(stringResource(R.string.saving_delete_confirm)) },
+            text = { Text(stringResource(R.string.saving_delete_message_with_name, target.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -235,12 +237,12 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                         deleteTarget = null
                     }
                 ) {
-                    Text(text = "删除", color = MaterialTheme.colorScheme.error)
+                    Text(text = stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -254,6 +256,7 @@ private fun SavingGoalItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val progress = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
     val percent = (progress * 100).toInt()
     val isOverdue = !goal.isCompleted && goal.deadline != null && goal.deadline < System.currentTimeMillis()
@@ -297,7 +300,7 @@ private fun SavingGoalItemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "已完成",
+                            text = stringResource(R.string.saving_completed),
                             fontSize = 12.sp,
                             color = GoalDoneColor
                         )
@@ -308,9 +311,8 @@ private fun SavingGoalItemCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = String.format(
-                    Locale.getDefault(),
-                    "已存 %s / 目标 %s",
+                text = stringResource(
+                    R.string.saving_progress_amount,
                     String.format(Locale.getDefault(), "¥ %.2f", goal.currentAmount),
                     String.format(Locale.getDefault(), "¥ %.2f", goal.targetAmount)
                 ),
@@ -339,7 +341,7 @@ private fun SavingGoalItemCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "截止：${DateUtils.formatDate(deadline)}",
+                        text = stringResource(R.string.saving_deadline_value, DateUtils.formatDate(context, deadline)),
                         fontSize = 12.sp,
                         color = if (isOverdue) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -347,7 +349,7 @@ private fun SavingGoalItemCard(
                     if (isOverdue) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "已逾期",
+                            text = stringResource(R.string.debt_overdue),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -364,7 +366,7 @@ private fun SavingGoalItemCard(
             ) {
                 if (!goal.isCompleted) {
                     TextButton(onClick = onDeposit) {
-                        Text("存入")
+                        Text(stringResource(R.string.saving_deposit))
                     }
                 }
 
@@ -375,7 +377,7 @@ private fun SavingGoalItemCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("编辑")
+                    Text(stringResource(R.string.common_edit))
                 }
 
                 TextButton(onClick = onDelete) {
@@ -385,7 +387,7 @@ private fun SavingGoalItemCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("删除")
+                    Text(stringResource(R.string.common_delete))
                 }
             }
         }
@@ -398,6 +400,7 @@ private fun EditSavingGoalDialog(
     onDismiss: () -> Unit,
     onConfirm: (SavingGoal) -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember(goal.id) { mutableStateOf(goal.name) }
     var targetAmountText by remember(goal.id) { mutableStateOf(String.format(Locale.getDefault(), "%.2f", goal.targetAmount)) }
     var deadline by remember(goal.id) { mutableStateOf(goal.deadline) }
@@ -407,7 +410,7 @@ private fun EditSavingGoalDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑目标") },
+        title = { Text(stringResource(R.string.saving_edit_title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -419,7 +422,7 @@ private fun EditSavingGoalDialog(
                         name = it
                         showError = false
                     },
-                    label = { Text("目标名称") },
+                    label = { Text(stringResource(R.string.saving_goal_name_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -430,7 +433,7 @@ private fun EditSavingGoalDialog(
                         targetAmountText = it
                         showError = false
                     },
-                    label = { Text("目标金额") },
+                    label = { Text(stringResource(R.string.saving_target_amount_hint)) },
                     prefix = { Text("¥") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -442,7 +445,9 @@ private fun EditSavingGoalDialog(
                     onClick = { showDueDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val deadlineLabel = deadline?.let { "截止日期：${DateUtils.formatDate(it)}" } ?: "截止日期：未设置"
+                    val deadlineLabel = deadline?.let {
+                        stringResource(R.string.saving_deadline_value, DateUtils.formatDate(context, it))
+                    } ?: stringResource(R.string.saving_deadline_unset)
                     Text(deadlineLabel)
                 }
 
@@ -451,20 +456,20 @@ private fun EditSavingGoalDialog(
                         onClick = { deadline = null },
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("清除截止日期")
+                        Text(stringResource(R.string.saving_clear_deadline))
                     }
                 }
 
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("备注（可选）") },
+                    label = { Text(stringResource(R.string.record_note_hint)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 if (showError) {
                     Text(
-                        text = "请填写目标名称并输入大于 0 的目标金额",
+                        text = stringResource(R.string.saving_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -491,12 +496,12 @@ private fun EditSavingGoalDialog(
                     )
                 }
             ) {
-                Text("保存")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -518,6 +523,7 @@ private fun AddSavingGoalDialog(
     onDismiss: () -> Unit,
     onConfirm: (SavingGoal) -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var targetAmountText by remember { mutableStateOf("") }
     var deadline by remember { mutableStateOf<Long?>(null) }
@@ -527,7 +533,7 @@ private fun AddSavingGoalDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加储蓄目标") },
+        title = { Text(stringResource(R.string.saving_add)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -539,7 +545,7 @@ private fun AddSavingGoalDialog(
                         name = it
                         showError = false
                     },
-                    label = { Text("目标名称") },
+                    label = { Text(stringResource(R.string.saving_goal_name_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -550,7 +556,7 @@ private fun AddSavingGoalDialog(
                         targetAmountText = it
                         showError = false
                     },
-                    label = { Text("目标金额") },
+                    label = { Text(stringResource(R.string.saving_target_amount_hint)) },
                     prefix = { Text("¥") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -562,7 +568,9 @@ private fun AddSavingGoalDialog(
                     onClick = { showDueDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val deadlineLabel = deadline?.let { "截止日期：${DateUtils.formatDate(it)}" } ?: "截止日期：未设置"
+                    val deadlineLabel = deadline?.let {
+                        stringResource(R.string.saving_deadline_value, DateUtils.formatDate(context, it))
+                    } ?: stringResource(R.string.saving_deadline_unset)
                     Text(deadlineLabel)
                 }
 
@@ -571,20 +579,20 @@ private fun AddSavingGoalDialog(
                         onClick = { deadline = null },
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("清除截止日期")
+                        Text(stringResource(R.string.saving_clear_deadline))
                     }
                 }
 
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("备注（可选）") },
+                    label = { Text(stringResource(R.string.record_note_hint)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 if (showError) {
                     Text(
-                        text = "请填写目标名称并输入大于 0 的目标金额",
+                        text = stringResource(R.string.saving_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -610,12 +618,12 @@ private fun AddSavingGoalDialog(
                     )
                 }
             ) {
-                Text("保存")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -644,11 +652,11 @@ private fun DepositDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("存入金额") },
+        title = { Text(stringResource(R.string.saving_deposit)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "还需 ${String.format(Locale.getDefault(), "¥ %.2f", remaining)}",
+                    text = stringResource(R.string.saving_remaining_amount, String.format(Locale.getDefault(), "¥ %.2f", remaining)),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -659,7 +667,7 @@ private fun DepositDialog(
                         amountText = it
                         showError = false
                     },
-                    label = { Text("金额") },
+                    label = { Text(stringResource(R.string.debt_amount_hint)) },
                     prefix = { Text("¥") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -691,12 +699,12 @@ private fun DepositDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("全部存入")
+                    Text(stringResource(R.string.saving_deposit_all))
                 }
 
                 if (showError) {
                     Text(
-                        text = "请输入大于 0 且不超过剩余金额的数值",
+                        text = stringResource(R.string.saving_deposit_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -714,12 +722,12 @@ private fun DepositDialog(
                     onConfirm(amount)
                 }
             ) {
-                Text("确认")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

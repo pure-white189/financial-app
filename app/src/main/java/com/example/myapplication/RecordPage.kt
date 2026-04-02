@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
@@ -39,6 +40,7 @@ import com.example.myapplication.data.Category
 import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.utils.displayName
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
@@ -57,6 +59,10 @@ fun RecordPage(
     onNavigateToLogin: (() -> Unit)? = null
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val aiLang = context.getString(R.string.ai_prompt_language)
+    val aiResultFilledText = stringResource(R.string.ai_result_filled)
+    val aiParseFailedText = stringResource(R.string.ai_parse_failed)
     val templates by viewModel.templates.collectAsState(initial = emptyList())
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -99,10 +105,10 @@ fun RecordPage(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                     Text(
-                        text = "记账",
+                        text = stringResource(R.string.record_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -112,7 +118,7 @@ fun RecordPage(
                     IconButton(onClick = { showTemplatesSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Bookmark,
-                            contentDescription = "模板",
+                            contentDescription = stringResource(R.string.template_title),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -120,7 +126,7 @@ fun RecordPage(
                     IconButton(onClick = onNavigateToCategory) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "管理类别"
+                            contentDescription = stringResource(R.string.category_manage_title)
                         )
                     }
                 }
@@ -133,7 +139,7 @@ fun RecordPage(
             }
             if (pinnedTemplates.isNotEmpty()) {
                 Text(
-                    text = "快速模板",
+                    text = stringResource(R.string.template_title),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -211,7 +217,7 @@ fun RecordPage(
                     onValueChange = { aiInput = it },
                     placeholder = {
                         Text(
-                            text = "用自然语言描述，如：今天午饭花了45块",
+                            text = stringResource(R.string.ai_input_hint),
                             fontSize = 13.sp
                         )
                     },
@@ -229,7 +235,7 @@ fun RecordPage(
                                     isAiLoading = true
                                     aiError = null
                                     aiSuccess = null
-                                    val result = AiExpenseParser.parseExpense(aiInput)
+                                    val result = AiExpenseParser.parseExpense(aiInput, aiLang)
                                     result.onSuccess { parsed ->
                                         Log.d(
                                             "AiParser",
@@ -252,7 +258,7 @@ fun RecordPage(
                                             note = parsed.note
                                         }
 
-                                        aiSuccess = "AI 已识别：¥${parsed.amount}，${parsed.category}"
+                                        aiSuccess = aiResultFilledText
                                         aiInput = ""
                                         delay(2000)
                                         aiSuccess = null
@@ -264,7 +270,7 @@ fun RecordPage(
                                             message.contains("unable to resolve host") ||
                                             message.contains("connection")
                                         if (isNetworkFailure) {
-                                            aiError = "解析失败"
+                                            aiError = aiParseFailedText
                                         }
                                     }
                                     isAiLoading = false
@@ -302,7 +308,7 @@ fun RecordPage(
                                 isAiLoading = true
                                 aiError = null
                                 aiSuccess = null
-                                val result = AiExpenseParser.parseExpense(aiInput)
+                                val result = AiExpenseParser.parseExpense(aiInput, aiLang)
                                 result.onSuccess { parsed ->
                                     Log.d(
                                         "AiParser",
@@ -325,7 +331,7 @@ fun RecordPage(
                                         note = parsed.note
                                     }
 
-                                    aiSuccess = "AI 已识别：¥${parsed.amount}，${parsed.category}"
+                                    aiSuccess = aiResultFilledText
                                     aiInput = ""
                                     delay(2000)
                                     aiSuccess = null
@@ -337,7 +343,7 @@ fun RecordPage(
                                         message.contains("unable to resolve host") ||
                                         message.contains("connection")
                                     if (isNetworkFailure) {
-                                        aiError = "解析失败"
+                                        aiError = aiParseFailedText
                                     }
                                 }
                                 isAiLoading = false
@@ -354,7 +360,7 @@ fun RecordPage(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Send,
-                            contentDescription = "解析",
+                            contentDescription = stringResource(R.string.analysis_ai_generate),
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
@@ -379,14 +385,14 @@ fun RecordPage(
                     modifier = Modifier.padding(start = 4.dp)
                 ) {
                     Text(
-                        text = "Guest mode: AI parsing requires an account",
+                        text = stringResource(R.string.ai_feature_locked),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         modifier = Modifier.weight(1f)
                     )
                     if (onNavigateToLogin != null) {
                         TextButton(onClick = onNavigateToLogin) {
-                            Text("Login")
+                            Text(stringResource(R.string.ai_go_login))
                         }
                     }
                 }
@@ -414,7 +420,7 @@ fun RecordPage(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "金额",
+                        text = stringResource(R.string.debt_amount_hint),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -437,13 +443,13 @@ fun RecordPage(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "选择类别",
+                    text = stringResource(R.string.record_select_category),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.titleMedium
                 )
 
                 Text(
-                    text = "${categories.size} 个类别",
+                    text = stringResource(R.string.record_category_count, categories.size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -494,14 +500,14 @@ fun RecordPage(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = DateUtils.formatDateForDisplay(selectedDate),
+                            text = DateUtils.formatDateForDisplay(context, selectedDate),
                             fontSize = 14.sp
                         )
                     }
 
                     if (selectedDate != System.currentTimeMillis()) {
                         TextButton(onClick = { selectedDate = System.currentTimeMillis() }) {
-                            Text("现在", fontSize = 12.sp)
+                            Text(stringResource(R.string.common_now), fontSize = 12.sp)
                         }
                     }
                 }
@@ -513,8 +519,8 @@ fun RecordPage(
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("备注（可选）") },
-                placeholder = { Text("添加备注说明") },
+                label = { Text(stringResource(R.string.record_note_hint)) },
+                placeholder = { Text(stringResource(R.string.record_note_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 maxLines = 1
@@ -563,7 +569,7 @@ fun RecordPage(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("保存模板")
+                    Text(stringResource(R.string.record_save_template))
                 }
 
                 // 添加记录
@@ -616,7 +622,7 @@ fun RecordPage(
                             disabledContentColor = Color.White.copy(alpha = 0.6f)
                         )
                     ) {
-                        Text("添加消费记录", fontSize = 16.sp, color = Color.White)
+                        Text(stringResource(R.string.record_add_expense), fontSize = 16.sp, color = Color.White)
                     }
                 }
             }
@@ -637,7 +643,7 @@ fun RecordPage(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)
             ) {
-                Text("添加成功！")
+                Text(stringResource(R.string.record_add_success))
             }
         }
     }
@@ -648,13 +654,13 @@ fun RecordPage(
 
         AlertDialog(
             onDismissRequest = { showSaveTemplateDialog = false },
-            title = { Text("保存为模板") },
+            title = { Text(stringResource(R.string.record_save_as_template_title)) },
             text = {
                 OutlinedTextField(
                     value = templateName,
                     onValueChange = { templateName = it },
-                    label = { Text("模板名称") },
-                    placeholder = { Text("例如：每日交通") },
+                    label = { Text(stringResource(R.string.template_name_hint)) },
+                    placeholder = { Text(stringResource(R.string.record_template_name_example)) },
                     singleLine = true
                 )
             },
@@ -675,12 +681,12 @@ fun RecordPage(
                         }
                     }
                 ) {
-                    Text("保存")
+                    Text(stringResource(R.string.common_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSaveTemplateDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -699,7 +705,7 @@ fun RecordPage(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "快速记账",
+                    text = stringResource(R.string.template_title),
                     fontSize = 20.sp,
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -708,13 +714,13 @@ fun RecordPage(
 
                 if (templates.isNotEmpty()) {
                     Text(
-                        text = "我的模板",
+                        text = stringResource(R.string.record_my_templates),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Text(
-                        text = "长按模板可以置顶（最多3个），置顶的模板会显示在记账页面顶部",
+                        text = stringResource(R.string.record_templates_hint),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -750,7 +756,7 @@ fun RecordPage(
 
                 if (recentExpenses.isNotEmpty()) {
                     Text(
-                        text = "最近记录（点击复制）",
+                        text = stringResource(R.string.record_recent_copy),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -782,9 +788,9 @@ fun RecordPage(
     if (templateToDelete != null) {
         AlertDialog(
             onDismissRequest = { templateToDelete = null },
-            title = { Text("删除模板") },
+            title = { Text(stringResource(R.string.template_delete_confirm)) },
             text = {
-                Text("确定要删除「${templateToDelete?.name}」模板吗？")
+                Text(stringResource(R.string.record_delete_template_message, templateToDelete?.name ?: ""))
             },
             confirmButton = {
                 TextButton(
@@ -797,12 +803,12 @@ fun RecordPage(
                         }
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { templateToDelete = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -823,11 +829,11 @@ fun RecordPage(
                     modifier = Modifier.size(32.dp)
                 )
             },
-            title = { Text("大额消费提醒") },
+            title = { Text(stringResource(R.string.record_large_amount_confirm_title)) },
             text = {
                 Column {
                     Text(
-                        text = "本次消费金额较大，请确认是否继续",
+                        text = stringResource(R.string.record_large_amount_warning_desc),
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -845,7 +851,7 @@ fun RecordPage(
                         ) {
                             Column {
                                 Text(
-                                    text = categories.find { it.id == pendingExpense!!.categoryId }?.name ?: "未知",
+                                    text = categories.find { it.id == pendingExpense!!.categoryId }?.name ?: stringResource(R.string.analysis_unknown_category),
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                                 )
@@ -885,7 +891,7 @@ fun RecordPage(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("确认记账")
+                    Text(stringResource(R.string.record_confirm))
                 }
             },
             dismissButton = {
@@ -895,7 +901,7 @@ fun RecordPage(
                         pendingExpense = null
                     }
                 ) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -961,7 +967,7 @@ fun CalculatorKeyboard(
                         if (key == "⌫") {
                             Icon(
                                 Icons.Default.Backspace,
-                                contentDescription = "删除",
+                                contentDescription = stringResource(R.string.common_delete),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         } else {
@@ -1009,7 +1015,7 @@ fun TemplateItem(
                 if (template.isPinned) {
                     Icon(
                         imageVector = Icons.Default.PushPin,
-                        contentDescription = "已置顶",
+                        contentDescription = stringResource(R.string.template_pin),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -1056,7 +1062,7 @@ fun TemplateItem(
                 IconButton(onClick = onUse) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "使用",
+                        contentDescription = stringResource(R.string.common_add),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -1065,7 +1071,7 @@ fun TemplateItem(
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -1106,11 +1112,11 @@ fun RecentExpenseItem(
 
                 Column {
                     Text(
-                        text = category?.name ?: "未知",
+                        text = category?.name ?: stringResource(R.string.analysis_unknown_category),
                         fontSize = 16.sp
                     )
                     Text(
-                        text = DateUtils.formatDate(expense.date),
+                        text = DateUtils.formatDate(androidx.compose.ui.platform.LocalContext.current, expense.date),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1159,7 +1165,7 @@ fun DateTimePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择日期和时间") },
+        title = { Text(stringResource(R.string.record_date_time_picker_title)) },
         properties = DialogProperties(
             usePlatformDefaultWidth = false  // 添加这行，不使用默认宽度
         ),
@@ -1188,7 +1194,7 @@ fun DateTimePickerDialog(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("现在", fontSize = 12.sp)
+                        Text(stringResource(R.string.common_now), fontSize = 12.sp)
                     }
 
                     OutlinedButton(
@@ -1204,7 +1210,7 @@ fun DateTimePickerDialog(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("今天", fontSize = 12.sp)
+                        Text(stringResource(R.string.home_today), fontSize = 12.sp)
                     }
 
                     OutlinedButton(
@@ -1221,7 +1227,7 @@ fun DateTimePickerDialog(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("昨天", fontSize = 12.sp)
+                        Text(stringResource(R.string.record_yesterday), fontSize = 12.sp)
                     }
                 }
 
@@ -1234,7 +1240,7 @@ fun DateTimePickerDialog(
 
                 // 时间选择标题
                 Text(
-                    text = "时间",
+                    text = stringResource(R.string.record_time),
                     fontSize = 14.sp,
                     style = MaterialTheme.typography.labelMedium
                 )
@@ -1302,7 +1308,7 @@ fun DateTimePickerDialog(
 
                 // 常用时间快捷按钮
                 Text(
-                    text = "常用时间",
+                    text = stringResource(R.string.record_common_times),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1323,7 +1329,7 @@ fun DateTimePickerDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("凌晨", fontSize = 10.sp)
+                            Text(stringResource(R.string.record_time_midnight), fontSize = 10.sp)
                             Text("00:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -1337,7 +1343,7 @@ fun DateTimePickerDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("早晨", fontSize = 10.sp)
+                            Text(stringResource(R.string.record_time_morning), fontSize = 10.sp)
                             Text("06:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -1359,7 +1365,7 @@ fun DateTimePickerDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("中午", fontSize = 10.sp)
+                            Text(stringResource(R.string.record_time_noon), fontSize = 10.sp)
                             Text("12:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -1373,7 +1379,7 @@ fun DateTimePickerDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("傍晚", fontSize = 10.sp)
+                            Text(stringResource(R.string.record_time_evening), fontSize = 10.sp)
                             Text("18:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -1383,7 +1389,7 @@ fun DateTimePickerDialog(
                 if (showError) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "不能选择未来的时间",
+                        text = stringResource(R.string.record_future_time_error),
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp
                     )
@@ -1411,12 +1417,12 @@ fun DateTimePickerDialog(
                     }
                 }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -1583,7 +1589,7 @@ fun CategoryChip(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = category.name,
+                text = category.displayName(),
                 fontSize = 12.sp,
                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
             )

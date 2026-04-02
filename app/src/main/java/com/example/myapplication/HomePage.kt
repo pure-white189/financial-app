@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
+import com.example.myapplication.utils.displayName
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
@@ -63,7 +65,7 @@ fun HomePage(viewModel: ExpenseViewModel,
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedFilter by remember { mutableStateOf("全部") }
+    var selectedFilter by remember { mutableStateOf(TimeFilter.ALL) }
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     var hasSeenSwipeHint by remember { mutableStateOf(prefs.getBoolean("has_seen_swipe_hint", false)) }
@@ -71,7 +73,7 @@ fun HomePage(viewModel: ExpenseViewModel,
     // 根据筛选条件过滤消费记录
     val filteredExpenses = remember(expenses, selectedFilter) {
         when (selectedFilter) {
-            "今日" -> {
+            TimeFilter.TODAY -> {
                 val todayStart = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
@@ -79,7 +81,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                 }.timeInMillis
                 expenses.filter { it.date >= todayStart }
             }
-            "本周" -> {
+            TimeFilter.WEEK -> {
                 val weekStart = Calendar.getInstance().apply {
                     set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -88,7 +90,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                 }.timeInMillis
                 expenses.filter { it.date >= weekStart }
             }
-            "本月" -> {
+            TimeFilter.MONTH -> {
                 val monthStart = Calendar.getInstance().apply {
                     set(Calendar.DAY_OF_MONTH, 1)
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -119,7 +121,7 @@ fun HomePage(viewModel: ExpenseViewModel,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "消费概览",
+                text = stringResource(R.string.home_overview_title),
                 fontSize = 28.sp,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
@@ -132,7 +134,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                        contentDescription = "查看新手引导",
+                        contentDescription = stringResource(R.string.home_tutorial_help),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -140,7 +142,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "设置",
+                        contentDescription = stringResource(R.string.common_settings),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -183,7 +185,7 @@ fun HomePage(viewModel: ExpenseViewModel,
         ) {
             Column {
                 Text(
-                    "本月支出",
+                    stringResource(R.string.home_monthly_spent_title),
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -196,8 +198,8 @@ fun HomePage(viewModel: ExpenseViewModel,
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    HeroStatItem("今日", "¥%.0f".format(todayTotal))
-                    HeroStatItem("本周", "¥%.0f".format(weeklyTotal))
+                    HeroStatItem(stringResource(R.string.home_today), "¥%.0f".format(todayTotal))
+                    HeroStatItem(stringResource(R.string.home_this_week), "¥%.0f".format(weeklyTotal))
                 }
             }
         }
@@ -215,7 +217,7 @@ fun HomePage(viewModel: ExpenseViewModel,
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "资产与预算",
+                text = stringResource(R.string.home_assets_budget_title),
                 fontSize = 18.sp,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -274,14 +276,14 @@ fun HomePage(viewModel: ExpenseViewModel,
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("今日", "本周", "本月", "全部").forEach { filter ->
+            TimeFilter.entries.forEach { filter ->
                 val selected = selectedFilter == filter
                 FilterChip(
                     selected = selected,
                     onClick = { selectedFilter = filter },
                     label = {
                         Text(
-                            text = filter,
+                            text = stringResource(filter.labelRes),
                             color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     },
@@ -318,13 +320,13 @@ fun HomePage(viewModel: ExpenseViewModel,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "最近消费",
+                text = stringResource(R.string.home_recent_expenses),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
-                text = "${filteredExpenses.size} 条记录",
+                text = stringResource(R.string.home_expense_count, filteredExpenses.size),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
@@ -355,14 +357,14 @@ fun HomePage(viewModel: ExpenseViewModel,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "还没有消费记录",
+                        text = stringResource(R.string.home_no_expenses),
                         fontSize = 18.sp,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "快点击右下角的「+」记下第一笔账吧！\n多记几笔，AI 就能帮你分析消费习惯了。",
+                        text = stringResource(R.string.home_empty_state_desc),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -378,7 +380,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("开始记账")
+                        Text(stringResource(R.string.home_add_first_expense_cta))
                     }
                 }
             }
@@ -403,7 +405,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "提示：卡片左滑删除，右滑编辑",
+                            stringResource(R.string.home_swipe_hint_banner),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -417,7 +419,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                     ) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "关闭",
+                            contentDescription = stringResource(R.string.common_close),
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -451,8 +453,8 @@ fun HomePage(viewModel: ExpenseViewModel,
 
                                         if (!requireDeleteConfirm) {
                                             val result = snackbarHostState.showSnackbar(
-                                                message = "已删除消费记录",
-                                                actionLabel = "撤销",
+                                                message = context.getString(R.string.home_deleted_expense),
+                                                actionLabel = context.getString(R.string.common_undo),
                                                 duration = SnackbarDuration.Short
                                             )
                                             if (result == SnackbarResult.ActionPerformed) {
@@ -501,14 +503,14 @@ private fun StockOverviewCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "股票持仓",
+                    text = stringResource(R.string.home_stock_card_title),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
                 Text(
-                    text = "共 ${stocks.size} 只",
+                    text = stringResource(R.string.home_stock_count, stocks.size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -517,7 +519,7 @@ private fun StockOverviewCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "总市值 HK$${String.format(Locale.getDefault(), "%.2f", totalValue)}",
+                text = stringResource(R.string.stock_total_value) + " HK$${String.format(Locale.getDefault(), "%.2f", totalValue)}",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
@@ -527,7 +529,7 @@ private fun StockOverviewCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "总盈亏 ${formatSignedHkAmount(totalProfit)}",
+                text = stringResource(R.string.stock_total_profit) + " ${formatSignedHkAmount(totalProfit)}",
                 fontSize = 14.sp,
                 color = profitColor
             )
@@ -568,14 +570,14 @@ private fun SavingGoalSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "储蓄目标",
+                    text = stringResource(R.string.home_saving_card_title),
                     fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
-                    text = "共 ${ongoingGoals.size} 个目标",
+                    text = stringResource(R.string.home_saving_goal_count, ongoingGoals.size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -623,7 +625,7 @@ private fun SavingGoalSummaryCard(
             if (ongoingGoals.size > 1) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "还有 ${ongoingGoals.size - 1} 个目标进行中",
+                    text = stringResource(R.string.home_saving_goal_more_count, ongoingGoals.size - 1),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -671,8 +673,8 @@ fun ExpenseItem(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("确认删除") },
-            text = { Text("确定要删除这笔消费记录吗？") },
+            title = { Text(stringResource(R.string.debt_delete_confirm)) },
+            text = { Text(stringResource(R.string.home_delete_expense_confirm_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -680,12 +682,12 @@ fun ExpenseItem(
                         onDelete()
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -768,12 +770,12 @@ fun ExpenseItem(
 
                     Column {
                         Text(
-                            text = category?.name ?: "未知类别",
+                            text = category?.displayName() ?: stringResource(R.string.home_unknown_category),
                             fontSize = 16.sp,
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = DateUtils.formatDate(expense.date),
+                            text = DateUtils.formatDate(LocalContext.current, expense.date),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -868,7 +870,7 @@ fun BudgetProgressCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "预算进度",
+                    text = stringResource(R.string.home_budget_progress_title),
                     fontSize = 14.sp,
                     style = MaterialTheme.typography.titleMedium
                 )
@@ -903,7 +905,7 @@ fun BudgetProgressCard(
             ) {
                 Column {
                     Text(
-                        text = if (remaining >= 0) "还剩" else "超支",
+                        text = if (remaining >= 0) stringResource(R.string.home_budget_left_short) else stringResource(R.string.home_budget_over_short),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -921,7 +923,7 @@ fun BudgetProgressCard(
                 if (remaining > 0 && remainingDays > 0) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "每日可用",
+                            text = stringResource(R.string.home_daily_available),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -937,13 +939,20 @@ fun BudgetProgressCard(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "距月底还有 $remainingDays 天",
+                text = stringResource(R.string.home_days_to_month_end, remainingDays),
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
         }
     }
+}
+
+private enum class TimeFilter(val labelRes: Int) {
+    TODAY(R.string.home_today),
+    WEEK(R.string.home_this_week),
+    MONTH(R.string.home_this_month),
+    ALL(R.string.home_filter_all)
 }
 // 格式化日期
 // 格式化日期

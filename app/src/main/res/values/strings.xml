@@ -1,3 +1,438 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">财务管家</string>
+
+    <!-- ===== 语言设置 ===== -->
+    <!-- 控制 AI prompt 回复语言，不要翻译这个值 -->
+    <string name="ai_prompt_language">zh</string>
+
+    <!-- ===== 底部导航 ===== -->
+    <string name="nav_home">首页</string>
+    <string name="nav_debt">借贷</string>
+    <string name="nav_saving">储蓄</string>
+    <string name="nav_analysis">分析</string>
+
+    <!-- ===== 首页 ===== -->
+    <string name="home_greeting_morning">早上好</string>
+    <string name="home_greeting_afternoon">下午好</string>
+    <string name="home_greeting_evening">晚上好</string>
+    <string name="home_budget_card_title">本月预算</string>
+    <string name="home_no_budget_set">未设置预算</string>
+    <string name="home_budget_spent">已支出 %1$s</string>
+    <string name="home_budget_remaining">剩余 %1$s</string>
+    <string name="home_budget_exceeded">已超支 %1$s</string>
+    <string name="home_recent_expenses">最近记录</string>
+    <string name="home_no_expenses">暂无消费记录</string>
+    <string name="home_add_first_expense">点击右下角按钮开始记账</string>
+    <string name="home_swipe_hint">左滑删除，右滑编辑</string>
+    <string name="home_today">今日</string>
+    <string name="home_this_week">本周</string>
+    <string name="home_this_month">本月</string>
+    <string name="home_total_assets">总资产</string>
+    <string name="home_stock_card_title">股票持仓</string>
+    <string name="home_saving_card_title">储蓄目标</string>
+    <string name="home_overview_title">消费概览</string>
+    <string name="home_tutorial_help">查看新手引导</string>
+    <string name="home_monthly_spent_title">本月支出</string>
+    <string name="home_assets_budget_title">资产与预算</string>
+    <string name="home_filter_all">全部</string>
+    <string name="home_expense_count">%1$d 条记录</string>
+    <string name="home_empty_state_desc">快点击右下角的「+」记下第一笔账吧！\n多记几笔，AI 就能帮你分析消费习惯了。</string>
+    <string name="home_add_first_expense_cta">开始记账</string>
+    <string name="home_swipe_hint_banner">提示：卡片左滑删除，右滑编辑</string>
+    <string name="home_deleted_expense">已删除消费记录</string>
+    <string name="home_stock_count">共 %1$d 只</string>
+    <string name="home_saving_goal_count">共 %1$d 个目标</string>
+    <string name="home_saving_goal_more_count">还有 %1$d 个目标进行中</string>
+    <string name="home_delete_expense_confirm_message">确定要删除这笔消费记录吗？</string>
+    <string name="home_unknown_category">未知类别</string>
+    <string name="home_budget_progress_title">预算进度</string>
+    <string name="home_budget_left_short">还剩</string>
+    <string name="home_budget_over_short">超支</string>
+    <string name="home_daily_available">每日可用</string>
+    <string name="home_days_to_month_end">距月底还有 %1$d 天</string>
+
+    <!-- ===== 记账 FAB / 记录页 ===== -->
+    <string name="record_title">记一笔</string>
+    <string name="record_amount_hint">输入金额</string>
+    <string name="record_category">类别</string>
+    <string name="record_date">日期</string>
+    <string name="record_note_hint">备注（可选）</string>
+    <string name="record_note_placeholder">添加备注说明</string>
+    <string name="record_save">保存</string>
+    <string name="record_cancel">取消</string>
+    <string name="record_edit_title">编辑记录</string>
+    <string name="record_select_category">选择类别</string>
+    <string name="record_category_count">%1$d 个类别</string>
+    <string name="record_save_template">保存模板</string>
+    <string name="record_add_expense">添加消费记录</string>
+    <string name="record_add_success">添加成功！</string>
+    <string name="record_save_changes">保存修改</string>
+    <string name="record_delete_expense_message">确定要删除这条消费记录吗？</string>
+    <string name="record_save_as_template_title">保存为模板</string>
+    <string name="record_template_name_example">例如：每日交通</string>
+    <string name="record_my_templates">我的模板</string>
+    <string name="record_templates_hint">长按模板可以置顶（最多3个），置顶的模板会显示在记账页面顶部</string>
+    <string name="record_recent_copy">最近记录（点击复制）</string>
+    <string name="record_delete_template_message">确定要删除「%1$s」模板吗？</string>
+    <string name="record_large_amount_warning_desc">本次消费金额较大，请确认是否继续</string>
+    <string name="record_date_time_picker_title">选择日期和时间</string>
+    <string name="record_yesterday">昨天</string>
+    <string name="record_time">时间</string>
+    <string name="record_common_times">常用时间</string>
+    <string name="record_time_midnight">凌晨</string>
+    <string name="record_time_morning">早晨</string>
+    <string name="record_time_noon">中午</string>
+    <string name="record_time_evening">傍晚</string>
+    <string name="record_future_time_error">不能选择未来的时间</string>
+    <string name="record_amount_empty">请输入金额</string>
+    <string name="record_amount_zero">金额不能为零</string>
+    <string name="record_category_empty">请选择类别</string>
+    <string name="record_large_amount_confirm_title">大额消费确认</string>
+    <string name="record_large_amount_confirm_message">本次消费 %1$s，确认记录？</string>
+    <string name="record_confirm">确认</string>
+
+    <!-- ===== AI 记账 ===== -->
+    <string name="ai_input_hint">用自然语言描述消费，如"午饭花了45块"</string>
+    <string name="ai_parsing">AI 解析中…</string>
+    <string name="ai_parse_failed">解析失败，请手动填写</string>
+    <string name="ai_result_filled">已自动填写，请确认</string>
+    <string name="ai_feature_locked">AI 功能需要登录后使用</string>
+    <string name="ai_limit_reached">今日 AI 次数已用完</string>
+    <string name="ai_monthly_limit_reached">本月 AI 分析次数已用完</string>
+    <string name="ai_go_login">去登录</string>
+
+    <!-- ===== AI 月度分析 ===== -->
+    <string name="analysis_ai_entry_title">AI 月度消费分析</string>
+    <string name="analysis_ai_entry_subtitle">获取专属消费洞察报告</string>
+    <string name="analysis_ai_generate">生成分析报告</string>
+    <string name="analysis_ai_regenerate">重新分析</string>
+    <string name="analysis_ai_loading">AI 分析中，请稍候…</string>
+    <string name="analysis_ai_error">分析失败，请稍后重试</string>
+    <string name="analysis_no_data">本月暂无消费数据</string>
+
+    <!-- ===== 分析页 ===== -->
+    <string name="analysis_title">消费分析</string>
+    <string name="analysis_trend_title">近7天趋势</string>
+    <string name="analysis_category_rank_title">类别排行</string>
+    <string name="analysis_total_spent">总支出</string>
+    <string name="analysis_avg_daily">日均消费</string>
+    <string name="analysis_transaction_count">消费笔数</string>
+    <string name="analysis_budget_overview">预算概览</string>
+    <string name="analysis_budget_spent_label">已支出</string>
+    <string name="analysis_budget_total_label">总预算</string>
+    <string name="analysis_budget_remaining_label">剩余</string>
+    <string name="analysis_largest_category">最大类别</string>
+    <string name="analysis_view_stock">查看股票持仓</string>
+    <string name="analysis_ai_sheet_empty_message">本月还没有消费记录。建议先记几笔账，AI 才能为你生成准确的财务诊断报告。</string>
+    <string name="analysis_ai_sheet_ready_message">将基于本月已记录的 %1$d 笔支出（共 ¥%2$s）生成专属的财务诊断报告。AI 会帮你发现潜在的浪费，并提供优化建议。</string>
+    <string name="analysis_unknown_category">未知</string>
+    <string name="analysis_expense_count">%1$d 笔消费</string>
+    <string name="analysis_budget_used">已使用</string>
+
+    <!-- ===== 类别 ===== -->
+    <string name="category_food">餐饮</string>
+    <string name="category_transport">交通</string>
+    <string name="category_shopping">购物</string>
+    <string name="category_entertainment">娱乐</string>
+    <string name="category_health">医疗</string>
+    <string name="category_education">教育</string>
+    <string name="category_housing">居住</string>
+    <string name="category_other">其他</string>
+    <string name="category_custom_label">自定义</string>
+    <string name="category_manage_title">管理类别</string>
+    <string name="category_add">添加类别</string>
+    <string name="category_name_hint">类别名称</string>
+    <string name="category_name_example">例如：咖啡、零食</string>
+    <string name="category_restore_default">恢复默认类别</string>
+    <string name="category_restore_default_desc">添加已删除的系统预设类别</string>
+    <string name="category_restore_success">默认类别已恢复</string>
+    <string name="category_default_section">默认类别</string>
+    <string name="category_custom_section">自定义类别 (%1$d)</string>
+    <string name="category_empty_custom">还没有自定义类别</string>
+    <string name="category_empty_custom_hint">点击右下角 + 添加</string>
+    <string name="category_default_badge">系统预设</string>
+    <string name="category_add_custom_title">添加自定义类别</string>
+    <string name="category_select_icon">选择图标</string>
+    <string name="category_select_image_from_gallery">从相册选择图片</string>
+    <string name="category_custom_image_selected">已选择自定义图片</string>
+    <string name="category_remove_image">移除图片</string>
+    <string name="category_or_choose_preset_icon">或选择预设图标</string>
+    <string name="category_select_color">选择颜色</string>
+    <string name="category_delete_message_with_name">确定要删除「%1$s」类别吗？\n\n注意：删除类别不会删除相关的消费记录。</string>
+    <string name="category_delete_confirm">删除此类别？</string>
+    <string name="category_delete_message">删除后，该类别下的消费记录将不受影响，但无法再归入此类别。</string>
+
+    <!-- ===== 模板 ===== -->
+    <string name="template_title">快速记账</string>
+    <string name="template_add">添加模板</string>
+    <string name="template_name_hint">模板名称</string>
+    <string name="template_pin">置顶</string>
+    <string name="template_unpin">取消置顶</string>
+    <string name="template_pin_limit">最多置顶 3 个模板</string>
+    <string name="template_delete_confirm">删除此模板？</string>
+
+    <!-- ===== 借贷页 ===== -->
+    <string name="debt_title">借贷管理</string>
+    <string name="debt_lend">借出</string>
+    <string name="debt_borrow">借入</string>
+    <string name="debt_add_lend">新增借出</string>
+    <string name="debt_add_borrow">新增借入</string>
+    <string name="debt_person_hint">对方姓名</string>
+    <string name="debt_amount_hint">金额</string>
+    <string name="debt_due_date">到期日期</string>
+    <string name="debt_note_hint">备注（可选）</string>
+    <string name="debt_mark_repaid">标记已还</string>
+    <string name="debt_repaid">已还清</string>
+    <string name="debt_overdue">已逾期</string>
+    <string name="debt_no_records">暂无借贷记录</string>
+    <string name="debt_delete_confirm">删除此记录？</string>
+    <string name="debt_total_lend">借出总额</string>
+    <string name="debt_total_borrow">借入总额</string>
+    <string name="debt_add_record">添加借贷</string>
+    <string name="debt_empty_hint">点击右下角按钮添加第一条借贷记录</string>
+    <string name="debt_delete_message_with_name">确定要删除与「%1$s」的借贷记录吗？此操作无法撤销。</string>
+    <string name="debt_due_date_value">截止: %1$s</string>
+    <string name="debt_unrepaid">未还</string>
+    <string name="debt_date_value">日期：%1$s</string>
+    <string name="debt_due_date_unset">截止日期：未设置</string>
+    <string name="debt_clear_due_date">清除截止日期</string>
+    <string name="debt_validation_error">请填写对方姓名并输入大于 0 的金额</string>
+    <string name="debt_select_due_date">选择截止日期</string>
+    <string name="debt_next_week">下周</string>
+    <string name="debt_next_month">下个月</string>
+    <string name="debt_due_date_error">截止日期不能早于今天</string>
+
+    <!-- ===== 储蓄页 ===== -->
+    <string name="saving_title">储蓄目标</string>
+    <string name="saving_add">新增目标</string>
+    <string name="saving_goal_name_hint">目标名称</string>
+    <string name="saving_target_amount_hint">目标金额</string>
+    <string name="saving_deadline">截止日期</string>
+    <string name="saving_deposit">存入</string>
+    <string name="saving_deposit_amount_hint">存入金额</string>
+    <string name="saving_progress">进度</string>
+    <string name="saving_completed">已完成</string>
+    <string name="saving_days_remaining">还有 %1$d 天</string>
+    <string name="saving_no_goals">暂无储蓄目标</string>
+    <string name="saving_delete_confirm">删除此储蓄目标？</string>
+    <string name="saving_ongoing_count">进行中目标数</string>
+    <string name="saving_total_saved">总已存金额</string>
+    <string name="saving_empty_hint">点击右下角按钮添加你的第一个目标</string>
+    <string name="saving_delete_message_with_name">确定要删除「%1$s」吗？此操作无法撤销。</string>
+    <string name="saving_progress_amount">已存 %1$s / 目标 %2$s</string>
+    <string name="saving_deadline_value">截止：%1$s</string>
+    <string name="saving_edit_title">编辑目标</string>
+    <string name="saving_deadline_unset">截止日期：未设置</string>
+    <string name="saving_clear_deadline">清除截止日期</string>
+    <string name="saving_validation_error">请填写目标名称并输入大于 0 的目标金额</string>
+    <string name="saving_remaining_amount">还需 %1$s</string>
+    <string name="saving_deposit_all">全部存入</string>
+    <string name="saving_deposit_validation_error">请输入大于 0 且不超过剩余金额的数值</string>
+
+    <!-- ===== 股票页 ===== -->
+    <string name="stock_title">股票持仓</string>
+    <string name="stock_add">添加股票</string>
+    <string name="stock_symbol_hint">股票代码</string>
+    <string name="stock_market_hk">港股</string>
+    <string name="stock_market_us">美股</string>
+    <string name="stock_market_cn">A股</string>
+    <string name="stock_shares_hint">持仓数量</string>
+    <string name="stock_cost_hint">成本价</string>
+    <string name="stock_current_price">现价</string>
+    <string name="stock_profit_loss">盈亏</string>
+    <string name="stock_refresh">刷新价格</string>
+    <string name="stock_last_updated">更新于 %1$s</string>
+    <string name="stock_no_holdings">暂无持仓</string>
+    <string name="stock_delete_confirm">删除此持仓？</string>
+    <string name="stock_fetch_failed">价格获取失败</string>
+    <string name="stock_total_value">总市值</string>
+    <string name="stock_total_profit">总盈亏</string>
+    <string name="stock_no_price_available">未获取到可用价格，请稍后重试</string>
+    <string name="stock_last_updated_with_time">最后更新：%1$s</string>
+    <string name="stock_delete_with_name">确定要删除「%1$s %2$s」吗？</string>
+    <string name="stock_market_ss">沪</string>
+    <string name="stock_market_sz">深</string>
+    <string name="stock_updated">已更新</string>
+    <string name="stock_update_price">更新价格</string>
+    <string name="stock_holding_summary">持股 %1$s | 成本 %2$s | 市值 %3$s</string>
+    <string name="stock_profit_loss_summary">持仓盈亏 %1$s</string>
+    <string name="stock_symbol_placeholder">如：0700 / AAPL</string>
+    <string name="stock_name_hint">股票名称</string>
+    <string name="stock_cost_optional_hint">买入均价（可选）</string>
+    <string name="stock_current_optional_hint">当前价格（可选）</string>
+    <string name="stock_validation_error">请填写股票代码、名称和有效持股数量</string>
+    <string name="stock_edit_holding_title">编辑持仓 - %1$s</string>
+    <string name="stock_latest_price_hint">当前最新价</string>
+    <string name="stock_latest_price_placeholder">输入最新价格</string>
+    <string name="stock_edit_validation_error">请填写名称并输入有效持股数量</string>
+
+    <!-- ===== 设置页 ===== -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme">主题模式</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_follow_system">跟随系统</string>
+    <string name="settings_budget">预算与提醒</string>
+    <string name="settings_monthly_budget">月度预算</string>
+    <string name="settings_monthly_budget_hint">输入月度预算金额</string>
+    <string name="settings_alert_threshold">大额消费提醒</string>
+    <string name="settings_alert_threshold_hint">单笔超过此金额时提醒</string>
+    <string name="settings_notification">通知</string>
+    <string name="settings_persistent_notification">常驻预算通知</string>
+    <string name="settings_persistent_notification_desc">在状态栏显示预算使用进度</string>
+    <string name="settings_interaction">交互</string>
+    <string name="settings_delete_confirm">滑动删除确认</string>
+    <string name="settings_delete_confirm_desc">删除前弹窗二次确认</string>
+    <string name="settings_category">类别管理</string>
+    <string name="settings_manage_categories">管理消费类别</string>
+    <string name="settings_data">数据</string>
+    <string name="settings_export_csv">导出 CSV</string>
+    <string name="settings_clear_data">清除所有数据</string>
+    <string name="settings_clear_data_confirm_title">确认清除数据？</string>
+    <string name="settings_clear_data_confirm_message">此操作不可恢复，所有消费记录、模板、自定义类别将被删除。</string>
+    <string name="settings_account">账户与备份</string>
+    <string name="settings_not_set">未设置</string>
+    <string name="settings_alert_threshold_value">单笔超过 %1$s 时提醒</string>
+    <string name="settings_data_desc">查看数据统计、清除数据</string>
+    <string name="settings_export_csv_desc">导出消费记录为 CSV 格式</string>
+    <string name="settings_tech_stack">技术栈</string>
+    <string name="settings_tech_stack_value">Kotlin + Jetpack Compose + Room</string>
+    <string name="settings_budget_dialog_title">设置月度预算</string>
+    <string name="settings_budget_dialog_desc">设置每月的总支出预算，帮助您控制消费</string>
+    <string name="settings_budget_placeholder">例如：3000</string>
+    <string name="settings_budget_dialog_hint">提示：留空表示不设置预算</string>
+    <string name="settings_data_stats">数据统计</string>
+    <string name="settings_data_stat_expenses">消费记录</string>
+    <string name="settings_data_stat_templates">快速模板</string>
+    <string name="settings_data_stat_custom_categories">自定义类别</string>
+    <string name="settings_danger_zone">危险操作</string>
+    <string name="settings_data_irreversible_warning">以下操作无法撤销，请谨慎操作</string>
+    <string name="settings_clear_expenses_button">清除所有消费记录 (%1$d)</string>
+    <string name="settings_clear_expenses_confirm_title">清除所有消费记录？</string>
+    <string name="settings_clear_expenses_confirm_message">将删除所有 %1$d 条消费记录，但保留类别和模板。\n\n此操作无法撤销！</string>
+    <string name="settings_clear_data_confirm_intro">将删除以下所有数据：</string>
+    <string name="settings_clear_data_expenses_line">• %1$d 条消费记录</string>
+    <string name="settings_clear_data_templates_line">• %1$d 个快速模板</string>
+    <string name="settings_clear_data_categories_line">• %1$d 个自定义类别</string>
+    <string name="settings_clear_data_confirm_footer">默认类别将保留。\n\n此操作无法撤销！</string>
+    <string name="settings_alert_amount_label">提醒金额</string>
+    <string name="settings_alert_placeholder">例如：500</string>
+    <string name="settings_alert_hint">提示：留空表示不设置提醒</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
+
+    <!-- ===== 账户页 ===== -->
+    <string name="account_title">账户</string>
+    <string name="account_level_free">免费版</string>
+    <string name="account_level_pro">Pro</string>
+    <string name="account_storage">存储空间</string>
+    <string name="account_backup">数据备份与同步</string>
+    <string name="account_manual_backup">立即备份</string>
+    <string name="account_auto_backup">自动同步</string>
+    <string name="account_change_password">修改密码</string>
+    <string name="account_change_password_desc">发送重置邮件到注册邮箱</string>
+    <string name="account_delete_account">删除账户</string>
+    <string name="account_sign_out">退出登录</string>
+    <string name="account_keep_local_data">保留本地数据</string>
+    <string name="account_clear_local_data">清空本地数据</string>
+    <string name="account_sync_success">同步完成</string>
+    <string name="account_sync_failed">同步失败，请稍后重试</string>
+    <string name="account_syncing">同步中…</string>
+
+    <!-- ===== 登录 / 注册页 ===== -->
+    <string name="auth_sign_in">登录</string>
+    <string name="auth_sign_up">注册</string>
+    <string name="auth_subtitle">登录后开始管理你的资产与消费</string>
+    <string name="auth_email_empty">邮箱不能为空</string>
+    <string name="auth_email_hint">邮箱地址</string>
+    <string name="auth_password_hint">密码</string>
+    <string name="auth_confirm_password_hint">确认密码</string>
+    <string name="auth_forgot_password">忘记密码？</string>
+    <string name="auth_send_reset_email">发送重置邮件</string>
+    <string name="auth_reset_password_title">重置密码</string>
+    <string name="auth_reset_email_sent">重置邮件已发送</string>
+    <string name="auth_google_sign_in">使用 Google 账号登录</string>
+    <string name="auth_continue_guest">不登录，继续使用</string>
+    <string name="auth_no_account">还没有账号？</string>
+    <string name="auth_has_account">已有账号？</string>
+    <string name="auth_password_mismatch">两次密码不一致</string>
+    <string name="auth_invalid_email">邮箱格式不正确</string>
+    <string name="auth_weak_password">密码至少 6 位</string>
+    <string name="auth_email_not_verified">邮箱尚未验证</string>
+    <string name="auth_resend_verification">重新发送验证邮件</string>
+    <string name="auth_verification_sent">验证邮件已发送，请查收</string>
+    <string name="auth_resend_cooldown">%1$d 秒后可重新发送</string>
+
+    <!-- ===== 新手引导 ===== -->
+    <string name="onboarding_step1_title">开始记账</string>
+    <string name="onboarding_step1_desc">点击右下角按钮，快速记录每一笔消费</string>
+    <string name="onboarding_step2_title">滑动管理</string>
+    <string name="onboarding_step2_desc">左滑删除，右滑编辑，高效管理记录</string>
+    <string name="onboarding_step3_title">AI 分析</string>
+    <string name="onboarding_step3_desc">前往分析页，获取 AI 生成的月度消费报告</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_done">开始使用</string>
+    <string name="onboarding_skip">跳过</string>
+
+    <!-- ===== 首次语言选择 ===== -->
+    <string name="language_selection_title">选择语言\nSelect Language\n選擇語言</string>
+    <string name="language_selection_subtitle">你可以随时在设置中更改\nYou can change this in Settings anytime\n你可以隨時在設定中更改</string>
+    <string name="language_confirm">确认 / Confirm</string>
+
+    <!-- ===== 通用 ===== -->
+    <string name="common_confirm">确认</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_delete">删除</string>
+    <string name="common_edit">编辑</string>
+    <string name="common_save">保存</string>
+    <string name="common_close">关闭</string>
+    <string name="common_show">显示</string>
+    <string name="common_hide">隐藏</string>
+    <string name="common_retry">重试</string>
+    <string name="common_loading">加载中…</string>
+    <string name="common_error">出错了</string>
+    <string name="common_unknown_error">未知错误，请稍后重试</string>
+    <string name="common_network_error">网络连接失败，请检查网络</string>
+    <string name="common_enter_valid_amount">请输入有效的金额</string>
+    <string name="common_no_data">暂无数据</string>
+    <string name="common_undo">撤销</string>
+    <string name="common_deleted">已删除</string>
+    <string name="common_settings">设置</string>
+    <string name="common_back">返回</string>
+    <string name="common_now">现在</string>
+    <string name="common_done">完成</string>
+    <string name="common_add">添加</string>
+    <string name="common_optional">可选</string>
+    <string name="common_required">必填</string>
+    <string name="date_today">今天</string>
+    <string name="date_yesterday">昨天</string>
+
+    <!-- ===== 通知 ===== -->
+    <string name="notification_budget_channel_name">预算提醒</string>
+    <string name="notification_persistent_channel_name">预算状态</string>
+    <string name="notification_budget_80_title">预算使用提醒</string>
+    <string name="notification_budget_80_message">本月已使用预算的 80%%，注意控制支出</string>
+    <string name="notification_budget_100_title">预算已超支</string>
+    <string name="notification_budget_100_message">本月消费已超出预算，当前超支 %1$s</string>
+    <string name="notification_persistent_title">本月预算</string>
+    <string name="notification_persistent_message">已用 %1$s / %2$s</string>
+    <string name="notification_quick_record">快速记账</string>
+
+    <!-- ===== CSV 导出 ===== -->
+    <string name="export_title">导出数据</string>
+    <string name="export_date_range">日期范围</string>
+    <string name="export_this_month">本月</string>
+    <string name="export_last_month">上月</string>
+    <string name="export_custom">自定义</string>
+    <string name="export_confirm">导出 CSV</string>
+    <string name="export_success">导出成功</string>
+    <string name="export_failed">导出失败</string>
+    <string name="export_csv_header_date">日期</string>
+    <string name="export_csv_header_amount">金额</string>
+    <string name="export_csv_header_category">类别</string>
+    <string name="export_csv_header_note">备注</string>
 </resources>

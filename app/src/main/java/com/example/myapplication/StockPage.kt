@@ -60,6 +60,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -87,6 +89,7 @@ fun StockPage(
     viewModel: ExpenseViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val stocks by viewModel.stocks.collectAsState(initial = emptyList())
     val totalStockValue by viewModel.totalStockValue.collectAsState()
 
@@ -104,12 +107,12 @@ fun StockPage(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("股票追踪") },
+                title = { Text(stringResource(R.string.stock_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
@@ -146,10 +149,10 @@ fun StockPage(
                                                 Locale.getDefault()
                                             ).format(Date())
                                         } else {
-                                            snackbarHostState.showSnackbar("未获取到可用价格，请稍后重试")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.stock_no_price_available))
                                         }
                                     } else {
-                                        snackbarHostState.showSnackbar("获取股票价格失败，请检查网络连接")
+                                        snackbarHostState.showSnackbar(context.getString(R.string.stock_fetch_failed))
                                     }
                                 }
 
@@ -164,7 +167,7 @@ fun StockPage(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新")
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = stringResource(R.string.stock_refresh))
                         }
                     }
                 }
@@ -182,7 +185,7 @@ fun StockPage(
                     onClick = { showAddDialog = true },
                     containerColor = Color.Transparent
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加股票", tint = Color.White)
+                    Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.stock_add), tint = Color.White)
                 }
             }
         }
@@ -203,7 +206,7 @@ fun StockPage(
                     colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "总市值", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.stock_total_value), fontSize = 13.sp)
                         Text(
                             text = formatMoney("HK", totalStockValue),
                             fontSize = 20.sp,
@@ -218,7 +221,7 @@ fun StockPage(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "总盈亏", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.stock_total_profit), fontSize = 13.sp)
                         Text(
                             text = formatSignedMoney("HK", totalProfit),
                             fontSize = 20.sp,
@@ -232,7 +235,7 @@ fun StockPage(
 
             if (lastRefreshTime.isNotBlank()) {
                 Text(
-                    text = "最后更新：$lastRefreshTime",
+                    text = stringResource(R.string.stock_last_updated_with_time, lastRefreshTime),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -253,7 +256,7 @@ fun StockPage(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "还没有追踪的股票",
+                            text = stringResource(R.string.stock_no_holdings),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -265,7 +268,7 @@ fun StockPage(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("添加股票")
+                            Text(stringResource(R.string.stock_add))
                         }
                     }
                 }
@@ -354,8 +357,8 @@ fun StockPage(
     deleteTarget?.let { stock ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("删除股票") },
-            text = { Text("确定要删除「${stock.symbol} ${stock.name}」吗？") },
+            title = { Text(stringResource(R.string.stock_delete_confirm)) },
+            text = { Text(stringResource(R.string.stock_delete_with_name, stock.symbol, stock.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -363,12 +366,12 @@ fun StockPage(
                         deleteTarget = null
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -408,10 +411,12 @@ private fun StockItemCard(
         else -> ExpenseRed
     }
     val marketLabel = when (stock.market) {
-        "SS" -> "沪"
-        "SZ" -> "深"
+        "SS" -> stringResource(R.string.stock_market_ss)
+        "SZ" -> stringResource(R.string.stock_market_sz)
         else -> stock.market
     }
+    val stockUpdatedText = stringResource(R.string.stock_updated)
+    val stockFetchFailedText = stringResource(R.string.stock_fetch_failed)
     val scope = rememberCoroutineScope()
     var isSingleRefreshing by remember(stock.id) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
@@ -468,7 +473,7 @@ private fun StockItemCard(
                         IconButton(onClick = { expanded = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "更多选项"
+                                contentDescription = stringResource(R.string.common_settings)
                             )
                         }
 
@@ -478,7 +483,7 @@ private fun StockItemCard(
                         ) {
                             DropdownMenuItem(
                                 text = {
-                                    Text(if (isSingleRefreshing) "刷新中..." else "刷新价格")
+                                    Text(if (isSingleRefreshing) stringResource(R.string.common_loading) else stringResource(R.string.stock_refresh))
                                 },
                                 enabled = !isSingleRefreshing,
                                 onClick = {
@@ -487,12 +492,12 @@ private fun StockItemCard(
                                         isSingleRefreshing = true
                                         val updated = onRefreshPrice(stock)
                                         isSingleRefreshing = false
-                                        onShowMessage(if (updated) "已更新" else "获取失败")
+                                        onShowMessage(if (updated) stockUpdatedText else stockFetchFailedText)
                                     }
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("更新价格") },
+                                text = { Text(stringResource(R.string.stock_update_price)) },
                                 onClick = {
                                     expanded = false
                                     onEdit()
@@ -501,7 +506,7 @@ private fun StockItemCard(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = "删除",
+                                        text = stringResource(R.string.common_delete),
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 },
@@ -518,13 +523,18 @@ private fun StockItemCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "持股 ${formatDouble(stock.shares)} | 成本 ${formatMoney(stock.market, stock.costPrice)} | 市值 ${formatMoney(stock.market, value)}",
+                text = stringResource(
+                    R.string.stock_holding_summary,
+                    formatDouble(stock.shares),
+                    formatMoney(stock.market, stock.costPrice),
+                    formatMoney(stock.market, value)
+                ),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
-                text = "持仓盈亏 ${formatSignedMoney(stock.market, pnl)}",
+                text = stringResource(R.string.stock_profit_loss_summary, formatSignedMoney(stock.market, pnl)),
                 fontSize = 12.sp,
                 color = if (pnl >= 0) IncomeGreen else ExpenseRed
             )
@@ -550,7 +560,7 @@ private fun AddStockDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加股票") },
+        title = { Text(stringResource(R.string.stock_add)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -562,8 +572,8 @@ private fun AddStockDialog(
                         symbol = it.uppercase()
                         showError = false
                     },
-                    label = { Text("股票代码") },
-                    placeholder = { Text("如：0700 / AAPL") },
+                    label = { Text(stringResource(R.string.stock_symbol_hint)) },
+                    placeholder = { Text(stringResource(R.string.stock_symbol_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -574,7 +584,7 @@ private fun AddStockDialog(
                         name = it
                         showError = false
                     },
-                    label = { Text("股票名称") },
+                    label = { Text(stringResource(R.string.stock_name_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -586,8 +596,8 @@ private fun AddStockDialog(
                     listOf(
                         "HK" to "HK",
                         "US" to "US",
-                        "SS" to "沪",
-                        "SZ" to "深"
+                        "SS" to stringResource(R.string.stock_market_ss),
+                        "SZ" to stringResource(R.string.stock_market_sz)
                     ).forEach { (marketOption, label) ->
                         FilterChip(
                             selected = market == marketOption,
@@ -603,7 +613,7 @@ private fun AddStockDialog(
                         sharesText = it
                         showError = false
                     },
-                    label = { Text("持股数量") },
+                    label = { Text(stringResource(R.string.stock_shares_hint)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -615,8 +625,8 @@ private fun AddStockDialog(
                         costPriceText = it
                         showError = false
                     },
-                    label = { Text("买入均价") },
-                    placeholder = { Text("买入均价（可选）") },
+                    label = { Text(stringResource(R.string.stock_cost_hint)) },
+                    placeholder = { Text(stringResource(R.string.stock_cost_optional_hint)) },
                     prefix = { Text(marketPrefix(market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -629,8 +639,8 @@ private fun AddStockDialog(
                         currentPriceText = it
                         showError = false
                     },
-                    label = { Text("当前价格") },
-                    placeholder = { Text("当前价格（可选）") },
+                    label = { Text(stringResource(R.string.stock_current_price)) },
+                    placeholder = { Text(stringResource(R.string.stock_current_optional_hint)) },
                     prefix = { Text(marketPrefix(market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -639,7 +649,7 @@ private fun AddStockDialog(
 
                 if (showError) {
                     Text(
-                        text = "请填写股票代码、名称和有效持股数量",
+                        text = stringResource(R.string.stock_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -672,12 +682,12 @@ private fun AddStockDialog(
                     )
                 }
             ) {
-                Text("保存")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -701,7 +711,7 @@ private fun EditHoldingDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑持仓 - ${stock.symbol}") },
+        title = { Text(stringResource(R.string.stock_edit_holding_title, stock.symbol)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -710,7 +720,7 @@ private fun EditHoldingDialog(
                         name = it
                         showError = false
                     },
-                    label = { Text("股票名称") },
+                    label = { Text(stringResource(R.string.stock_name_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     isError = showError
@@ -722,7 +732,7 @@ private fun EditHoldingDialog(
                         sharesText = it
                         showError = false
                     },
-                    label = { Text("持股数量") },
+                    label = { Text(stringResource(R.string.stock_shares_hint)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -735,8 +745,8 @@ private fun EditHoldingDialog(
                         costPriceText = it
                         showError = false
                     },
-                    label = { Text("买入均价") },
-                    placeholder = { Text("买入均价（可选）") },
+                    label = { Text(stringResource(R.string.stock_cost_hint)) },
+                    placeholder = { Text(stringResource(R.string.stock_cost_optional_hint)) },
                     prefix = { Text(marketPrefix(stock.market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -749,8 +759,8 @@ private fun EditHoldingDialog(
                         currentPriceText = it
                         showError = false
                     },
-                    label = { Text("当前最新价") },
-                    placeholder = { Text("输入最新价格") },
+                    label = { Text(stringResource(R.string.stock_latest_price_hint)) },
+                    placeholder = { Text(stringResource(R.string.stock_latest_price_placeholder)) },
                     prefix = { Text(marketPrefix(stock.market)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -759,7 +769,7 @@ private fun EditHoldingDialog(
 
                 if (showError) {
                     Text(
-                        text = "请填写名称并输入有效持股数量",
+                        text = stringResource(R.string.stock_edit_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -786,12 +796,12 @@ private fun EditHoldingDialog(
                     )
                 }
             ) {
-                Text("确认")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

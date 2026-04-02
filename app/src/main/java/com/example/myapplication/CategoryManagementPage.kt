@@ -15,10 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.myapplication.data.Category
+import com.example.myapplication.utils.displayName
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.io.File
@@ -39,10 +41,10 @@ fun CategoryManagementPage(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("管理类别") },
+                title = { Text(stringResource(R.string.category_manage_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 }
             )
@@ -51,13 +53,13 @@ fun CategoryManagementPage(
             FloatingActionButton(
                 onClick = { showAddDialog = true }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加类别")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.category_add))
             }
         },
         snackbarHost = {
             if (showRestoreSuccess) {
                 Snackbar {
-                    Text("默认类别已恢复")
+                    Text(stringResource(R.string.category_restore_success))
                 }
             }
         }
@@ -76,7 +78,7 @@ fun CategoryManagementPage(
             if (defaultCategories.isNotEmpty()) {
                 item {
                     Text(
-                        text = "默认类别",
+                        text = stringResource(R.string.category_default_section),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
@@ -112,12 +114,12 @@ fun CategoryManagementPage(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "恢复默认类别",
+                                text = stringResource(R.string.category_restore_default),
                                 fontSize = 14.sp,
                                 style = MaterialTheme.typography.titleSmall
                             )
                             Text(
-                                text = "添加已删除的系统预设类别",
+                                text = stringResource(R.string.category_restore_default_desc),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                             )
@@ -139,7 +141,7 @@ fun CategoryManagementPage(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("恢复")
+                            Text(stringResource(R.string.common_retry))
                         }
                     }
                 }
@@ -148,7 +150,7 @@ fun CategoryManagementPage(
             // 自定义类别
             item {
                 Text(
-                    text = "自定义类别 (${customCategories.size})",
+                    text = stringResource(R.string.category_custom_section, customCategories.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
@@ -174,12 +176,12 @@ fun CategoryManagementPage(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "还没有自定义类别",
+                                text = stringResource(R.string.category_empty_custom),
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "点击右下角 + 添加",
+                                text = stringResource(R.string.category_empty_custom_hint),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -225,9 +227,9 @@ fun CategoryManagementPage(
     if (categoryToDelete != null) {
         AlertDialog(
             onDismissRequest = { categoryToDelete = null },
-            title = { Text("删除类别") },
+            title = { Text(stringResource(R.string.category_delete_confirm)) },
             text = {
-                Text("确定要删除「${categoryToDelete?.name}」类别吗？\n\n注意：删除类别不会删除相关的消费记录。")
+                Text(stringResource(R.string.category_delete_message_with_name, categoryToDelete?.displayName().orEmpty()))
             },
             confirmButton = {
                 TextButton(
@@ -240,12 +242,12 @@ fun CategoryManagementPage(
                         }
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { categoryToDelete = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -293,19 +295,19 @@ fun CategoryListItem(
 
                 Column {
                     Text(
-                        text = category.name,
+                        text = category.displayName(),
                         fontSize = 16.sp,
                         style = MaterialTheme.typography.bodyLarge
                     )
                     if (category.isDefault) {
                         Text(
-                            text = "系统预设",
+                            text = stringResource(R.string.category_default_badge),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         Text(
-                            text = "自定义",
+                            text = stringResource(R.string.category_custom_label),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -318,7 +320,7 @@ fun CategoryListItem(
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -397,7 +399,7 @@ fun AddCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加自定义类别") },
+        title = { Text(stringResource(R.string.category_add_custom_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -408,8 +410,8 @@ fun AddCategoryDialog(
                 OutlinedTextField(
                     value = categoryName,
                     onValueChange = { categoryName = it },
-                    label = { Text("类别名称") },
-                    placeholder = { Text("例如：咖啡、零食") },
+                    label = { Text(stringResource(R.string.category_name_hint)) },
+                    placeholder = { Text(stringResource(R.string.category_name_example)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -418,7 +420,7 @@ fun AddCategoryDialog(
 
                 // 选择图标方式
                 Text(
-                    text = "选择图标",
+                    text = stringResource(R.string.category_select_icon),
                     fontSize = 14.sp,
                     style = MaterialTheme.typography.labelMedium
                 )
@@ -437,7 +439,7 @@ fun AddCategoryDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (customImageUri != null) "已选择自定义图片" else "从相册选择图片"
+                        if (customImageUri != null) stringResource(R.string.category_custom_image_selected) else stringResource(R.string.category_select_image_from_gallery)
                     )
                 }
 
@@ -459,14 +461,14 @@ fun AddCategoryDialog(
                         },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
-                        Text("移除图片")
+                        Text(stringResource(R.string.category_remove_image))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "或选择预设图标",
+                    text = stringResource(R.string.category_or_choose_preset_icon),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -503,7 +505,7 @@ fun AddCategoryDialog(
 
                 // 选择颜色
                 Text(
-                    text = "选择颜色",
+                    text = stringResource(R.string.category_select_color),
                     fontSize = 14.sp,
                     style = MaterialTheme.typography.labelMedium
                 )
@@ -556,12 +558,12 @@ fun AddCategoryDialog(
                 },
                 enabled = categoryName.isNotBlank()
             ) {
-                Text("添加")
+                Text(stringResource(R.string.common_add))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

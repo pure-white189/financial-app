@@ -24,62 +24,135 @@ client = OpenAI(
 )
 
 # ─── 限速配置 ───────────────────────────────────────────────
-FREE_PARSE_DAILY = 10  # 免费用户自然语言/天
-FREE_ANALYZE_MONTHLY = 2  # 免费用户分析报告/月
-PRO_PARSE_DAILY = None  # Pro 用户不限
-PRO_ANALYZE_MONTHLY = None  # Pro 用户不限
-PARSE_PER_MINUTE = 10  # 所有用户每分钟最多10次（防脚本）
-MAX_PROMPT_LENGTH = 200  # 自然语言输入最大字符数
+FREE_PARSE_DAILY = 10
+FREE_ANALYZE_MONTHLY = 2
+PRO_PARSE_DAILY = None
+PRO_ANALYZE_MONTHLY = None
+PARSE_PER_MINUTE = 10
+MAX_PROMPT_LENGTH = 200
 
-# 内存计数器（重启后重置，足够用于限速）
-# 格式: { uid: { "date": "2026-04-01", "parse_count": 3 } }
 parse_counts = defaultdict(lambda: {"date": "", "count": 0})
-# 格式: { uid: { "month": "2026-04", "count": 1 } }
 analyze_counts = defaultdict(lambda: {"month": "", "count": 0})
-# 每分钟限速: { uid: { "minute": "2026-04-01T12:00", "count": 5 } }
 minute_counts = defaultdict(lambda: {"minute": "", "count": 0})
+
+
+# ─── 语言配置 ────────────────────────────────────────────────
+
+def get_lang_config(lang: str) -> dict:
+    """根据 lang 返回对应语言的 prompt 片段和回退文字。"""
+    if lang == "en":
+        return {
+            "parse_instruction": (
+                'Extract expense info from this sentence and return JSON.\n'
+                'Sentence: "{text}"\n'
+                'Format: {{"amount": number, "category": "category", "note": "note"}}\n'
+                'Categories must be one of: food, transport, shopping, entertainment, healthcare, other\n'
+                'Return JSON only, no other content.'
+            ),
+            "analyze_instruction": (
+                "You are a friendly personal finance assistant. "
+                "Based on the following expense data for {month}, write a brief friendly analysis (under 150 words):\n\n"
+                "Total spending: ${total:.0f}\n"
+                "Number of transactions: {count}\n"
+                "Top categories: {category_summary}\n\n"
+                "Requirements:\n"
+                "1. Point out the largest spending category\n"
+                "2. Give 1-2 practical money-saving tips\n"
+                "3. Keep the tone friendly and encouraging\n"
+                "4. No markdown formatting\n"
+                "Return analysis text only."
+            ),
+            "no_expense_reply": "No expenses recorded this month. Start tracking your first transaction!",
+            "analyze_failed": "Analysis failed, please try again later.",
+            "category_separator": ", ",
+            "currency_prefix": "$",
+        }
+    elif lang == "zh-Hant":
+        return {
+            "parse_instruction": (
+                '從這句話中提取記帳資訊，返回JSON格式。\n'
+                '句子："{text}"\n'
+                '返回格式：{{"amount": 金額數字, "category": "分類", "note": "備註"}}\n'
+                '分類只能是：餐飲、交通、購物、娛樂、醫療、其他\n'
+                '只返回JSON，不要任何其他內容。'
+            ),
+            "analyze_instruction": (
+                "你是一個友善的個人財務助手，請用繁體中文回覆。\n"
+                "根據以下{month}消費數據，生成一段簡潔友好的分析報告（150字以內）：\n\n"
+                "總支出：¥{total:.0f}\n"
+                "消費筆數：{count}筆\n"
+                "主要分類：{category_summary}\n\n"
+                "要求：\n"
+                "1. 指出最大支出類別\n"
+                "2. 給出1-2條實用的省錢建議\n"
+                "3. 語氣友好鼓勵\n"
+                "4. 不要使用markdown格式\n"
+                "只返回分析文字，不要任何其他內容。"
+            ),
+            "no_expense_reply": "本月暫無消費記錄，快去記錄你的第一筆消費吧！",
+            "analyze_failed": "分析生成失敗，請稍後重試",
+            "category_separator": "、",
+            "currency_prefix": "¥",
+        }
+    else:  # 默认简体中文
+        return {
+            "parse_instruction": (
+                '从这句话中提取记账信息，返回JSON格式。\n'
+                '句子："{text}"\n'
+                '返回格式：{{"amount": 金额数字, "category": "分类", "note": "备注"}}\n'
+                '分类只能是：餐饮、交通、购物、娱乐、医疗、其他\n'
+                '只返回JSON，不要任何其他内容。'
+            ),
+            "analyze_instruction": (
+                "你是一个友善的个人财务助手。\n"
+                "根据以下{month}消费数据，生成一段简洁友好的分析报告（150字以内）：\n\n"
+                "总支出：¥{total:.0f}\n"
+                "消费笔数：{count}笔\n"
+                "主要分类：{category_summary}\n\n"
+                "要求：\n"
+                "1. 指出最大支出类别\n"
+                "2. 给出1-2条实用的省钱建议\n"
+                "3. 语气友好鼓励\n"
+                "4. 不要使用markdown格式\n"
+                "只返回分析文字，不要任何其他内容。"
+            ),
+            "no_expense_reply": "本月暂无消费记录，快去记录你的第一笔消费吧！",
+            "analyze_failed": "分析生成失败，请稍后重试",
+            "category_separator": "、",
+            "currency_prefix": "¥",
+        }
 
 
 # ─── 工具函数 ────────────────────────────────────────────────
 
-
 def verify_token(authorization: str | None) -> dict:
-    """验证 Firebase ID Token，返回解码后的 claims。未提供 token 返回 guest。"""
     if not authorization or not authorization.startswith("Bearer "):
         return {"uid": None, "role": "guest"}
     token = authorization.removeprefix("Bearer ").strip()
     try:
         decoded = auth.verify_id_token(token)
-        role = decoded.get(
-            "role", "free"
-        )  # 默认 free，Pro 用户需后台手动设置 custom claim
+        role = decoded.get("role", "free")
         return {"uid": decoded["uid"], "role": role}
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 def check_rate_limit_parse(uid: str, role: str):
-    """检查自然语言解析的限速。"""
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
     minute = now.strftime("%Y-%m-%dT%H:%M")
 
-    # 每分钟限速（所有用户）
     m = minute_counts[uid]
     if m["minute"] != minute:
         m["minute"] = minute
         m["count"] = 0
     m["count"] += 1
     if m["count"] > PARSE_PER_MINUTE:
-        raise HTTPException(
-            status_code=429, detail="Too many requests, please slow down"
-        )
+        raise HTTPException(status_code=429, detail="Too many requests, please slow down")
 
-    # Pro 用户不限次数
     if role == "pro":
         return
 
-    # 免费用户每日限速
     p = parse_counts[uid]
     if p["date"] != today:
         p["date"] = today
@@ -93,11 +166,9 @@ def check_rate_limit_parse(uid: str, role: str):
 
 
 def check_rate_limit_analyze(uid: str, role: str):
-    """检查月度分析报告的限速。"""
     now = datetime.now(timezone.utc)
     month = now.strftime("%Y-%m")
 
-    # Pro 用户不限次数
     if role == "pro":
         return
 
@@ -115,41 +186,35 @@ def check_rate_limit_analyze(uid: str, role: str):
 
 # ─── 接口 ────────────────────────────────────────────────────
 
-
 @app.get("/")
 def hello():
     return {"message": "后端运行正常"}
 
 
 @app.get("/parse-expense")
-def parse_expense(text: str, authorization: str | None = Header(default=None)):
-    # 身份验证
+def parse_expense(
+    text: str,
+    lang: str = "zh",
+    authorization: str | None = Header(default=None)
+):
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required to use AI features")
 
-    # Prompt 长度限制
     if len(text) > MAX_PROMPT_LENGTH:
         raise HTTPException(
             status_code=400,
             detail=f"Input too long (max {MAX_PROMPT_LENGTH} characters)",
         )
 
-    # 限速检查
     check_rate_limit_parse(user["uid"], user["role"])
+
+    lc = get_lang_config(lang)
+    prompt = lc["parse_instruction"].format(text=text)
 
     response = client.chat.completions.create(
         model="glm-5",
-        messages=[
-            {
-                "role": "user",
-                "content": f"""从这句话中提取记账信息，返回JSON格式。
-句子："{text}"
-返回格式：{{"amount": 金额数字, "category": "分类", "note": "备注"}}
-分类只能是：餐饮、交通、购物、娱乐、医疗、其他
-只返回JSON，不要任何其他内容。""",
-            }
-        ],
+        messages=[{"role": "user", "content": prompt}],
     )
     result = response.choices[0].message.content
     if not result or not result.strip():
@@ -164,19 +229,20 @@ def parse_expense(text: str, authorization: str | None = Header(default=None)):
 
 @app.post("/analyze-expenses")
 def analyze_expenses(data: dict, authorization: str | None = Header(default=None)):
-    # 身份验证
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required to use AI features")
 
-    # 限速检查
     check_rate_limit_analyze(user["uid"], user["role"])
 
     expenses = data.get("expenses", [])
     month = data.get("month", "本月")
+    lang = data.get("lang", "zh")  # 从请求体取语言
+
+    lc = get_lang_config(lang)
 
     if not expenses:
-        return {"analysis": "本月暂无消费记录，快去记录你的第一笔消费吧！"}
+        return {"analysis": lc["no_expense_reply"]}
 
     total = sum(e["amount"] for e in expenses)
     category_totals = {}
@@ -185,27 +251,25 @@ def analyze_expenses(data: dict, authorization: str | None = Header(default=None
         category_totals[cat] = category_totals.get(cat, 0) + e["amount"]
 
     sorted_cats = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
-    category_summary = "、".join([f"{cat}¥{amt:.0f}" for cat, amt in sorted_cats[:5]])
+    sep = lc["category_separator"]
+    prefix = lc["currency_prefix"]
+    category_summary = sep.join(
+        [f"{cat}{prefix}{amt:.0f}" for cat, amt in sorted_cats[:5]]
+    )
 
-    prompt = f"""你是一个友善的个人财务助手。
-根据以下{month}消费数据，生成一段简洁友好的分析报告（150字以内）：
-
-总支出：¥{total:.0f}
-消费笔数：{len(expenses)}笔
-主要分类：{category_summary}
-
-要求：
-1. 指出最大支出类别
-2. 给出1-2条实用的省钱建议
-3. 语气友好鼓励
-4. 不要使用markdown格式
-只返回分析文字，不要任何其他内容。"""
+    prompt = lc["analyze_instruction"].format(
+        month=month,
+        total=total,
+        count=len(expenses),
+        category_summary=category_summary,
+    )
 
     response = client.chat.completions.create(
-        model="glm-5", messages=[{"role": "user", "content": prompt}]
+        model="glm-5",
+        messages=[{"role": "user", "content": prompt}]
     )
     result = response.choices[0].message.content
-    return {"analysis": result.strip() if result else "分析生成失败，请稍后重试"}
+    return {"analysis": result.strip() if result else lc["analyze_failed"]}
 
 
 @app.get("/stock-price")

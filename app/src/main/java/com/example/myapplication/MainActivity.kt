@@ -3,7 +3,7 @@ package com.example.myapplication
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -23,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.window.Dialog
@@ -45,6 +46,8 @@ import com.example.myapplication.ui.AccountPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
 import com.example.myapplication.ui.SyncViewModel
 import com.example.myapplication.ui.SyncState
+import com.example.myapplication.utils.LanguageManager
+import com.example.myapplication.ui.LanguageSelectionPage
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -52,7 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -76,6 +79,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply persisted locale before Activity creation so Compose starts in the right language.
+        LanguageManager.restoreLanguageOnStartup(this)
         super.onCreate(savedInstanceState)
 
         // 创建通知渠道
@@ -128,6 +133,12 @@ class MainActivity : ComponentActivity() {
             val themeMode by themePreferences.themeMode
                 .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
 
+            val currentLanguage by LanguageManager.languageFlow(this@MainActivity)
+                .collectAsStateWithLifecycle(initialValue = LanguageManager.AppLanguage.FOLLOW_SYSTEM)
+
+            val hasChosenLanguage by LanguageManager.hasChosenLanguageFlow(this@MainActivity)
+                .collectAsStateWithLifecycle(initialValue = true)  // true = 不显示选择页，避免闪屏
+
             val monthlyBudget by themePreferences.monthlyBudget
                 .collectAsStateWithLifecycle(initialValue = null)
 
@@ -164,6 +175,20 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(darkTheme = isDarkTheme) {
+                // 首次启动：显示语言选择页，选完后再进入正常流程
+                 if (!hasChosenLanguage) {
+                     LanguageSelectionPage(
+                         onLanguageConfirmed = { language ->
+                             lifecycleScope.launch {
+                                 LanguageManager.saveLanguage(this@MainActivity, language)
+                                 LanguageManager.markLanguageChosen(this@MainActivity)
+                                 // saveLanguage 内部会调用 AppCompatDelegate.setApplicationLocales()
+                                 // 这会触发 Activity 重建，语言选择页自动消失
+                             }
+                         }
+                     )
+                     return@MyApplicationTheme
+                 }
                 when (authState) {
                     AuthState.Loading -> {
                         Box(
@@ -188,7 +213,7 @@ class MainActivity : ComponentActivity() {
                                 isSyncing = syncState is SyncState.Syncing,
                                 syncMessage = when (val s = syncState) {
                                     is SyncState.Success -> s.message
-                                    is SyncState.Error -> "同步失败：${s.message}"
+                                    is SyncState.Error -> "${stringResource(R.string.account_sync_failed)}: ${s.message}"
                                     else -> ""
                                 },
                                 onNavigateBack = { showAccountPage = false }
@@ -198,6 +223,12 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
+                                currentLanguage = currentLanguage,
+                                onLanguageChange = { newLanguage ->
+                                    lifecycleScope.launch {
+                                        LanguageManager.saveLanguage(this@MainActivity, newLanguage)
+                                    }
+                                },
                                 currentBudget = monthlyBudget,
                                 currentAlertThreshold = expenseAlertThreshold,
                                 showPersistentNotification = showPersistentNotification,
@@ -217,6 +248,12 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
+                                currentLanguage = currentLanguage,
+                                onLanguageChange = { newLanguage ->
+                                    lifecycleScope.launch {
+                                        LanguageManager.saveLanguage(this@MainActivity, newLanguage)
+                                    }
+                                },
                                 currentBudget = monthlyBudget,
                                 currentAlertThreshold = expenseAlertThreshold,
                                 showPersistentNotification = showPersistentNotification,
@@ -279,6 +316,8 @@ fun MainScreen(
     viewModel: ExpenseViewModel,
     themePreferences: ThemePreferences,
     currentTheme: ThemeMode,
+    currentLanguage: LanguageManager.AppLanguage,
+    onLanguageChange: (LanguageManager.AppLanguage) -> Unit,
     currentBudget: Double?,
     currentAlertThreshold: Double?,
     showPersistentNotification: Boolean,
@@ -410,8 +449,8 @@ fun MainScreen(
                                 } else {
                                     Modifier
                                 },
-                                icon = { Icon(item.icon, contentDescription = item.title) },
-                                label = { Text(item.title) },
+                                icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                                label = { Text(stringResource(item.titleRes)) },
                                 selected = currentRoute == item.route,
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = PurpleStart,
@@ -446,7 +485,7 @@ fun MainScreen(
                         contentColor = Color.White,
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "记账")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.record_title))
                     }
                 }
             }
@@ -515,6 +554,8 @@ fun MainScreen(
             composable("settings") {
                 SettingsPage(
                     currentTheme = currentTheme,
+                    currentLanguage = currentLanguage,
+                    onLanguageChange = onLanguageChange,
                     onThemeChange = { newTheme ->
                         scope.launch {
                             themePreferences.setThemeMode(newTheme)
@@ -608,24 +649,24 @@ fun MainScreen(
                 1 -> if (fabRect != null && fabRect!!.width > 0f) {
                     TutorialStepInfo(
                         rect = fabRect,
-                        title = "快速记账",
-                        description = "点击这里随时随地记录你的开销。这是你管理财务的第一步。",
+                        title = stringResource(R.string.onboarding_step1_title),
+                        description = stringResource(R.string.onboarding_step1_desc),
                         cornerRadius = 50.dp
                     )
                 } else null
                 2 -> if (firstExpenseRect != null && firstExpenseRect!!.width > 0f) {
                     TutorialStepInfo(
                         rect = firstExpenseRect,
-                        title = "滑动管理记录",
-                        description = "向左滑动可以直接删除账单，向右滑动可以快速修改金额和分类。",
+                        title = stringResource(R.string.onboarding_step2_title),
+                        description = stringResource(R.string.onboarding_step2_desc),
                         cornerRadius = 16.dp
                     )
                 } else null
                 3 -> if (analysisTabRect != null && analysisTabRect!!.width > 0f) {
                     TutorialStepInfo(
                         rect = analysisTabRect,
-                        title = "AI 财务管家",
-                        description = "在这里查看 AI 为你生成的深度消费报告和存钱建议。",
+                        title = stringResource(R.string.onboarding_step3_title),
+                        description = stringResource(R.string.onboarding_step3_desc),
                         cornerRadius = 50.dp
                     )
                 } else null

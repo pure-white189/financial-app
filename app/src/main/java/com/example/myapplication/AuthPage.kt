@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -66,17 +67,17 @@ fun AuthPage(
     val isEmailFormatValid = Patterns.EMAIL_ADDRESS.matcher(email).matches()
     val emailError = when {
         !showValidationErrors -> null
-        email.isBlank() -> "Email cannot be empty"
-        !isEmailFormatValid -> "Please enter a valid email address"
+        email.isBlank() -> stringResource(R.string.auth_email_empty)
+        !isEmailFormatValid -> stringResource(R.string.auth_invalid_email)
         else -> null
     }
     val passwordError = if (showValidationErrors && password.length < 6) {
-        "Password must be at least 6 characters"
+        stringResource(R.string.auth_weak_password)
     } else {
         null
     }
     val confirmPasswordError = if (!isLoginMode && showValidationErrors && confirmPassword != password) {
-        "Passwords do not match"
+        stringResource(R.string.auth_password_mismatch)
     } else {
         null
     }
@@ -112,7 +113,7 @@ fun AuthPage(
                         IconButton(onClick = onDismiss) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Close"
+                                contentDescription = stringResource(R.string.common_close)
                             )
                         }
                     }
@@ -129,12 +130,12 @@ fun AuthPage(
             verticalArrangement = Arrangement.Center
         ) {
         Text(
-            text = "财务管家",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "登录后开始管理你的资产与消费",
+            text = stringResource(R.string.auth_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -147,7 +148,7 @@ fun AuthPage(
                 email = it.trim()
                 if (showValidationErrors) showValidationErrors = false
             },
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.auth_email_hint)) },
             singleLine = true,
             isError = emailError != null,
             enabled = !isLoading,
@@ -167,7 +168,7 @@ fun AuthPage(
                 password = it
                 if (showValidationErrors) showValidationErrors = false
             },
-            label = { Text("Password") },
+            label = { Text(stringResource(R.string.auth_password_hint)) },
             singleLine = true,
             enabled = !isLoading,
             isError = passwordError != null,
@@ -178,7 +179,7 @@ fun AuthPage(
             },
             trailingIcon = {
                 TextButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                    Text(if (isPasswordVisible) "Hide" else "Show")
+                    Text(if (isPasswordVisible) stringResource(R.string.common_hide) else stringResource(R.string.common_show))
                 }
             },
             supportingText = {
@@ -200,7 +201,7 @@ fun AuthPage(
                 enabled = !isLoading,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Forgot password?")
+                Text(stringResource(R.string.auth_forgot_password))
             }
         }
 
@@ -212,7 +213,7 @@ fun AuthPage(
                     confirmPassword = it
                     if (showValidationErrors) showValidationErrors = false
                 },
-                label = { Text("Confirm Password") },
+                label = { Text(stringResource(R.string.auth_confirm_password_hint)) },
                 singleLine = true,
                 enabled = !isLoading,
                 isError = confirmPasswordError != null,
@@ -223,7 +224,7 @@ fun AuthPage(
                 },
                 trailingIcon = {
                     TextButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
-                        Text(if (isConfirmPasswordVisible) "Hide" else "Show")
+                        Text(if (isConfirmPasswordVisible) stringResource(R.string.common_hide) else stringResource(R.string.common_show))
                     }
                 },
                 supportingText = {
@@ -256,7 +257,7 @@ fun AuthPage(
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isLoginMode) "Login" else "Register")
+            Text(if (isLoginMode) stringResource(R.string.auth_sign_in) else stringResource(R.string.auth_sign_up))
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -266,7 +267,7 @@ fun AuthPage(
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Continue with Google")
+            Text(stringResource(R.string.auth_google_sign_in))
         }
 
         if (!authErrorMessage.isNullOrBlank() && !isAuthErrorDismissed) {
@@ -290,7 +291,7 @@ fun AuthPage(
                     IconButton(onClick = { isAuthErrorDismissed = true }) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Dismiss error",
+                            contentDescription = stringResource(R.string.common_close),
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
@@ -306,7 +307,7 @@ fun AuthPage(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Reset email sent. Check your inbox.",
+                    text = stringResource(R.string.auth_reset_email_sent),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(12.dp)
                 )
@@ -326,9 +327,9 @@ fun AuthPage(
         ) {
             Text(
                 if (isLoginMode) {
-                    "Don't have an account? Register"
+                    "${stringResource(R.string.auth_no_account)} ${stringResource(R.string.auth_sign_up)}"
                 } else {
-                    "Already have an account? Login"
+                    "${stringResource(R.string.auth_has_account)} ${stringResource(R.string.auth_sign_in)}"
                 }
             )
         }
@@ -337,7 +338,7 @@ fun AuthPage(
             onClick = onContinueAsGuest,
             enabled = !isLoading
         ) {
-            Text("Continue without account")
+            Text(stringResource(R.string.auth_continue_guest))
         }
 
             if (isLoading) {
@@ -357,13 +358,13 @@ fun AuthPage(
                 showForgotPasswordDialog = false
                 authViewModel.clearResetEmailState()
             },
-            title = { Text("Reset Password") },
+            title = { Text(stringResource(R.string.auth_reset_password_title)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = resetEmailInput,
                         onValueChange = { resetEmailInput = it.trim() },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -385,7 +386,7 @@ fun AuthPage(
                         authViewModel.sendPasswordResetEmail(resetEmailInput)
                     }
                 ) {
-                    Text("Send reset email")
+                    Text(stringResource(R.string.auth_send_reset_email))
                 }
             },
             dismissButton = {
@@ -395,7 +396,7 @@ fun AuthPage(
                         authViewModel.clearResetEmailState()
                     }
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import com.example.myapplication.data.ThemeMode
+import com.example.myapplication.utils.LanguageManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,7 +41,9 @@ fun SettingsPage(
     onBack: () -> Unit = {},
     onNavigateToExport: () -> Unit = {},
     onNavigateToAccount: () -> Unit = {},
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    currentLanguage: LanguageManager.AppLanguage = LanguageManager.AppLanguage.FOLLOW_SYSTEM,
+    onLanguageChange: (LanguageManager.AppLanguage) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -54,22 +58,22 @@ fun SettingsPage(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
             }
             Text(
-                text = "设置",
+                text = stringResource(R.string.settings_title),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
         }
 
-        SettingsSectionTitle(title = "账号")
+        SettingsSectionTitle(title = stringResource(R.string.settings_account))
 
         SettingsCard {
             SettingsItem(
                 icon = Icons.Default.Person,
-                title = "账户与备份",
-                subtitle = "Account & Backup",
+                title = stringResource(R.string.account_title),
+                subtitle = stringResource(R.string.settings_account),
                 iconTint = MaterialTheme.colorScheme.primary,
                 onClick = {
                     if (isGuest) {
@@ -84,7 +88,7 @@ fun SettingsPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 外观设置 =====
-        SettingsSectionTitle(title = "外观")
+        SettingsSectionTitle(title = stringResource(R.string.settings_appearance))
 
         SettingsCard {
             // 深色模式
@@ -92,12 +96,18 @@ fun SettingsPage(
                 currentTheme = currentTheme,
                 onThemeChange = onThemeChange
             )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            // 语言选择
+             LanguageSettingItem(
+                 currentLanguage = currentLanguage,
+                 onLanguageChange = onLanguageChange
+             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
 // ===== 预算设置 =====
-        SettingsSectionTitle(title = "预算")
+        SettingsSectionTitle(title = stringResource(R.string.settings_budget))
 
         var showBudgetDialog by remember { mutableStateOf(false) }
         var showAlertDialog by remember { mutableStateOf(false) }
@@ -105,8 +115,8 @@ fun SettingsPage(
         SettingsCard {
             SettingsItem(
                 icon = Icons.Default.AccountBalance,
-                title = "月度预算",
-                subtitle = if (currentBudget != null) "¥${"%.2f".format(currentBudget)}" else "未设置",
+                title = stringResource(R.string.settings_monthly_budget),
+                subtitle = if (currentBudget != null) "¥${"%.2f".format(currentBudget)}" else stringResource(R.string.settings_not_set),
                 iconTint = MaterialTheme.colorScheme.secondary,
                 onClick = { showBudgetDialog = true }
             )
@@ -115,11 +125,11 @@ fun SettingsPage(
 
             SettingsItem(  // 添加消费提醒
                 icon = Icons.Default.NotificationsActive,
-                title = "消费提醒",
+                title = stringResource(R.string.settings_alert_threshold),
                 subtitle = if (currentAlertThreshold != null)
-                    "单笔超过 ¥${"%.0f".format(currentAlertThreshold)} 时提醒"
+                    stringResource(R.string.settings_alert_threshold_value, "¥${"%.0f".format(currentAlertThreshold)}")
                 else
-                    "未设置",
+                    stringResource(R.string.settings_not_set),
                 iconTint = MaterialTheme.colorScheme.tertiary,
                 onClick = { showAlertDialog = true }
             )
@@ -154,12 +164,12 @@ fun SettingsPage(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "常驻通知",
+                    text = stringResource(R.string.settings_persistent_notification),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "状态栏显示预算进度",
+                    text = stringResource(R.string.settings_persistent_notification_desc),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -199,12 +209,12 @@ fun SettingsPage(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "滑动删除确认",
+                    text = stringResource(R.string.settings_delete_confirm),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "防误触，滑动删除时弹出确认框",
+                    text = stringResource(R.string.settings_delete_confirm_desc),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -246,15 +256,15 @@ fun SettingsPage(
         Spacer(modifier = Modifier.height(16.dp))
 
 // ===== 数据管理 =====
-        SettingsSectionTitle(title = "数据管理")
+        SettingsSectionTitle(title = stringResource(R.string.settings_data))
 
         var showDataManagementDialog by remember { mutableStateOf(false) }
 
         SettingsCard {
             SettingsItem(
                 icon = Icons.Default.Storage,
-                title = "数据管理",
-                subtitle = "查看数据统计、清除数据",
+                title = stringResource(R.string.settings_data),
+                subtitle = stringResource(R.string.settings_data_desc),
                 iconTint = MaterialTheme.colorScheme.tertiary,
                 onClick = { showDataManagementDialog = true }
             )
@@ -271,13 +281,13 @@ fun SettingsPage(
         Spacer(modifier = Modifier.height(16.dp))
 
 // ===== 数据导出 =====
-        SettingsSectionTitle(title = "数据导出")
+        SettingsSectionTitle(title = stringResource(R.string.settings_export_csv))
 
         SettingsCard {
             SettingsItem(
                 icon = Icons.Default.FileDownload,
-                title = "导出数据",
-                subtitle = "导出消费记录为 CSV 格式",
+                title = stringResource(R.string.settings_export_csv),
+                subtitle = stringResource(R.string.settings_export_csv_desc),
                 iconTint = MaterialTheme.colorScheme.primary,
                 onClick = onNavigateToExport
             )
@@ -286,13 +296,13 @@ fun SettingsPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 关于 =====
-        SettingsSectionTitle(title = "关于")
+        SettingsSectionTitle(title = stringResource(R.string.settings_about))
 
         SettingsCard {
             SettingsItem(
                 icon = Icons.Default.Info,
-                title = "应用版本",
-                subtitle = "1.0.0",
+                title = stringResource(R.string.settings_version),
+                subtitle = BuildConfig.VERSION_NAME,
                 showArrow = false
             )
 
@@ -300,8 +310,8 @@ fun SettingsPage(
 
             SettingsItem(
                 icon = Icons.Default.Code,
-                title = "技术栈",
-                subtitle = "Kotlin + Jetpack Compose + Room",
+                title = stringResource(R.string.settings_tech_stack),
+                subtitle = stringResource(R.string.settings_tech_stack_value),
                 showArrow = false
             )
         }
@@ -399,9 +409,9 @@ fun ThemeSettingItem(
     var expanded by remember { mutableStateOf(false) }
 
     val themeLabel = when (currentTheme) {
-        ThemeMode.LIGHT -> "浅色模式"
-        ThemeMode.DARK -> "深色模式"
-        ThemeMode.SYSTEM -> "跟随系统"
+        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+        ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
     }
 
     val themeIcon = when (currentTheme) {
@@ -438,7 +448,7 @@ fun ThemeSettingItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "深色模式",
+                    text = stringResource(R.string.settings_theme),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -463,9 +473,9 @@ fun ThemeSettingItem(
             modifier = Modifier.fillMaxWidth(0.6f)
         ) {
             listOf(
-                ThemeMode.LIGHT to Pair(Icons.Default.LightMode, "浅色模式"),
-                ThemeMode.DARK to Pair(Icons.Default.DarkMode, "深色模式"),
-                ThemeMode.SYSTEM to Pair(Icons.Default.SettingsBrightness, "跟随系统")
+                ThemeMode.LIGHT to Pair(Icons.Default.LightMode, stringResource(R.string.settings_theme_light)),
+                ThemeMode.DARK to Pair(Icons.Default.DarkMode, stringResource(R.string.settings_theme_dark)),
+                ThemeMode.SYSTEM to Pair(Icons.Default.SettingsBrightness, stringResource(R.string.settings_theme_system))
             ).forEach { (mode, pair) ->
                 val (icon, label) = pair
                 DropdownMenuItem(
@@ -515,11 +525,11 @@ fun BudgetSettingDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("设置月度预算") },
+        title = { Text(stringResource(R.string.settings_budget_dialog_title)) },
         text = {
             Column {
                 Text(
-                    text = "设置每月的总支出预算，帮助您控制消费",
+                    text = stringResource(R.string.settings_budget_dialog_desc),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -532,14 +542,14 @@ fun BudgetSettingDialog(
                         budgetText = it
                         showError = false
                     },
-                    label = { Text("预算金额") },
-                    placeholder = { Text("例如：3000") },
+                    label = { Text(stringResource(R.string.settings_monthly_budget)) },
+                    placeholder = { Text(stringResource(R.string.settings_budget_placeholder)) },
                     leadingIcon = { Text("¥", fontSize = 20.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     isError = showError,
                     supportingText = if (showError) {
-                        { Text("请输入有效的金额", color = MaterialTheme.colorScheme.error) }
+                        { Text(stringResource(R.string.common_enter_valid_amount), color = MaterialTheme.colorScheme.error) }
                     } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -547,7 +557,7 @@ fun BudgetSettingDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "提示：留空表示不设置预算",
+                    text = stringResource(R.string.settings_budget_dialog_hint),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -568,12 +578,12 @@ fun BudgetSettingDialog(
                     }
                 }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -602,7 +612,7 @@ fun DataManagementDialog(
             .fillMaxWidth(0.9f)
             .padding(16.dp),
         title = {
-            Text("数据管理", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleLarge)
         },
         text = {
             Column(
@@ -622,7 +632,7 @@ fun DataManagementDialog(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "数据统计",
+                            text = stringResource(R.string.settings_data_stats),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.labelLarge
@@ -635,17 +645,17 @@ fun DataManagementDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             DataStatItem(
-                                label = "消费记录",
+                                label = stringResource(R.string.settings_data_stat_expenses),
                                 value = "${expenses.size}",
                                 icon = Icons.Default.Receipt
                             )
                             DataStatItem(
-                                label = "快速模板",
+                                label = stringResource(R.string.settings_data_stat_templates),
                                 value = "${templates.size}",
                                 icon = Icons.Default.Bookmark
                             )
                             DataStatItem(
-                                label = "自定义类别",
+                                label = stringResource(R.string.settings_data_stat_custom_categories),
                                 value = "$customCategoriesCount",
                                 icon = Icons.Default.Category
                             )
@@ -668,7 +678,7 @@ fun DataManagementDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "危险操作",
+                        text = stringResource(R.string.settings_danger_zone),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
@@ -676,7 +686,7 @@ fun DataManagementDialog(
                 }
 
                 Text(
-                    text = "以下操作无法撤销，请谨慎操作",
+                    text = stringResource(R.string.settings_data_irreversible_warning),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -697,7 +707,7 @@ fun DataManagementDialog(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("清除所有消费记录 (${expenses.size})")
+                    Text(stringResource(R.string.settings_clear_expenses_button, expenses.size))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -716,13 +726,13 @@ fun DataManagementDialog(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("恢复出厂设置")
+                    Text(stringResource(R.string.settings_clear_data))
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text(stringResource(R.string.common_close))
             }
         }
     )
@@ -738,9 +748,9 @@ fun DataManagementDialog(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("清除所有消费记录？") },
+            title = { Text(stringResource(R.string.settings_clear_expenses_confirm_title)) },
             text = {
-                Text("将删除所有 ${expenses.size} 条消费记录，但保留类别和模板。\n\n此操作无法撤销！")
+                Text(stringResource(R.string.settings_clear_expenses_confirm_message, expenses.size))
             },
             confirmButton = {
                 TextButton(
@@ -755,12 +765,12 @@ fun DataManagementDialog(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("确定删除")
+                    Text(stringResource(R.string.common_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearExpensesConfirm = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -777,17 +787,17 @@ fun DataManagementDialog(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("恢复出厂设置？") },
+            title = { Text(stringResource(R.string.settings_clear_data_confirm_title)) },
             text = {
                 Column {
-                    Text("将删除以下所有数据：")
+                    Text(stringResource(R.string.settings_clear_data_confirm_intro))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("• ${expenses.size} 条消费记录")
-                    Text("• ${templates.size} 个快速模板")
-                    Text("• $customCategoriesCount 个自定义类别")
+                    Text(stringResource(R.string.settings_clear_data_expenses_line, expenses.size))
+                    Text(stringResource(R.string.settings_clear_data_templates_line, templates.size))
+                    Text(stringResource(R.string.settings_clear_data_categories_line, customCategoriesCount))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "默认类别将保留。\n\n此操作无法撤销！",
+                        stringResource(R.string.settings_clear_data_confirm_footer),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -806,12 +816,12 @@ fun DataManagementDialog(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("确定恢复")
+                    Text(stringResource(R.string.common_confirm))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllConfirm = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -866,11 +876,11 @@ fun ExpenseAlertDialog(
                 tint = MaterialTheme.colorScheme.tertiary
             )
         },
-        title = { Text("设置消费提醒") },
+        title = { Text(stringResource(R.string.settings_alert_threshold)) },
         text = {
             Column {
                 Text(
-                    text = "当单笔消费超过设定金额时，将弹出确认对话框",
+                    text = stringResource(R.string.settings_alert_threshold_hint),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -883,14 +893,14 @@ fun ExpenseAlertDialog(
                         thresholdText = it
                         showError = false
                     },
-                    label = { Text("提醒金额") },
-                    placeholder = { Text("例如：500") },
+                    label = { Text(stringResource(R.string.settings_alert_amount_label)) },
+                    placeholder = { Text(stringResource(R.string.settings_alert_placeholder)) },
                     leadingIcon = { Text("¥", fontSize = 20.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     isError = showError,
                     supportingText = if (showError) {
-                        { Text("请输入有效的金额", color = MaterialTheme.colorScheme.error) }
+                        { Text(stringResource(R.string.common_enter_valid_amount), color = MaterialTheme.colorScheme.error) }
                     } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -918,7 +928,7 @@ fun ExpenseAlertDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "💡 提示：留空表示不设置提醒",
+                    text = stringResource(R.string.settings_alert_hint),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -939,13 +949,108 @@ fun ExpenseAlertDialog(
                     }
                 }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
+}
+
+@Composable
+fun LanguageSettingItem(
+    currentLanguage: LanguageManager.AppLanguage,
+    onLanguageChange: (LanguageManager.AppLanguage) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 图标
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_language),
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = currentLanguage.displayName,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // 语言选择下拉菜单
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth(0.75f)
+        ) {
+            LanguageManager.AppLanguage.entries.forEach { language ->
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = language.displayName,
+                                fontWeight = if (currentLanguage == language)
+                                    FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (currentLanguage == language)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                            if (currentLanguage == language) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        onLanguageChange(language)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }

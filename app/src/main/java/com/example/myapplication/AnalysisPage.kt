@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,8 +59,14 @@ fun AnalysisPage(
     isGuest: Boolean = false,
     onNavigateToLogin: (() -> Unit)? = null
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val aiLang = context.getString(R.string.ai_prompt_language)
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val scope = rememberCoroutineScope()
+    val thisMonthLabel = stringResource(R.string.home_this_month)
+    val categoryOtherLabel = stringResource(R.string.category_other)
+    val aiFeatureLockedLabel = stringResource(R.string.ai_feature_locked)
+    val aiAnalysisErrorLabel = stringResource(R.string.analysis_ai_error)
     var aiAnalysis by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
@@ -129,7 +136,7 @@ fun AnalysisPage(
 
     val runAiAnalysis: () -> Unit = runAiAnalysis@{
         if (isGuest) {
-            aiAnalysis = "Guest mode does not support AI analysis"
+            aiAnalysis = aiFeatureLockedLabel
             return@runAiAnalysis
         }
         if (!canGenerateAnalysis) {
@@ -138,12 +145,12 @@ fun AnalysisPage(
         scope.launch {
             isAnalyzing = true
             val summaries = thisMonthExpenses.map { expense ->
-                val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "其他"
+                val categoryName = categories.find { it.id == expense.categoryId }?.name ?: categoryOtherLabel
                 AiExpenseParser.ExpenseSummary(amount = expense.amount, category = categoryName)
             }
-            val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = "本月")
+            val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
             result.onSuccess { analysis -> aiAnalysis = analysis }
-            result.onFailure { aiAnalysis = "分析生成失败，请检查网络连接" }
+            result.onFailure { aiAnalysis = aiAnalysisErrorLabel }
             isAnalyzing = false
         }
     }
@@ -158,7 +165,7 @@ fun AnalysisPage(
             item {
                 Column {
                     Text(
-                        text = "消费分析",
+                        text = stringResource(R.string.analysis_title),
                         fontSize = 28.sp,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold
@@ -206,14 +213,14 @@ fun AnalysisPage(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = PurpleStart)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("AI 深度消费报告", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.analysis_ai_entry_title), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     if (isGuest) {
-                                        "Guest mode cannot use AI report"
+                                        stringResource(R.string.ai_feature_locked)
                                     } else {
-                                        "让 AI 为你诊断本月的财务健康状况"
+                                        stringResource(R.string.analysis_ai_entry_subtitle)
                                     },
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -221,7 +228,7 @@ fun AnalysisPage(
 
                                 if (isGuest && onNavigateToLogin != null) {
                                     TextButton(onClick = onNavigateToLogin) {
-                                        Text("Login")
+                                        Text(stringResource(R.string.ai_go_login))
                                     }
                                 }
                             }
@@ -242,7 +249,7 @@ fun AnalysisPage(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    title = "本月支出",
+                    title = stringResource(R.string.analysis_total_spent),
                     value = "¥%.2f".format(monthlyTotal),
                     icon = Icons.Default.ShoppingCart,
                     color = PurpleStart,
@@ -250,7 +257,7 @@ fun AnalysisPage(
                 )
 
                 StatCard(
-                    title = "消费笔数",
+                    title = stringResource(R.string.analysis_transaction_count),
                     value = "${thisMonthExpenses.size}",
                     icon = Icons.Default.Receipt,
                     color = PurpleEnd,
@@ -267,7 +274,7 @@ fun AnalysisPage(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "预算概览",
+                            text = stringResource(R.string.analysis_budget_overview),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -284,19 +291,19 @@ fun AnalysisPage(
                             Spacer(Modifier.width(24.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 BudgetStatRow(
-                                    label = "已支出",
+                                    label = stringResource(R.string.analysis_budget_spent_label),
                                     value = "¥%.2f".format(monthlyTotal),
                                     color = ExpenseRed
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 BudgetStatRow(
-                                    label = "总预算",
+                                    label = stringResource(R.string.analysis_budget_total_label),
                                     value = "¥%.2f".format(monthlyBudget),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 BudgetStatRow(
-                                    label = "剩余",
+                                    label = stringResource(R.string.analysis_budget_remaining_label),
                                     value = "¥%.2f".format(monthlyBudget - monthlyTotal),
                                     color = if (monthlyBudget > monthlyTotal) IncomeGreen else ExpenseRed
                                 )
@@ -313,7 +320,7 @@ fun AnalysisPage(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    title = "日均消费",
+                    title = stringResource(R.string.analysis_avg_daily),
                     value = "¥%.0f".format(
                         if (thisMonthExpenses.isNotEmpty())
                             monthlyTotal / Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
@@ -325,7 +332,7 @@ fun AnalysisPage(
                 )
 
                 StatCard(
-                    title = "最大类别",
+                    title = stringResource(R.string.analysis_largest_category),
                     value = categoryStats.firstOrNull()?.category?.name ?: "-",
                     icon = Icons.Default.Category,
                     color = ExpenseRed,
@@ -344,7 +351,7 @@ fun AnalysisPage(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "最近7天趋势",
+                        text = stringResource(R.string.analysis_trend_title),
                         fontSize = 18.sp,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
@@ -356,7 +363,7 @@ fun AnalysisPage(
                         DailyTrendChart(dailyStats)
                     } else {
                         Text(
-                            text = "暂无数据",
+                            text = stringResource(R.string.common_no_data),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(32.dp)
                         )
@@ -375,7 +382,7 @@ fun AnalysisPage(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "类别消费排行",
+                        text = stringResource(R.string.analysis_category_rank_title),
                         fontSize = 18.sp,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
@@ -385,7 +392,7 @@ fun AnalysisPage(
 
                     if (categoryStats.isEmpty()) {
                         Text(
-                            text = "暂无数据",
+                            text = stringResource(R.string.common_no_data),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(32.dp)
                         )
@@ -425,7 +432,7 @@ fun AnalysisPage(
                         tint = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("查看股票持仓", color = Color.White)
+                    Text(stringResource(R.string.analysis_view_stock), color = Color.White)
                 }
             }
         }
@@ -453,7 +460,7 @@ fun AnalysisPage(
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("AI 消费洞察", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.analysis_ai_entry_title), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -468,7 +475,7 @@ fun AnalysisPage(
                             CircularProgressIndicator(color = PurpleStart, modifier = Modifier.size(48.dp))
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "AI 正在分析你的账单...",
+                                stringResource(R.string.analysis_ai_loading),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -502,7 +509,7 @@ fun AnalysisPage(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("重新分析")
+                                Text(stringResource(R.string.analysis_ai_regenerate))
                             }
 
                             Button(
@@ -516,20 +523,24 @@ fun AnalysisPage(
                                     contentColor = MaterialTheme.colorScheme.onSurface
                                 )
                             ) {
-                                Text("完成阅读")
+                                Text(stringResource(R.string.common_done))
                             }
                         }
                     } else {
                         if (thisMonthExpenses.isEmpty()) {
                             Text(
-                                text = "本月还没有消费记录。建议先记几笔账，DeepSeek 才能为你生成准确的财务诊断报告哦！",
+                                text = stringResource(R.string.analysis_ai_sheet_empty_message),
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
                             Text(
-                                text = "将基于本月已记录的 ${thisMonthExpenses.size} 笔支出（共 ¥%.2f）生成专属的财务诊断报告。AI 会帮你发现潜在的浪费，并提供优化建议。".format(monthlyTotal),
+                                text = stringResource(
+                                    R.string.analysis_ai_sheet_ready_message,
+                                    thisMonthExpenses.size,
+                                    String.format("%.2f", monthlyTotal)
+                                ),
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -549,7 +560,7 @@ fun AnalysisPage(
                         ) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("开始生成报告", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.analysis_ai_generate), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -673,12 +684,12 @@ fun CategoryStatItem(stat: CategoryStat) {
 
             Column {
                 Text(
-                    text = stat.category?.name ?: "未知",
+                    text = stat.category?.name ?: stringResource(R.string.analysis_unknown_category),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "${stat.count} 笔消费",
+                    text = stringResource(R.string.analysis_expense_count, stat.count),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -775,7 +786,7 @@ fun BudgetDonutChart(
                 color = color
             )
             Text(
-                text = "已使用",
+                text = stringResource(R.string.analysis_budget_used),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

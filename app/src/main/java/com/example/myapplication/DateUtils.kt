@@ -1,12 +1,13 @@
 package com.example.myapplication
 
+import android.content.Context
 import java.text.SimpleDateFormat
 import java.util.*
 
 object DateUtils {
 
     // 格式化日期用于显示
-    fun formatDateForDisplay(timestamp: Long): String {
+    fun formatDateForDisplay(context: Context, timestamp: Long): String {
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply {
             timeInMillis = timestamp
@@ -14,22 +15,22 @@ object DateUtils {
 
         return when {
             isSameDay(today, selectedCal) -> {
-                "今天 ${SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(timestamp))}"
+                "${context.getString(R.string.date_today)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
             }
             isYesterday(today, selectedCal) -> {
-                "昨天 ${SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(timestamp))}"
+                "${context.getString(R.string.date_yesterday)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
             }
             isThisYear(selectedCal) -> {
-                SimpleDateFormat("MM月dd日 HH:mm", Locale.CHINA).format(Date(timestamp))
+                SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault()).format(Date(timestamp))
             }
             else -> {
-                SimpleDateFormat("yyyy年MM月dd日", Locale.CHINA).format(Date(timestamp))
+                SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(Date(timestamp))
             }
         }
     }
 
     // 格式化日期（简短版本，用于列表）
-    fun formatDate(timestamp: Long): String {
+    fun formatDate(context: Context, timestamp: Long): String {
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply {
             timeInMillis = timestamp
@@ -37,16 +38,16 @@ object DateUtils {
 
         return when {
             isSameDay(today, selectedCal) -> {
-                "今天 ${SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(timestamp))}"
+                "${context.getString(R.string.date_today)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
             }
             isYesterday(today, selectedCal) -> {
-                "昨天 ${SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(timestamp))}"
+                "${context.getString(R.string.date_yesterday)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
             }
             isThisYear(selectedCal) -> {
-                SimpleDateFormat("MM月dd日 HH:mm", Locale.CHINA).format(Date(timestamp))
+                SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault()).format(Date(timestamp))
             }
             else -> {
-                SimpleDateFormat("yyyy年MM月dd日", Locale.CHINA).format(Date(timestamp))
+                SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(Date(timestamp))
             }
         }
     }

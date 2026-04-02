@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +30,7 @@ fun EditExpensePage(
     viewModel: ExpenseViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
@@ -48,10 +51,10 @@ fun EditExpensePage(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("编辑消费记录") },
+                title = { Text(stringResource(R.string.record_edit_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -59,7 +62,7 @@ fun EditExpensePage(
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "删除",
+                            contentDescription = stringResource(R.string.common_delete),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -77,8 +80,8 @@ fun EditExpensePage(
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it },
-                label = { Text("金额") },
-                placeholder = { Text("请输入金额") },
+                label = { Text(stringResource(R.string.debt_amount_hint)) },
+                placeholder = { Text(stringResource(R.string.record_amount_hint)) },
                 leadingIcon = { Text("¥", fontSize = 20.sp) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
@@ -102,19 +105,19 @@ fun EditExpensePage(
                 ) {
                     Column {
                         Text(
-                            text = "日期时间",
+                            text = stringResource(R.string.record_date),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = DateUtils.formatDateForDisplay(selectedDate),
+                            text = DateUtils.formatDateForDisplay(context, selectedDate),
                             fontSize = 16.sp
                         )
                     }
                     Icon(
                         imageVector = Icons.Default.DateRange,
-                        contentDescription = "选择日期",
+                        contentDescription = stringResource(R.string.record_date),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -124,7 +127,7 @@ fun EditExpensePage(
 
             // 类别选择
             Text(
-                text = "类别",
+                text = stringResource(R.string.record_category),
                 fontSize = 16.sp,
                 style = MaterialTheme.typography.titleMedium
             )
@@ -152,8 +155,8 @@ fun EditExpensePage(
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("备注（可选）") },
-                placeholder = { Text("添加备注说明") },
+                label = { Text(stringResource(R.string.record_note_hint)) },
+                placeholder = { Text(stringResource(R.string.record_note_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3
             )
@@ -184,7 +187,7 @@ fun EditExpensePage(
                         amount.toDoubleOrNull()!! > 0 &&
                         selectedCategory != null
             ) {
-                Text("保存修改", fontSize = 18.sp)
+                Text(stringResource(R.string.record_save_changes), fontSize = 18.sp)
             }
         }
     }
@@ -205,8 +208,8 @@ fun EditExpensePage(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("确认删除") },
-            text = { Text("确定要删除这条消费记录吗？") },
+            title = { Text(stringResource(R.string.debt_delete_confirm)) },
+            text = { Text(stringResource(R.string.record_delete_expense_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -216,12 +219,12 @@ fun EditExpensePage(
                         }
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

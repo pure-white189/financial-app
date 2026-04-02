@@ -107,27 +107,27 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         }
     }
 
-    // 恢复默认类别
+    // 恢复默认类别（key 化版本）
     fun restoreDefaultCategories() {
         viewModelScope.launch {
             val defaultCategories = listOf(
-                Category(name = "餐饮", iconName = "restaurant", color = "#FF5722", isDefault = true),
-                Category(name = "交通", iconName = "directions_car", color = "#2196F3", isDefault = true),
-                Category(name = "购物", iconName = "shopping_cart", color = "#E91E63", isDefault = true),
-                Category(name = "娱乐", iconName = "movie", color = "#9C27B0", isDefault = true),
-                Category(name = "医疗", iconName = "local_hospital", color = "#F44336", isDefault = true),
-                Category(name = "教育", iconName = "school", color = "#00BCD4", isDefault = true),
-                Category(name = "居住", iconName = "home", color = "#FF9800", isDefault = true),
-                Category(name = "其他", iconName = "more_horiz", color = "#607D8B", isDefault = true)
+                Category(name = "food",          categoryKey = "food",          iconName = "restaurant",     color = "#FF5722", isDefault = true),
+                Category(name = "transport",     categoryKey = "transport",     iconName = "directions_car", color = "#2196F3", isDefault = true),
+                Category(name = "shopping",      categoryKey = "shopping",      iconName = "shopping_cart",  color = "#E91E63", isDefault = true),
+                Category(name = "entertainment", categoryKey = "entertainment", iconName = "movie",           color = "#9C27B0", isDefault = true),
+                Category(name = "health",        categoryKey = "health",        iconName = "local_hospital",  color = "#F44336", isDefault = true),
+                Category(name = "education",     categoryKey = "education",     iconName = "school",          color = "#00BCD4", isDefault = true),
+                Category(name = "housing",       categoryKey = "housing",       iconName = "home",            color = "#FF9800", isDefault = true),
+                Category(name = "other",         categoryKey = "other",         iconName = "more_horiz",      color = "#607D8B", isDefault = true),
             )
 
-            // 获取现有类别名称
-            val existingCategories = repository.getAllCategories().first()
-            val existingNames = existingCategories.map { it.name }.toSet()
+            // 用 categoryKey 查重，避免重复插入（原来用 name 查重，key 化后 name 是英文 key 字符串）
+            val existingKeys = repository.getAllCategories().first()
+                .map { it.categoryKey }
+                .toSet()
 
-            // 只添加不存在的默认类别
             defaultCategories.forEach { category ->
-                if (category.name !in existingNames) {
+                if (category.categoryKey !in existingKeys) {
                     repository.insertCategory(category)
                 }
             }

@@ -58,6 +58,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +78,7 @@ private const val LOAN_TYPE_OUT = "借出"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebtPage(viewModel: ExpenseViewModel) {
+    val context = LocalContext.current
     val loans by viewModel.loans.collectAsState(initial = emptyList())
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -95,7 +98,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("借贷管理") }
+                title = { Text(stringResource(R.string.debt_title)) }
             )
         },
         floatingActionButton = {
@@ -110,7 +113,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     onClick = { showAddDialog = true },
                     containerColor = Color.Transparent
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "添加借贷", tint = Color.White)
+                    Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.debt_add_record), tint = Color.White)
                 }
             }
         }
@@ -131,7 +134,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     colors = CardDefaults.cardColors(containerColor = PurpleStart.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "待收总额", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.debt_total_lend), fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidOut),
                             fontSize = 20.sp,
@@ -146,7 +149,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     colors = CardDefaults.cardColors(containerColor = ExpenseRed.copy(alpha = 0.15f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "待还总额", fontSize = 13.sp)
+                        Text(text = stringResource(R.string.debt_total_borrow), fontSize = 13.sp)
                         Text(
                             text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidIn),
                             fontSize = 20.sp,
@@ -159,7 +162,11 @@ fun DebtPage(viewModel: ExpenseViewModel) {
             Spacer(modifier = Modifier.height(12.dp))
 
             TabRow(selectedTabIndex = selectedTabIndex) {
-                listOf("全部", LOAN_TYPE_OUT, LOAN_TYPE_IN).forEachIndexed { index, title ->
+                listOf(
+                    stringResource(R.string.home_filter_all),
+                    stringResource(R.string.debt_lend),
+                    stringResource(R.string.debt_borrow)
+                ).forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
@@ -184,13 +191,13 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "还没有借贷记录",
+                            text = stringResource(R.string.debt_no_records),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "点击右下角按钮添加第一条借贷记录",
+                            text = stringResource(R.string.debt_empty_hint),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -202,7 +209,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("添加借贷")
+                            Text(stringResource(R.string.debt_add_record))
                         }
                     }
                 }
@@ -236,9 +243,9 @@ fun DebtPage(viewModel: ExpenseViewModel) {
     if (deleteTargetLoan != null) {
         AlertDialog(
             onDismissRequest = { deleteTargetLoan = null },
-            title = { Text("删除借贷记录") },
+            title = { Text(stringResource(R.string.debt_delete_confirm)) },
             text = {
-                Text("确定要删除与「${deleteTargetLoan!!.personName}」的借贷记录吗？此操作无法撤销。")
+                Text(stringResource(R.string.debt_delete_message_with_name, deleteTargetLoan!!.personName))
             },
             confirmButton = {
                 TextButton(
@@ -248,14 +255,14 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     }
                 ) {
                     Text(
-                        text = "删除",
+                        text = stringResource(R.string.common_delete),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTargetLoan = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -268,6 +275,7 @@ private fun LoanItemCard(
     onMarkAsRepaid: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val isLoanOut = loan.type == LOAN_TYPE_OUT
     val isOverdue = !loan.isRepaid && loan.dueDate != null && loan.dueDate < System.currentTimeMillis()
     val amountColor = if (isLoanOut) IncomeGreen else ExpenseRed
@@ -297,14 +305,14 @@ private fun LoanItemCard(
                     Column {
                         Text(text = loan.personName, fontSize = 18.sp)
                         Text(
-                            text = DateUtils.formatDate(loan.date),
+                            text = DateUtils.formatDate(context, loan.date),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         loan.dueDate?.let {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "截止: ${DateUtils.formatDate(it)}",
+                                    text = stringResource(R.string.debt_due_date_value, DateUtils.formatDate(context, it)),
                                     fontSize = 12.sp,
                                     color = if (isOverdue) {
                                         MaterialTheme.colorScheme.error
@@ -315,7 +323,7 @@ private fun LoanItemCard(
                                 if (isOverdue) {
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "已逾期",
+                                        text = stringResource(R.string.debt_overdue),
                                         fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.error
                                     )
@@ -339,7 +347,7 @@ private fun LoanItemCard(
                         color = amountColor
                     )
                     Text(
-                        text = if (loan.isRepaid) "已还" else "未还",
+                        text = if (loan.isRepaid) stringResource(R.string.debt_repaid) else stringResource(R.string.debt_unrepaid),
                         fontSize = 12.sp,
                         color = if (loan.isRepaid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
@@ -362,7 +370,7 @@ private fun LoanItemCard(
                             tint = IncomeGreen
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("标记已还", color = IncomeGreen)
+                        Text(stringResource(R.string.debt_mark_repaid), color = IncomeGreen)
                     }
                 }
 
@@ -373,7 +381,7 @@ private fun LoanItemCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("删除")
+                    Text(stringResource(R.string.common_delete))
                 }
             }
         }
@@ -385,6 +393,7 @@ private fun AddLoanDialog(
     onDismiss: () -> Unit,
     onConfirm: (Loan) -> Unit
 ) {
+    val context = LocalContext.current
     var type by remember { mutableStateOf(LOAN_TYPE_OUT) }
     var personName by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
@@ -397,19 +406,19 @@ private fun AddLoanDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加借贷记录") },
+        title = { Text(stringResource(R.string.debt_add_record)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = type == LOAN_TYPE_OUT,
                         onClick = { type = LOAN_TYPE_OUT },
-                        label = { Text(LOAN_TYPE_OUT) }
+                        label = { Text(stringResource(R.string.debt_lend)) }
                     )
                     FilterChip(
                         selected = type == LOAN_TYPE_IN,
                         onClick = { type = LOAN_TYPE_IN },
-                        label = { Text(LOAN_TYPE_IN) }
+                        label = { Text(stringResource(R.string.debt_borrow)) }
                     )
                 }
 
@@ -419,7 +428,7 @@ private fun AddLoanDialog(
                         personName = it
                         showError = false
                     },
-                    label = { Text("对方姓名") },
+                    label = { Text(stringResource(R.string.debt_person_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -430,7 +439,7 @@ private fun AddLoanDialog(
                         amountText = it
                         showError = false
                     },
-                    label = { Text("金额") },
+                    label = { Text(stringResource(R.string.debt_amount_hint)) },
                     prefix = { Text("¥") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -445,7 +454,7 @@ private fun AddLoanDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("日期：${DateUtils.formatDate(date)}")
+                    Text(stringResource(R.string.debt_date_value, DateUtils.formatDate(context, date)))
                 }
 
                 OutlinedButton(
@@ -455,7 +464,9 @@ private fun AddLoanDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val dueDateLabel = dueDate?.let { "截止日期：${DateUtils.formatDate(it)}" } ?: "截止日期：未设置"
+                    val dueDateLabel = dueDate?.let {
+                        stringResource(R.string.debt_due_date_value, DateUtils.formatDate(context, it))
+                    } ?: stringResource(R.string.debt_due_date_unset)
                     Text(dueDateLabel)
                 }
 
@@ -464,20 +475,20 @@ private fun AddLoanDialog(
                         onClick = { dueDate = null },
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("清除截止日期")
+                        Text(stringResource(R.string.debt_clear_due_date))
                     }
                 }
 
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("备注（可选）") },
+                    label = { Text(stringResource(R.string.debt_note_hint)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 if (showError) {
                     Text(
-                        text = "请填写对方姓名并输入大于 0 的金额",
+                        text = stringResource(R.string.debt_validation_error),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -505,12 +516,12 @@ private fun AddLoanDialog(
                     )
                 }
             ) {
-                Text("保存")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -572,7 +583,7 @@ fun DueDatePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择截止日期") },
+        title = { Text(stringResource(R.string.debt_select_due_date)) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth(0.95f),
         text = {
@@ -597,7 +608,7 @@ fun DueDatePickerDialog(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("下周", fontSize = 12.sp)
+                        Text(stringResource(R.string.debt_next_week), fontSize = 12.sp)
                     }
 
                     OutlinedButton(
@@ -612,7 +623,7 @@ fun DueDatePickerDialog(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("下个月", fontSize = 12.sp)
+                        Text(stringResource(R.string.debt_next_month), fontSize = 12.sp)
                     }
                 }
 
@@ -623,7 +634,7 @@ fun DueDatePickerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "时间",
+                    text = stringResource(R.string.record_time),
                     fontSize = 14.sp,
                     style = MaterialTheme.typography.labelMedium
                 )
@@ -686,7 +697,7 @@ fun DueDatePickerDialog(
                 if (showError) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "截止日期不能早于今天",
+                        text = stringResource(R.string.debt_due_date_error),
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp
                     )
@@ -720,12 +731,12 @@ fun DueDatePickerDialog(
                     }
                 }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

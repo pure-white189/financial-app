@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.content.Context
+import android.text.format.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -15,16 +16,16 @@ object DateUtils {
 
         return when {
             isSameDay(today, selectedCal) -> {
-                "${context.getString(R.string.date_today)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+                "${context.getString(R.string.date_today)} ${formatWithSkeleton(timestamp, "jm")}" 
             }
             isYesterday(today, selectedCal) -> {
-                "${context.getString(R.string.date_yesterday)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+                "${context.getString(R.string.date_yesterday)} ${formatWithSkeleton(timestamp, "jm")}" 
             }
             isThisYear(selectedCal) -> {
-                SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault()).format(Date(timestamp))
+                formatWithSkeleton(timestamp, "MMMdjm")
             }
             else -> {
-                SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(Date(timestamp))
+                formatWithSkeleton(timestamp, "yMMMdjm")
             }
         }
     }
@@ -38,18 +39,25 @@ object DateUtils {
 
         return when {
             isSameDay(today, selectedCal) -> {
-                "${context.getString(R.string.date_today)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+                "${context.getString(R.string.date_today)} ${formatWithSkeleton(timestamp, "jm")}" 
             }
             isYesterday(today, selectedCal) -> {
-                "${context.getString(R.string.date_yesterday)} ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+                "${context.getString(R.string.date_yesterday)} ${formatWithSkeleton(timestamp, "jm")}" 
             }
             isThisYear(selectedCal) -> {
-                SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault()).format(Date(timestamp))
+                formatWithSkeleton(timestamp, "MMMdjm")
             }
             else -> {
-                SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(Date(timestamp))
+                formatWithSkeleton(timestamp, "yMMMdjm")
             }
         }
+    }
+
+    // Use locale skeletons so date order/separators follow current app language.
+    private fun formatWithSkeleton(timestamp: Long, skeleton: String): String {
+        val locale = Locale.getDefault()
+        val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
+        return SimpleDateFormat(pattern, locale).format(Date(timestamp))
     }
 
     private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {

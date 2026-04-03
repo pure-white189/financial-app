@@ -41,6 +41,7 @@ import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
 import com.example.myapplication.utils.displayName
+import com.example.myapplication.utils.displayNote
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
@@ -171,7 +172,7 @@ fun RecordPage(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = template.name,
+                                    text = template.displayName(category),
                                     fontSize = 10.sp,
                                     maxLines = 1
                                 )
@@ -790,7 +791,13 @@ fun RecordPage(
             onDismissRequest = { templateToDelete = null },
             title = { Text(stringResource(R.string.template_delete_confirm)) },
             text = {
-                Text(stringResource(R.string.record_delete_template_message, templateToDelete?.name ?: ""))
+                val category = categories.find { it.id == templateToDelete?.categoryId }
+                Text(
+                    stringResource(
+                        R.string.record_delete_template_message,
+                        templateToDelete?.displayName(category) ?: ""
+                    )
+                )
             },
             confirmButton = {
                 TextButton(
@@ -1036,19 +1043,19 @@ fun TemplateItem(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = template.name,
+                            text = template.displayName(category),
                             fontSize = 16.sp,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
                     Text(
-                        text = "${category?.name} • ¥${template.amount}",
+                        text = "${category?.displayName() ?: stringResource(R.string.analysis_unknown_category)} • ¥${template.amount}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (template.note.isNotEmpty()) {
                         Text(
-                            text = template.note,
+                            text = template.displayNote(category),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
@@ -1112,7 +1119,7 @@ fun RecentExpenseItem(
 
                 Column {
                     Text(
-                        text = category?.name ?: stringResource(R.string.analysis_unknown_category),
+                        text = category?.displayName() ?: stringResource(R.string.analysis_unknown_category),
                         fontSize = 16.sp
                     )
                     Text(

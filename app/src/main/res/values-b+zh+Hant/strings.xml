@@ -170,6 +170,14 @@
     <string name="template_unpin">取消置頂</string>
     <string name="template_pin_limit">最多置頂 3 個範本</string>
     <string name="template_delete_confirm">刪除此範本？</string>
+    <string name="template_default_commute_name">車費</string>
+    <string name="template_default_commute_note">地鐵/公車</string>
+    <string name="template_default_lunch_name">午餐</string>
+    <string name="template_default_lunch_note">平日午餐</string>
+    <string name="template_default_coffee_name">咖啡</string>
+    <string name="template_default_coffee_note">早晨咖啡</string>
+    <string name="template_default_movie_name">看電影</string>
+    <string name="template_default_movie_note">電影票</string>
 
     <!-- ===== 借貸頁 ===== -->
     <string name="debt_title">借貸管理</string>
@@ -326,21 +334,47 @@
 
     <!-- ===== 帳戶頁 ===== -->
     <string name="account_title">帳戶</string>
+    <string name="account_email_placeholder">未登入使用者</string>
     <string name="account_level_free">免費版</string>
     <string name="account_level_pro">Pro</string>
     <string name="account_storage">儲存空間</string>
+    <string name="account_storage_usage">已使用 0 MB / 100 MB</string>
+    <string name="account_storage_limit_desc">免費版上限：100 MB</string>
     <string name="account_backup">資料備份與同步</string>
     <string name="account_manual_backup">立即備份</string>
     <string name="account_auto_backup">自動同步</string>
+    <string name="account_auto_sync_desc">每次啟動時自動同步資料</string>
     <string name="account_change_password">修改密碼</string>
     <string name="account_change_password_desc">發送重設郵件到註冊信箱</string>
+    <string name="account_actions_title">帳戶操作</string>
     <string name="account_delete_account">刪除帳戶</string>
+    <string name="account_delete_account_desc">永久刪除雲端帳戶資料</string>
+    <string name="account_delete_account_warning">這將永久刪除你的帳戶和所有雲端資料。本地資料不會受到影響。</string>
     <string name="account_sign_out">登出</string>
+    <string name="account_sign_out_desc">登出目前帳戶</string>
+    <string name="account_sign_out_choose_mode">請選擇登出方式：</string>
+    <string name="account_sign_out_options_hint">- 登出並保留本地資料\n- 登出並清空本地資料</string>
     <string name="account_keep_local_data">保留本地資料</string>
     <string name="account_clear_local_data">清空本地資料</string>
     <string name="account_sync_success">同步完成</string>
     <string name="account_sync_failed">同步失敗，請稍後重試</string>
+    <string name="account_sync_failed_with_reason">同步失敗：%1$s</string>
     <string name="account_syncing">同步中…</string>
+    <string name="sync_result_uploaded_downloaded">已同步：上傳 %1$d 筆，下載 %2$d 筆</string>
+
+    <!-- ===== 通知 ===== -->
+    <string name="notif_channel_persistent_name">預算進度</string>
+    <string name="notif_channel_persistent_desc">顯示本月預算使用進度</string>
+    <string name="notif_channel_alert_name">預算警告</string>
+    <string name="notif_channel_alert_desc">預算超支時的提醒通知</string>
+    <string name="notif_persistent_title">💰 本月預算進度 %1$d%%</string>
+    <string name="notif_persistent_used">已用 ¥%1$s / ¥%2$s</string>
+    <string name="notif_persistent_over">超支 ¥%1$s</string>
+    <string name="notif_quick_record">快速記帳</string>
+    <string name="notif_alert_over_title">🚨 預算超支警告</string>
+    <string name="notif_alert_over_text">本月已超支 ¥%1$s，請注意控制消費</string>
+    <string name="notif_alert_usage_title">⚠️ 預算使用警告</string>
+    <string name="notif_alert_usage_text">本月預算已使用 %1$d%%，還剩 ¥%2$s</string>
 
     <!-- ===== 登入 / 註冊頁 ===== -->
     <string name="auth_sign_in">登入</string>

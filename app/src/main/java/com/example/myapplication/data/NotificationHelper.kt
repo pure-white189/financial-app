@@ -27,20 +27,20 @@ object NotificationHelper {
             // 常驻通知渠道
             val persistentChannel = NotificationChannel(
                 CHANNEL_ID_PERSISTENT,
-                "预算进度",
+                context.getString(R.string.notif_channel_persistent_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "显示本月预算使用进度"
+                description = context.getString(R.string.notif_channel_persistent_desc)
                 setShowBadge(false)
             }
 
             // 警告通知渠道
             val alertChannel = NotificationChannel(
                 CHANNEL_ID_ALERT,
-                "预算警告",
+                context.getString(R.string.notif_channel_alert_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "预算超支时的提醒通知"
+                description = context.getString(R.string.notif_channel_alert_desc)
                 enableVibration(true)
             }
 
@@ -91,12 +91,21 @@ object NotificationHelper {
 
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID_PERSISTENT)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("💰 本月预算进度 ${percentage.toInt()}%")
+            .setContentTitle(
+                context.getString(R.string.notif_persistent_title, percentage.toInt())
+            )
             .setContentText(
                 if (remaining >= 0) {
-                    "已用 ¥${"%.2f".format(monthlyTotal)} / ¥${"%.2f".format(monthlyBudget)}"
+                    context.getString(
+                        R.string.notif_persistent_used,
+                        String.format("%.2f", monthlyTotal),
+                        String.format("%.2f", monthlyBudget)
+                    )
                 } else {
-                    "超支 ¥${"%.2f".format(-remaining)}"
+                    context.getString(
+                        R.string.notif_persistent_over,
+                        String.format("%.2f", -remaining)
+                    )
                 }
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -106,7 +115,7 @@ object NotificationHelper {
             // 添加快速记账按钮
             .addAction(
                 R.drawable.ic_launcher_foreground,
-                "快速记账",
+                context.getString(R.string.notif_quick_record),
                 quickRecordPendingIntent
             )
 
@@ -179,9 +188,16 @@ object NotificationHelper {
         )
 
         val (title, text) = if (isOverBudget) {
-            "🚨 预算超支警告" to "本月已超支 ¥${"%.2f".format(monthlyTotal - monthlyBudget)}，请注意控制消费"
+            context.getString(R.string.notif_alert_over_title) to context.getString(
+                R.string.notif_alert_over_text,
+                String.format("%.2f", monthlyTotal - monthlyBudget)
+            )
         } else {
-            "⚠️ 预算使用警告" to "本月预算已使用 $percentage%，还剩 ¥${"%.2f".format(monthlyBudget - monthlyTotal)}"
+            context.getString(R.string.notif_alert_usage_title) to context.getString(
+                R.string.notif_alert_usage_text,
+                percentage,
+                String.format("%.2f", monthlyBudget - monthlyTotal)
+            )
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_ALERT)

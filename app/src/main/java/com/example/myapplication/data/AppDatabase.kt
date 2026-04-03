@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class],
-    version = 8,           // v7 → v8：categories 表新增 categoryKey 列
+    version = 9,           // v8 → v9：默认模板名称去中文化
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -76,8 +76,61 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ===== Migration 8 → 9：默认模板名称统一为英文 =====
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE expense_templates
+                    SET name = 'Commute', note = 'Subway/Bus'
+                    WHERE amount = 10.0
+                      AND name IN ('车费', '每日交通', '每日通勤')
+                      AND categoryId IN (
+                          SELECT id FROM categories WHERE categoryKey = 'transport' AND isDefault = 1
+                      )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    UPDATE expense_templates
+                    SET name = 'Lunch', note = 'Weekday lunch'
+                    WHERE amount = 20.0
+                      AND name = '午餐'
+                      AND categoryId IN (
+                          SELECT id FROM categories WHERE categoryKey = 'food' AND isDefault = 1
+                      )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    UPDATE expense_templates
+                    SET name = 'Coffee', note = 'Morning coffee'
+                    WHERE amount = 15.0
+                      AND name = '咖啡'
+                      AND categoryId IN (
+                          SELECT id FROM categories WHERE categoryKey = 'food' AND isDefault = 1
+                      )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    UPDATE expense_templates
+                    SET name = 'Movie', note = 'Movie ticket'
+                    WHERE amount = 50.0
+                      AND name = '看电影'
+                      AND categoryId IN (
+                          SELECT id FROM categories WHERE categoryKey = 'entertainment' AND isDefault = 1
+                      )
+                    """.trimIndent()
+                )
+            }
+        }
+
         // ===== 下次 schema 变更参考模板 =====
-        // val MIGRATION_8_9 = object : Migration(8, 9) {
+        // val MIGRATION_9_10 = object : Migration(9, 10) {
         //     override fun migrate(db: SupportSQLiteDatabase) {
         //         db.execSQL("ALTER TABLE expenses ADD COLUMN new_column TEXT")
         //     }
@@ -91,7 +144,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_app_database"
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
@@ -134,28 +187,22 @@ abstract class AppDatabase : RoomDatabase() {
         ) {
             val categoryList = categoryDao.getAllCategories().first()
 
-            val transportCategory = categoryList.find { it.categoryKey == "transport" }
             val foodCategory = categoryList.find { it.categoryKey == "food" }
             val entertainmentCategory = categoryList.find { it.categoryKey == "entertainment" }
 
             val defaultTemplates = mutableListOf<ExpenseTemplate>()
 
-            transportCategory?.let {
-                defaultTemplates.add(
-                    ExpenseTemplate(name = "每日通勤", amount = 10.0, categoryId = it.id, note = "地铁/公交")
-                )
-            }
             foodCategory?.let {
                 defaultTemplates.add(
-                    ExpenseTemplate(name = "午餐", amount = 20.0, categoryId = it.id, note = "工作日午餐")
+                    ExpenseTemplate(name = "Lunch", amount = 20.0, categoryId = it.id, note = "Weekday lunch")
                 )
                 defaultTemplates.add(
-                    ExpenseTemplate(name = "咖啡", amount = 15.0, categoryId = it.id, note = "早晨咖啡")
+                    ExpenseTemplate(name = "Coffee", amount = 15.0, categoryId = it.id, note = "Morning coffee")
                 )
             }
             entertainmentCategory?.let {
                 defaultTemplates.add(
-                    ExpenseTemplate(name = "看电影", amount = 50.0, categoryId = it.id, note = "电影票")
+                    ExpenseTemplate(name = "Movie", amount = 50.0, categoryId = it.id, note = "Movie ticket")
                 )
             }
 

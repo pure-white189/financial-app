@@ -20,7 +20,8 @@ class SyncViewModel(private val syncRepository: SyncRepository) : ViewModel() {
             _syncState.value = SyncState.Syncing
             _syncState.value = when (val result = syncRepository.syncAll()) {
                 is SyncResult.Success -> SyncState.Success(
-                    message = "已同步：上传 ${result.uploaded} 条，下载 ${result.downloaded} 条"
+                    uploaded = result.uploaded,
+                    downloaded = result.downloaded
                 )
                 is SyncResult.Error -> SyncState.Error(result.message)
             }
@@ -42,6 +43,6 @@ class SyncViewModel(private val syncRepository: SyncRepository) : ViewModel() {
 sealed class SyncState {
     object Idle : SyncState()
     object Syncing : SyncState()
-    data class Success(val message: String) : SyncState()
+    data class Success(val uploaded: Int, val downloaded: Int) : SyncState()
     data class Error(val message: String) : SyncState()
 }

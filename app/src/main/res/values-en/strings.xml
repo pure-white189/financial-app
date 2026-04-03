@@ -170,6 +170,14 @@
     <string name="template_unpin">Unpin</string>
     <string name="template_pin_limit">Maximum 3 pinned templates</string>
     <string name="template_delete_confirm">Delete this template?</string>
+    <string name="template_default_commute_name">Commute</string>
+    <string name="template_default_commute_note">Subway/Bus</string>
+    <string name="template_default_lunch_name">Lunch</string>
+    <string name="template_default_lunch_note">Weekday lunch</string>
+    <string name="template_default_coffee_name">Coffee</string>
+    <string name="template_default_coffee_note">Morning coffee</string>
+    <string name="template_default_movie_name">Movie</string>
+    <string name="template_default_movie_note">Movie ticket</string>
 
     <!-- ===== Debt Page ===== -->
     <string name="debt_title">Debt Manager</string>
@@ -326,21 +334,47 @@
 
     <!-- ===== Account Page ===== -->
     <string name="account_title">Account</string>
+    <string name="account_email_placeholder">Guest user</string>
     <string name="account_level_free">Free</string>
     <string name="account_level_pro">Pro</string>
     <string name="account_storage">Storage</string>
+    <string name="account_storage_usage">0 MB / 100 MB used</string>
+    <string name="account_storage_limit_desc">Free tier limit: 100 MB</string>
     <string name="account_backup">Backup &amp; Sync</string>
     <string name="account_manual_backup">Back Up Now</string>
     <string name="account_auto_backup">Auto Sync</string>
+    <string name="account_auto_sync_desc">Automatically sync data on each app launch</string>
     <string name="account_change_password">Change Password</string>
     <string name="account_change_password_desc">Send reset link to your registered email</string>
+    <string name="account_actions_title">Account Actions</string>
     <string name="account_delete_account">Delete Account</string>
+    <string name="account_delete_account_desc">Permanently remove cloud account data</string>
+    <string name="account_delete_account_warning">This will permanently delete your account and all cloud data. Local data will not be affected.</string>
     <string name="account_sign_out">Sign Out</string>
+    <string name="account_sign_out_desc">Sign out of this account</string>
+    <string name="account_sign_out_choose_mode">Choose how you want to sign out:</string>
+    <string name="account_sign_out_options_hint">- Sign out and keep local data\n- Sign out and clear local data</string>
     <string name="account_keep_local_data">Keep Local Data</string>
     <string name="account_clear_local_data">Clear Local Data</string>
     <string name="account_sync_success">Sync complete</string>
     <string name="account_sync_failed">Sync failed, please try again later</string>
+    <string name="account_sync_failed_with_reason">Sync failed: %1$s</string>
     <string name="account_syncing">Syncing…</string>
+    <string name="sync_result_uploaded_downloaded">Synced: uploaded %1$d, downloaded %2$d</string>
+
+    <!-- ===== Notifications ===== -->
+    <string name="notif_channel_persistent_name">Budget Progress</string>
+    <string name="notif_channel_persistent_desc">Shows this month\'s budget usage progress</string>
+    <string name="notif_channel_alert_name">Budget Alerts</string>
+    <string name="notif_channel_alert_desc">Alert notifications when budget is exceeded</string>
+    <string name="notif_persistent_title">💰 Monthly Budget Progress %1$d%%</string>
+    <string name="notif_persistent_used">Used ¥%1$s / ¥%2$s</string>
+    <string name="notif_persistent_over">Over budget by ¥%1$s</string>
+    <string name="notif_quick_record">Quick Record</string>
+    <string name="notif_alert_over_title">🚨 Budget Overrun Alert</string>
+    <string name="notif_alert_over_text">You are over budget by ¥%1$s this month. Please watch your spending.</string>
+    <string name="notif_alert_usage_title">⚠️ Budget Usage Alert</string>
+    <string name="notif_alert_usage_text">You have used %1$d%% of this month\'s budget, with ¥%2$s remaining.</string>
 
     <!-- ===== Auth Page ===== -->
     <string name="auth_sign_in">Sign In</string>

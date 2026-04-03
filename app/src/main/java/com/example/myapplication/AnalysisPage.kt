@@ -35,6 +35,8 @@ import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
 import com.example.myapplication.ui.theme.WarningOrange
+import com.example.myapplication.utils.displayName
+import com.example.myapplication.utils.displayNameNonComposable
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
@@ -145,7 +147,9 @@ fun AnalysisPage(
         scope.launch {
             isAnalyzing = true
             val summaries = thisMonthExpenses.map { expense ->
-                val categoryName = categories.find { it.id == expense.categoryId }?.name ?: categoryOtherLabel
+                val categoryName = categories.find { it.id == expense.categoryId }
+                    ?.displayNameNonComposable(context)
+                    ?: categoryOtherLabel
                 AiExpenseParser.ExpenseSummary(amount = expense.amount, category = categoryName)
             }
             val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
@@ -333,7 +337,7 @@ fun AnalysisPage(
 
                 StatCard(
                     title = stringResource(R.string.analysis_largest_category),
-                    value = categoryStats.firstOrNull()?.category?.name ?: "-",
+                    value = categoryStats.firstOrNull()?.category?.displayName() ?: "-",
                     icon = Icons.Default.Category,
                     color = ExpenseRed,
                     modifier = Modifier.weight(1f)
@@ -684,7 +688,7 @@ fun CategoryStatItem(stat: CategoryStat) {
 
             Column {
                 Text(
-                    text = stat.category?.name ?: stringResource(R.string.analysis_unknown_category),
+                    text = stat.category?.displayName() ?: stringResource(R.string.analysis_unknown_category),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )

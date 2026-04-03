@@ -34,10 +34,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.R
 
 @Composable
 fun FeatureHighlightOverlay(
@@ -111,7 +113,7 @@ fun FeatureHighlightOverlay(
                     IconButton(onClick = onSkip) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "关闭引导",
+                            contentDescription = stringResource(R.string.common_close),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -131,11 +133,11 @@ fun FeatureHighlightOverlay(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onSkip) {
-                        Text("跳过", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.onboarding_skip), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = onNext) {
-                        Text(if (isLastStep) "开始使用" else "下一步")
+                        Text(if (isLastStep) stringResource(R.string.onboarding_done) else stringResource(R.string.onboarding_next))
                     }
                 }
             }

@@ -212,8 +212,15 @@ class MainActivity : AppCompatActivity() {
                                 onSyncNow = { syncViewModel.syncNow() },
                                 isSyncing = syncState is SyncState.Syncing,
                                 syncMessage = when (val s = syncState) {
-                                    is SyncState.Success -> s.message
-                                    is SyncState.Error -> "${stringResource(R.string.account_sync_failed)}: ${s.message}"
+                                    is SyncState.Success -> stringResource(
+                                        R.string.sync_result_uploaded_downloaded,
+                                        s.uploaded,
+                                        s.downloaded
+                                    )
+                                    is SyncState.Error -> stringResource(
+                                        R.string.account_sync_failed_with_reason,
+                                        s.message
+                                    )
                                     else -> ""
                                 },
                                 onNavigateBack = { showAccountPage = false }

@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.AuthState
 import com.example.myapplication.AuthViewModel
+import com.example.myapplication.R
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +72,7 @@ fun AccountPage(
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val resetEmailSentText = stringResource(R.string.auth_reset_email_sent)
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
@@ -77,18 +80,18 @@ fun AccountPage(
         is AuthState.Authenticated -> state.user.email
         is AuthState.EmailNotVerified -> state.user.email
         else -> null
-    } ?: "user@example.com"
+    } ?: stringResource(R.string.account_email_placeholder)
     val avatarText = userEmail.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Account") },
+                title = { Text(stringResource(R.string.account_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -138,7 +141,7 @@ fun AccountPage(
                         color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
-                            text = "Free",
+                            text = stringResource(R.string.account_level_free),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelLarge,
@@ -156,7 +159,7 @@ fun AccountPage(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Cloud Storage",
+                        text = stringResource(R.string.account_storage),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -165,11 +168,11 @@ fun AccountPage(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = "0 MB / 100 MB used",
+                        text = stringResource(R.string.account_storage_usage),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "Free tier limit: 100 MB",
+                        text = stringResource(R.string.account_storage_limit_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -184,7 +187,7 @@ fun AccountPage(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "数据备份与同步",
+                        text = stringResource(R.string.account_backup),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -193,7 +196,7 @@ fun AccountPage(
                         onClick = { onSyncNow() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("立即同步")
+                        Text(stringResource(R.string.account_manual_backup))
                     }
 
                     if (isSyncing) {
@@ -215,11 +218,11 @@ fun AccountPage(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "自动同步",
+                                text = stringResource(R.string.account_auto_backup),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = "每次启动时自动同步数据",
+                                text = stringResource(R.string.account_auto_sync_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -235,7 +238,7 @@ fun AccountPage(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Account Actions",
+                        text = stringResource(R.string.account_actions_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -244,8 +247,8 @@ fun AccountPage(
                     HorizontalDivider()
 
                     ListItem(
-                        headlineContent = { Text("Change Password") },
-                        supportingContent = { Text("Send a password reset email") },
+                        headlineContent = { Text(stringResource(R.string.account_change_password)) },
+                        supportingContent = { Text(stringResource(R.string.account_change_password_desc)) },
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Key,
@@ -257,7 +260,7 @@ fun AccountPage(
                             .clickable {
                                 authViewModel.sendPasswordResetEmail(userEmail)
                                 coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Reset email sent")
+                                    snackbarHostState.showSnackbar(message = resetEmailSentText)
                                 }
                             }
                     )
@@ -265,8 +268,8 @@ fun AccountPage(
                     HorizontalDivider()
 
                     ListItem(
-                        headlineContent = { Text("Sign Out") },
-                        supportingContent = { Text("Sign out of this account") },
+                        headlineContent = { Text(stringResource(R.string.account_sign_out)) },
+                        supportingContent = { Text(stringResource(R.string.account_sign_out_desc)) },
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Logout,
@@ -283,13 +286,13 @@ fun AccountPage(
                     ListItem(
                         headlineContent = {
                             Text(
-                                text = "Delete Account",
+                                text = stringResource(R.string.account_delete_account),
                                 color = MaterialTheme.colorScheme.error
                             )
                         },
                         supportingContent = {
                             Text(
-                                text = "Permanently remove cloud account data",
+                                text = stringResource(R.string.account_delete_account_desc),
                                 color = MaterialTheme.colorScheme.error
                             )
                         },
@@ -314,11 +317,10 @@ fun AccountPage(
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Delete Account") },
+            title = { Text(stringResource(R.string.account_delete_account)) },
             text = {
                 Text(
-                    "This will permanently delete your account and all cloud data. " +
-                        "Local data will not be affected."
+                    stringResource(R.string.account_delete_account_warning)
                 )
             },
             confirmButton = {
@@ -329,14 +331,14 @@ fun AccountPage(
                     }
                 ) {
                     Text(
-                        text = "Delete",
+                        text = stringResource(R.string.common_delete),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -345,12 +347,12 @@ fun AccountPage(
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
-            title = { Text("Sign Out") },
+            title = { Text(stringResource(R.string.account_sign_out)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Choose how you want to sign out:")
+                    Text(stringResource(R.string.account_sign_out_choose_mode))
                     Text(
-                        "- Sign out and keep local data\n- Sign out and clear local data",
+                        stringResource(R.string.account_sign_out_options_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -364,7 +366,7 @@ fun AccountPage(
                             authViewModel.signOutWithClearData(clearLocal = false)
                         }
                     ) {
-                        Text("Keep local")
+                        Text(stringResource(R.string.account_keep_local_data))
                     }
                     TextButton(
                         onClick = {
@@ -372,13 +374,13 @@ fun AccountPage(
                             authViewModel.signOutWithClearData(clearLocal = true)
                         }
                     ) {
-                        Text("Clear local")
+                        Text(stringResource(R.string.account_clear_local_data))
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

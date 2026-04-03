@@ -1,8 +1,8 @@
-# 财务管家 (SmartSpend) 💰
+# SmartSpend (财务管家) 💰
 
 A modern personal finance management Android app built with Kotlin and Jetpack Compose.
 
-> **SEHH3326 Group Project **
+> **SEHH3326 Group Project**
 
 ---
 
@@ -34,14 +34,20 @@ A modern personal finance management Android app built with Kotlin and Jetpack C
 - **Budget Tracking** — Set a monthly budget; progress bar and donut chart show usage in real time
 - **7-Day Trend Chart** — Bar chart of daily spending over the past week
 - **Category Breakdown** — Ranked list of spending by category with percentage bars
-- **AI Deep Analysis** — DeepSeek-powered monthly report with insights and saving suggestions (requires backend)
+- **AI Deep Analysis** — GLM-5 powered monthly report with insights and saving suggestions
 
 ### Asset Management
 - **Debt Tracker** — Log money lent or borrowed, set due dates, mark as repaid
 - **Saving Goals** — Set named goals with target amounts and deadlines, deposit progress manually
-- **Stock Portfolio** — Track HK / US / A-share holdings with live price refresh (requires backend)
+- **Stock Portfolio** — Track HK / US / A-share holdings with live price refresh
+
+### Account & Sync
+- **Firebase Auth** — Email/password and Google Sign-In; email verification flow
+- **Guest Mode** — Use all core features without an account; AI features require login
+- **Cloud Sync** — Firestore-backed sync across devices (Last Write Wins, soft delete)
 
 ### UX & Customisation
+- **Multi-language** — Simplified Chinese, Traditional Chinese, and English; switch in Settings or on first launch
 - **Swipe Gestures** — Swipe left to delete, right to edit on expense items (with optional confirm dialog)
 - **Dark Mode** — Full light / dark / system-follow support
 - **Persistent Notification** — Status bar widget showing live budget progress
@@ -59,12 +65,15 @@ A modern personal finance management Android app built with Kotlin and Jetpack C
 | Language | Kotlin |
 | UI | Jetpack Compose + Material Design 3 |
 | Architecture | MVVM (ViewModel + Repository) |
-| Local DB | Room (SQLite) |
+| Local DB | Room (SQLite) v9 |
 | Preferences | DataStore |
 | Charts | Vico Chart Library 2.0.0 |
 | Image Loading | Coil |
-| Backend | FastAPI (Python) |
-| AI Model | qwen-plus via DashScope |
+| Auth | Firebase Authentication |
+| Cloud DB | Firestore (asia-east2) |
+| Backend | FastAPI (Python), deployed on Azure |
+| AI Model | GLM-5 via DashScope |
+| Stock Data | yfinance |
 | Min SDK | Android 8.0 (API 26) |
 | Target SDK | Android 14 (API 34) |
 
@@ -77,9 +86,9 @@ A modern personal finance management Android app built with Kotlin and Jetpack C
 1. Download the latest APK from the [Releases](../../releases) page
 2. On your Android device, go to **Settings → Security → Install unknown apps** and allow installation from your browser or file manager
 3. Open the downloaded `.apk` file and tap **Install**
-4. Launch **财务管家** from your home screen
+4. Launch **SmartSpend** from your home screen
 
-> ⚠️ **AI features (natural language input & AI analysis) require the backend server to be running.** See the status note in the Releases section for the current backend URL. These features will show an error if the backend is offline — all other features work fully offline.
+> ⚠️ **AI features (natural language input & AI analysis) require a logged-in account.** Guest mode disables AI features. All other features work fully offline.
 
 ### Option B — Build from source
 
@@ -98,59 +107,26 @@ cd financial-app
 
 ---
 
-## ⚠️ Backend Status
+## ☁️ Backend
 
-**Current:** Backend runs locally only (`http://10.0.2.2:8000`)
-**AI features will fail** if backend is offline — this is expected.
+The backend is deployed on an Azure VM and runs 24/7. AI features (natural language parsing and monthly analysis) and stock price fetching all go through this server.
 
----
+**Base URL:** `http://20.199.169.108`
 
-## 🔧 Backend Setup (for AI features)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check |
+| `/parse-expense?text=...&lang=...` | GET | Parse natural language expense |
+| `/analyze-expenses` | POST | Generate monthly AI analysis report |
+| `/stock-prices?symbols=...` | GET | Fetch live stock prices |
 
-The backend is a lightweight FastAPI server that handles natural language expense parsing, AI monthly analysis, and stock price fetching.
+### Rate Limits
 
-### Prerequisites
-- Python 3.10+
-- A [DashScope](https://dashscope.aliyun.com/) API key (free tier available)
-
-### Running locally
-
-```bash
-cd finance-backend
-
-# Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS / Linux
-
-# Install dependencies
-pip install fastapi uvicorn openai
-
-# Set your API key (copy the example file and fill it in)
-cp .env.example .env
-# Edit .env and add: DASHSCOPE_API_KEY=your_key_here
-
-# Start the server
-uvicorn main:app --reload
-# Server runs at http://127.0.0.1:8000
-```
-
-### Connecting the app to the backend
-
-In `AiExpenseParser.kt`, update `BASE_URL`:
-
-```kotlin
-// Local emulator (default)
-private const val BASE_URL = "http://10.0.2.2:8000"
-
-// Local device on the same Wi-Fi (replace with your machine's IP)
-private const val BASE_URL = "http://192.168.x.x:8000"
-
-// Production (after cloud deployment)
-private const val BASE_URL = "https://your-server-address"
-```
-
-> **Note:** `10.0.2.2` is the Android emulator's alias for the host machine's localhost. Physical devices on the same network need the actual local IP of the machine running the backend.
+| User type | Natural language parsing | Monthly analysis |
+|-----------|--------------------------|-----------------|
+| Guest / not logged in | ✗ | ✗ |
+| Free | 10 / day | 2 / month |
+| Pro | Unlimited | Unlimited |
 
 ---
 
@@ -159,7 +135,7 @@ private const val BASE_URL = "https://your-server-address"
 ```
 app/src/main/java/com/example/myapplication/
 ├── data/
-│   ├── AppDatabase.kt          # Room database (v6)
+│   ├── AppDatabase.kt           # Room database (v9), all migrations
 │   ├── Category.kt / CategoryDao.kt
 │   ├── Expense.kt / ExpenseDao.kt
 │   ├── ExpenseTemplate.kt / ExpenseTemplateDao.kt
@@ -167,9 +143,11 @@ app/src/main/java/com/example/myapplication/
 │   ├── SavingGoal.kt / SavingGoalDao.kt
 │   ├── Stock.kt / StockDao.kt
 │   ├── ExpenseRepository.kt
-│   ├── ThemePreferences.kt     # DataStore settings
+│   ├── SyncRepository.kt        # Firestore cloud sync
+│   ├── FirestoreMappers.kt
+│   ├── ThemePreferences.kt      # DataStore settings
 │   ├── NotificationHelper.kt
-│   └── AiExpenseParser.kt      # Backend API client
+│   └── AiExpenseParser.kt       # Backend API client
 │
 ├── ui/
 │   ├── HomePage.kt
@@ -179,17 +157,24 @@ app/src/main/java/com/example/myapplication/
 │   ├── SavingGoalPage.kt
 │   ├── StockPage.kt
 │   ├── SettingsPage.kt
+│   ├── AccountPage.kt
 │   ├── EditExpensePage.kt
 │   ├── CategoryManagementPage.kt
 │   ├── ExportPage.kt
+│   ├── LanguageSelectionPage.kt # First-launch language picker
+│   ├── SyncViewModel.kt
 │   └── components/
 │       └── FeatureHighlightOverlay.kt
 │
 ├── utils/
+│   ├── LanguageManager.kt       # Language persistence & switching
+│   ├── CategoryDisplayName.kt   # Localised category name extension
+│   ├── TemplateDisplayName.kt   # Localised template name extension
 │   └── CsvExportHelper.kt
 │
 ├── ExpenseViewModel.kt
-├── MainActivity.kt
+├── AuthViewModel.kt
+├── MainActivity.kt              # AppCompatActivity (required for locale API)
 ├── FinanceApplication.kt
 ├── BottomNavItem.kt
 └── DateUtils.kt
@@ -208,35 +193,41 @@ app/src/main/java/com/example/myapplication/
 | `saving_goals` | v5 | Savings targets with progress |
 | `stocks` | v6 | Stock portfolio holdings |
 
-> The database uses `fallbackToDestructiveMigration()` in this prototype — upgrading the app will clear all local data if the schema changes. This will be replaced with proper migrations before production release.
+Migrations are handled with explicit `Migration` objects — no destructive migration on upgrade.
+
+| Migration | Changes |
+|-----------|---------|
+| v6 → v7 | Cloud sync fields: `firestoreId`, `updatedAt`, `isDeleted` (all four tables) |
+| v7 → v8 | Category key column for multi-language support |
+| v8 → v9 | Default template names localised |
 
 ---
 
 ## ⚠️ Known Limitations
 
-- **AI features require backend** — Natural language input and AI analysis will fail gracefully (show an error) if the backend is unreachable
-- **Stock price refresh** — HK and US stocks fetch live prices from Yahoo Finance via the backend; A-share symbols (SS/SZ) should be entered without the suffix (e.g. enter `600519`, not `600519.SS`)
-- **No cloud sync** — All data is stored locally; uninstalling the app will delete all records
-- **Destructive migration** — Database schema changes between versions will wipe local data (prototype behaviour)
+- **Backend uses HTTP** — No HTTPS configured yet (no custom domain)
+- **Stock price refresh** — A-share symbols should be entered without suffix (e.g. `600519` not `600519.SS`)
+- **Rate limit counters reset on backend restart** — In-memory only, not persisted
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Cloud deployment of backend (Azure VM)
-- [ ] User authentication (Firebase Auth)
-- [ ] Cloud data sync
+- [x] Azure VM backend deployment
+- [x] Firebase Authentication (email + Google)
+- [x] Cloud data sync (Firestore)
+- [x] Proper Room database migrations
+- [x] Multi-language support (Simplified Chinese / Traditional Chinese / English)
 - [ ] Income / salary tracking with monthly reset
 - [ ] Achievements & daily check-in system
 - [ ] Subscription model for AI features
-- [ ] Proper Room database migrations
-
+- [ ] Home screen widget
 
 ---
 
 ## 🤖 Development Approach
 
-This project uses AI-assisted development (Claude Code, GitHub Copilot, Zed Agent):
+This project uses AI-assisted development (Claude, GitHub Copilot):
 - I designed all features, architecture, and user experience
 - AI tools generated most of the code based on my requirements
 - I handled integration, testing, and iteration

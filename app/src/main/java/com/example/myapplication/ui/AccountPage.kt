@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Logout
@@ -30,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -39,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,13 +52,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.AuthState
 import com.example.myapplication.AuthViewModel
 import com.example.myapplication.R
+import com.example.myapplication.data.AiExpenseParser
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,9 +78,25 @@ fun AccountPage(
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val resetEmailSentText = stringResource(R.string.auth_reset_email_sent)
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var showRedeemDialog by remember { mutableStateOf(false) }
+    var redeemCode by remember { mutableStateOf("") }
+    var redeemLoading by remember { mutableStateOf(false) }
+    var redeemMessage by remember { mutableStateOf("") }
+    var usageStatus by remember { mutableStateOf<com.example.myapplication.data.AiExpenseParser.UsageStatus?>(null) }
+    var isLoadingUsage by remember { mutableStateOf(false) }
+
+    val userPlan by authViewModel.userPlan.collectAsStateWithLifecycle()
+    val planExpiresAt by authViewModel.planExpiresAt.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        isLoadingUsage = true
+        AiExpenseParser.fetchUsageStatus().onSuccess { usageStatus = it }
+        isLoadingUsage = false
+    }
 
     val userEmail = when (val state = authState) {
         is AuthState.Authenticated -> state.user.email
@@ -136,14 +158,37 @@ fun AccountPage(
                         textAlign = TextAlign.Center
                     )
 
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
+                    val expiresLabel = planExpiresAt?.take(10)?.let { dateStr ->
+                        try {
+                            val parsed = java.time.LocalDate.parse(dateStr)
+                            val formatter = java.time.format.DateTimeFormatter.ofPattern(
+                                "MMM d, yyyy",
+                                java.util.Locale.getDefault()
+                            )
+                            parsed.format(formatter)
+                        } catch (_: Exception) {
+                            dateStr
+                        }
+                    } ?: ""
+                    val planLabel = if (userPlan == "pro") {
+                        stringResource(R.string.account_plan_pro_expires, expiresLabel)
+                    } else {
+                        stringResource(R.string.account_level_free)
+                    }
+                    val planColor = if (userPlan == "pro")
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
+                    val planTextColor = if (userPlan == "pro")
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+
+                    Surface(shape = MaterialTheme.shapes.small, color = planColor) {
                         Text(
-                            text = stringResource(R.string.account_level_free),
+                            text = planLabel,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = planTextColor,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Medium
                         )
@@ -176,6 +221,110 @@ fun AccountPage(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.account_ai_usage_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    if (isLoadingUsage) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        val status = usageStatus
+                        if (status == null) {
+                            Text(
+                                text = stringResource(R.string.account_ai_usage_load_failed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            // Parse usage row
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.account_ai_usage_parse_label),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = if (status.parseLimit == null)
+                                            "${status.parseUsed} / ${context.getString(R.string.account_ai_usage_unlimited)}"
+                                        else "${status.parseUsed} / ${status.parseLimit}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (status.parseLimit != null && status.parseUsed >= status.parseLimit)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (status.parseLimit != null) {
+                                    LinearProgressIndicator(
+                                        progress = { (status.parseUsed.toFloat() / status.parseLimit).coerceIn(0f, 1f) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = if (status.parseUsed >= status.parseLimit)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            // Analyze usage row
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.account_ai_usage_analyze_label),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = if (status.analyzeLimit == null)
+                                            "${status.analyzeUsed} / ${context.getString(R.string.account_ai_usage_unlimited)}"
+                                        else "${status.analyzeUsed} / ${status.analyzeLimit}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (status.analyzeLimit != null && status.analyzeUsed >= status.analyzeLimit)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (status.analyzeLimit != null) {
+                                    LinearProgressIndicator(
+                                        progress = { (status.analyzeUsed.toFloat() / status.analyzeLimit).coerceIn(0f, 1f) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = if (status.analyzeUsed >= status.analyzeLimit)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            if (status.plan == "free") {
+                                Text(
+                                    text = stringResource(R.string.account_ai_usage_upgrade_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -244,6 +393,16 @@ fun AccountPage(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
 
+                    ListItem(
+                        headlineContent = { Text("Activate Pro") },
+                        supportingContent = { Text("Enter an activation code to unlock Pro features") },
+                        leadingContent = {
+                            Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = null)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showRedeemDialog = true }
+                    )
                     HorizontalDivider()
 
                     ListItem(
@@ -380,6 +539,80 @@ fun AccountPage(
             },
             dismissButton = {
                 TextButton(onClick = { showSignOutDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    if (showRedeemDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!redeemLoading) {
+                    showRedeemDialog = false
+                    redeemCode = ""
+                    redeemMessage = ""
+                }
+            },
+            title = { Text("Activate Pro") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = redeemCode,
+                        onValueChange = { redeemCode = it.uppercase() },
+                        label = { Text("Activation Code") },
+                        placeholder = { Text("SMART-XXXX-XXXX-XXXX") },
+                        singleLine = true,
+                        enabled = !redeemLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (redeemMessage.isNotEmpty()) {
+                        Text(
+                            text = redeemMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (redeemMessage.startsWith("✓"))
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.error
+                        )
+                    }
+                    if (redeemLoading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        redeemLoading = true
+                        redeemMessage = ""
+                        coroutineScope.launch {
+                            val result = com.example.myapplication.data.AiExpenseParser.redeemCode(redeemCode.trim())
+                            result.onSuccess { status ->
+                                authViewModel.refreshSubscriptionStatus()
+                                redeemMessage = "✓ Pro activated! Expires ${status.expiresAt?.take(10) ?: ""}"
+                            }
+                            result.onFailure { e ->
+                                redeemMessage = e.message ?: "Redemption failed"
+                            }
+                            redeemLoading = false
+                        }
+                    },
+                    enabled = redeemCode.isNotBlank() && !redeemLoading
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!redeemLoading) {
+                            showRedeemDialog = false
+                            redeemCode = ""
+                            redeemMessage = ""
+                        }
+                    }
+                ) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }

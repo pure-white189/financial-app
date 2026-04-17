@@ -2,7 +2,7 @@
 
 A modern personal finance management Android app built with Kotlin and Jetpack Compose.
 
-> **SEHH3326 Group Project**
+> **SEHH3140 Group Project**
 
 ---
 

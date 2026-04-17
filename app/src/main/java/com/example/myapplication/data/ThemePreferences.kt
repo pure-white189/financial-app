@@ -31,6 +31,8 @@ class ThemePreferences(private val context: Context) {
         val REQUIRE_DELETE_CONFIRM_KEY = booleanPreferencesKey("require_delete_confirm")
         val HAS_SEEN_ONBOARDING_KEY = booleanPreferencesKey("has_seen_onboarding")
         val AUTO_SYNC_ENABLED_KEY = booleanPreferencesKey("auto_sync_enabled")
+        val USER_PLAN_KEY = stringPreferencesKey("user_plan")
+        val PLAN_EXPIRES_AT_KEY = stringPreferencesKey("plan_expires_at")
     }
 
     // 读取主题设置
@@ -73,6 +75,14 @@ class ThemePreferences(private val context: Context) {
         preferences[AUTO_SYNC_ENABLED_KEY] ?: false
     }
 
+    val userPlan: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[USER_PLAN_KEY] ?: "free"
+    }
+
+    val planExpiresAt: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[PLAN_EXPIRES_AT_KEY]
+    }
+
     // 保存常驻通知开关
     suspend fun setShowPersistentNotification(show: Boolean) {
         context.dataStore.edit { preferences ->
@@ -95,6 +105,17 @@ class ThemePreferences(private val context: Context) {
     suspend fun setAutoSyncEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[AUTO_SYNC_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun setUserPlan(plan: String, expiresAt: String?) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_PLAN_KEY] = plan
+            if (expiresAt != null) {
+                preferences[PLAN_EXPIRES_AT_KEY] = expiresAt
+            } else {
+                preferences.remove(PLAN_EXPIRES_AT_KEY)
+            }
         }
     }
 

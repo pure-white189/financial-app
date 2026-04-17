@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.data.ThemePreferences
 import com.example.myapplication.data.dataStore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuth.AuthStateListener
@@ -40,6 +42,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _resetEmailState = MutableStateFlow<String?>(null)
     val resetEmailState: StateFlow<String?> = _resetEmailState.asStateFlow()
 
+    private val _userPlan = MutableStateFlow("free")
+    val userPlan: StateFlow<String> = _userPlan.asStateFlow()
+
+    private val _planExpiresAt = MutableStateFlow<String?>(null)
+    val planExpiresAt: StateFlow<String?> = _planExpiresAt.asStateFlow()
+
     private fun toAuthState(user: FirebaseUser?): AuthState {
         return when {
             user == null && isGuestMode -> AuthState.Guest
@@ -53,6 +61,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
             _authState.value = toAuthState(currentUser)
+            refreshSubscriptionStatus()
         } else {
             viewModelScope.launch {
                 isGuestMode = readGuestModeFlag()
@@ -70,6 +79,18 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun readGuestModeFlag(): Boolean {
         return getApplication<Application>().dataStore.data.first()[IS_GUEST_MODE_KEY] ?: false
+    }
+
+    fun refreshSubscriptionStatus() {
+        viewModelScope.launch {
+            val result = AiExpenseParser.fetchSubscriptionStatus()
+            result.onSuccess { status ->
+                _userPlan.value = status.plan
+                _planExpiresAt.value = status.expiresAt
+                val prefs = ThemePreferences(getApplication())
+                prefs.setUserPlan(status.plan, status.expiresAt)
+            }
+        }
     }
 
     private suspend fun setGuestModeFlag(enabled: Boolean) {
@@ -197,4 +218,3 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
     }
 }
-

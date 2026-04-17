@@ -83,6 +83,8 @@ fun RecordPage(
     var isAiLoading by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var aiSuccess by remember { mutableStateOf<String?>(null) }
+    var showQuotaDialog by remember { mutableStateOf(false) }
+    var quotaDialogMessage by remember { mutableStateOf("") }
 
     val recentExpenses = remember(expenses) {
         expenses.take(5)
@@ -265,13 +267,21 @@ fun RecordPage(
                                         aiSuccess = null
                                     }
                                     result.onFailure { error ->
-                                        val message = error.message?.lowercase() ?: ""
-                                        val isNetworkFailure = message.contains("failed to connect") ||
-                                            message.contains("timeout") ||
-                                            message.contains("unable to resolve host") ||
-                                            message.contains("connection")
-                                        if (isNetworkFailure) {
-                                            aiError = aiParseFailedText
+                                        val message = error.message ?: ""
+                                        val messageLower = message.lowercase()
+                                        val isQuotaError = messageLower.contains("limit reached") ||
+                                            messageLower.contains("upgrade to pro")
+                                        val isNetworkFailure = messageLower.contains("failed to connect") ||
+                                            messageLower.contains("timeout") ||
+                                            messageLower.contains("unable to resolve host") ||
+                                            messageLower.contains("connection")
+                                        when {
+                                            isQuotaError -> {
+                                                quotaDialogMessage = message
+                                                showQuotaDialog = true
+                                            }
+                                            isNetworkFailure -> aiError = aiParseFailedText
+                                            else -> aiError = message
                                         }
                                     }
                                     isAiLoading = false
@@ -338,13 +348,21 @@ fun RecordPage(
                                     aiSuccess = null
                                 }
                                 result.onFailure { error ->
-                                    val message = error.message?.lowercase() ?: ""
-                                    val isNetworkFailure = message.contains("failed to connect") ||
-                                        message.contains("timeout") ||
-                                        message.contains("unable to resolve host") ||
-                                        message.contains("connection")
-                                    if (isNetworkFailure) {
-                                        aiError = aiParseFailedText
+                                    val message = error.message ?: ""
+                                    val messageLower = message.lowercase()
+                                    val isQuotaError = messageLower.contains("limit reached") ||
+                                        messageLower.contains("upgrade to pro")
+                                    val isNetworkFailure = messageLower.contains("failed to connect") ||
+                                        messageLower.contains("timeout") ||
+                                        messageLower.contains("unable to resolve host") ||
+                                        messageLower.contains("connection")
+                                    when {
+                                        isQuotaError -> {
+                                            quotaDialogMessage = message
+                                            showQuotaDialog = true
+                                        }
+                                        isNetworkFailure -> aiError = aiParseFailedText
+                                        else -> aiError = message
                                     }
                                 }
                                 isAiLoading = false
@@ -909,6 +927,45 @@ fun RecordPage(
                     }
                 ) {
                     Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    if (showQuotaDialog) {
+        AlertDialog(
+            onDismissRequest = { showQuotaDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { Text(stringResource(R.string.ai_quota_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (quotaDialogMessage.lowercase().contains("daily") ||
+                            quotaDialogMessage.lowercase().contains("每日") ||
+                            quotaDialogMessage.lowercase().contains("每日")
+                        ) {
+                            stringResource(R.string.ai_quota_parse_daily, 10)
+                        } else {
+                            stringResource(R.string.ai_quota_analyze_monthly, 2)
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.ai_quota_dialog_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showQuotaDialog = false }) {
+                    Text(stringResource(R.string.ai_quota_got_it))
                 }
             }
         )

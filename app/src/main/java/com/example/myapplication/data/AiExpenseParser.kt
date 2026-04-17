@@ -23,6 +23,14 @@ object AiExpenseParser {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private var localParseUsedToday: Int = 0
+    private var localParseDate: String = ""
+    private var localAnalyzeUsedThisMonth: Int = 0
+    private var localAnalyzeMonth: String = ""
+    private var localParseLimit: Int? = 10
+    private var localAnalyzeLimit: Int? = 2
+    private var localPlan: String = "free"
+
     data class ParseResult(
         val amount: Double,
         val category: String,
@@ -38,6 +46,19 @@ object AiExpenseParser {
         val symbol: String,
         val price: Double,
         val currency: String
+    )
+
+    data class SubscriptionStatus(
+        val plan: String,
+        val expiresAt: String?
+    )
+
+    data class UsageStatus(
+        val plan: String,
+        val parseUsed: Int,
+        val parseLimit: Int?,
+        val analyzeUsed: Int,
+        val analyzeLimit: Int?
     )
 
     private fun requireIdToken(): Result<String> {
@@ -87,6 +108,16 @@ object AiExpenseParser {
     suspend fun parseExpense(text: String, lang: String = "zh"): Result<ParseResult> =
         withContext(Dispatchers.IO) {
             try {
+                // Local quota pre-check (Plan B front-end guard)
+                if (localPlan != "pro" && localParseLimit != null) {
+                    val today = java.time.LocalDate.now().toString()
+                    if (localParseDate == today && localParseUsedToday >= localParseLimit!!) {
+                        return@withContext Result.failure(
+                            Exception("Daily limit reached ($localParseLimit uses/day). Upgrade to Pro for unlimited access.")
+                        )
+                    }
+                }
+
                 val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
                 Log.d("AiParser", "开始请求，text=$text, lang=$lang")
                 val encodedText = URLEncoder.encode(text, "UTF-8")
@@ -119,7 +150,14 @@ object AiExpenseParser {
                         category = json.optString("category", ""),
                         note = json.optString("note", "")
                     )
-                    Result.success(result)
+                    Result.success(result).also {
+                        val today = java.time.LocalDate.now().toString()
+                        if (localParseDate != today) {
+                            localParseDate = today
+                            localParseUsedToday = 0
+                        }
+                        localParseUsedToday++
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("AiParser", "请求异常: ${e.javaClass.simpleName}: ${e.message}")
@@ -139,6 +177,17 @@ object AiExpenseParser {
         lang: String = "zh"
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            // Local quota pre-check
+            if (localPlan != "pro" && localAnalyzeLimit != null) {
+                val month = java.time.LocalDate.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                if (localAnalyzeMonth == month && localAnalyzeUsedThisMonth >= localAnalyzeLimit!!) {
+                    return@withContext Result.failure(
+                        Exception("Monthly limit reached ($localAnalyzeLimit analyses/month). Upgrade to Pro for unlimited access.")
+                    )
+                }
+            }
+
             val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
             Log.d("AiParser", "开始分析，共${expenses.size}条记录，lang=$lang")
 
@@ -184,7 +233,15 @@ object AiExpenseParser {
 
                 val json = JSONObject(responseBody)
                 val analysis = json.optString("analysis", "分析生成失败，请稍后重试")
-                Result.success(analysis)
+                Result.success(analysis).also {
+                    val month = java.time.LocalDate.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                    if (localAnalyzeMonth != month) {
+                        localAnalyzeMonth = month
+                        localAnalyzeUsedThisMonth = 0
+                    }
+                    localAnalyzeUsedThisMonth++
+                }
             }
         } catch (e: Exception) {
             Log.e("AiParser", "分析异常: ${e.message}")
@@ -232,6 +289,105 @@ object AiExpenseParser {
                 }
             } catch (e: Exception) {
                 Log.e("AiParser", "股票价格获取失败: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    suspend fun fetchSubscriptionStatus(): Result<SubscriptionStatus> =
+        withContext(Dispatchers.IO) {
+            try {
+                val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
+                val request = Request.Builder()
+                    .url("$BASE_URL/subscription-status")
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(Exception("HTTP ${response.code}: $body"))
+                    }
+                    val json = JSONObject(body)
+                    Result.success(
+                        SubscriptionStatus(
+                            plan = json.optString("plan", "free"),
+                            expiresAt = if (json.isNull("expires_at")) null else json.optString("expires_at")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    suspend fun redeemCode(code: String): Result<SubscriptionStatus> =
+        withContext(Dispatchers.IO) {
+            try {
+                val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
+                val requestBody = JSONObject().apply { put("code", code.trim().uppercase()) }
+                    .toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$BASE_URL/redeem-code")
+                    .post(requestBody)
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+                    if (!response.isSuccessful) {
+                        val message = parseServerErrorMessage(body, "Redemption failed")
+                        return@withContext Result.failure(Exception(message))
+                    }
+                    val json = JSONObject(body)
+                    Result.success(
+                        SubscriptionStatus(
+                            plan = json.optString("plan", "free"),
+                            expiresAt = if (json.isNull("expires_at")) null else json.optString("expires_at")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    suspend fun fetchUsageStatus(): Result<UsageStatus> =
+        withContext(Dispatchers.IO) {
+            try {
+                val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
+                val request = Request.Builder()
+                    .url("$BASE_URL/usage-status")
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(Exception("HTTP ${response.code}: $body"))
+                    }
+                    val json = JSONObject(body)
+                    val parseObj = json.getJSONObject("parse")
+                    val analyzeObj = json.getJSONObject("analyze")
+                    val status = UsageStatus(
+                        plan = json.optString("plan", "free"),
+                        parseUsed = parseObj.optInt("used", 0),
+                        parseLimit = if (parseObj.isNull("limit")) null else parseObj.optInt("limit"),
+                        analyzeUsed = analyzeObj.optInt("used", 0),
+                        analyzeLimit = if (analyzeObj.isNull("limit")) null else analyzeObj.optInt("limit")
+                    )
+                    // Sync local counters
+                    val now = java.time.LocalDate.now()
+                    localParseDate = now.toString()
+                    localParseUsedToday = status.parseUsed
+                    localParseLimit = status.parseLimit
+                    val month = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                    localAnalyzeMonth = month
+                    localAnalyzeUsedThisMonth = status.analyzeUsed
+                    localAnalyzeLimit = status.analyzeLimit
+                    localPlan = status.plan
+                    Result.success(status)
+                }
+            } catch (e: Exception) {
                 Result.failure(e)
             }
         }

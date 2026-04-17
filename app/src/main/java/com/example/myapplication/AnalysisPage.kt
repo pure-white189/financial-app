@@ -72,6 +72,8 @@ fun AnalysisPage(
     var aiAnalysis by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
+    var showQuotaDialog by remember { mutableStateOf(false) }
+    var quotaDialogMessage by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScrollState = rememberScrollState()
 
@@ -154,7 +156,18 @@ fun AnalysisPage(
             }
             val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
             result.onSuccess { analysis -> aiAnalysis = analysis }
-            result.onFailure { aiAnalysis = aiAnalysisErrorLabel }
+            result.onFailure { error ->
+                val message = error.message ?: ""
+                val isQuotaError = message.lowercase().contains("limit reached") ||
+                    message.lowercase().contains("upgrade to pro")
+                if (isQuotaError) {
+                    showAiSheet = false
+                    quotaDialogMessage = message
+                    showQuotaDialog = true
+                } else {
+                    aiAnalysis = aiAnalysisErrorLabel
+                }
+            }
             isAnalyzing = false
         }
     }
@@ -571,6 +584,45 @@ fun AnalysisPage(
                     Spacer(modifier = Modifier.height(48.dp))
                 }
             }
+        }
+
+        if (showQuotaDialog) {
+            AlertDialog(
+                onDismissRequest = { showQuotaDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                title = { Text(stringResource(R.string.ai_quota_dialog_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = if (quotaDialogMessage.lowercase().contains("daily") ||
+                                quotaDialogMessage.lowercase().contains("每日") ||
+                                quotaDialogMessage.lowercase().contains("每日")
+                            ) {
+                                stringResource(R.string.ai_quota_parse_daily, 10)
+                            } else {
+                                stringResource(R.string.ai_quota_analyze_monthly, 2)
+                            }
+                        )
+                        Text(
+                            text = stringResource(R.string.ai_quota_dialog_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showQuotaDialog = false }) {
+                        Text(stringResource(R.string.ai_quota_got_it))
+                    }
+                }
+            )
         }
     }
 }

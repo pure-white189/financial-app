@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.AiExpenseParser
@@ -146,6 +147,17 @@ fun AnalysisPage(
     val thisMonthIncome = remember(allIncome, currentYearMonth) {
         allIncome.firstOrNull { it.yearMonth == currentYearMonth }
     }
+    val thisMonthIncomeAmount = thisMonthIncome?.amount ?: 0.0
+    val showIncomeSummary = thisMonthIncomeAmount > 0.0
+    val balanceAmount = thisMonthIncomeAmount - monthlyTotal
+    val formattedIncome = String.format(Locale.getDefault(), "%s%.2f", currencySymbol, thisMonthIncomeAmount)
+    val formattedExpense = String.format(Locale.getDefault(), "%s%.2f", currencySymbol, monthlyTotal)
+    val formattedBalance = String.format(Locale.getDefault(), "%s%.2f", currencySymbol, balanceAmount)
+    val incomeLabel = stringResource(R.string.income_this_month)
+    val expenseSummaryLabel = stringResource(R.string.income_expense_summary, formattedExpense)
+    val balanceLabel = stringResource(
+        if (balanceAmount >= 0) R.string.income_balance_positive else R.string.income_balance_negative
+    )
 
     val runAiAnalysis: () -> Unit = runAiAnalysis@{
         if (isGuest) {
@@ -279,29 +291,6 @@ fun AnalysisPage(
                     value = "$currencySymbol%.2f".format(monthlyTotal),
                     icon = Icons.Default.ShoppingCart,
                     color = PurpleStart,
-                    extraContent = {
-                        thisMonthIncome?.let { income ->
-                            val balance = income.amount - monthlyTotal
-                            val balanceColor = if (balance >= 0) IncomeGreen else ExpenseRed
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "收入 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, income.amount)} · 支出 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, monthlyTotal)} · ",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "结余 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, balance)}",
-                                    fontSize = 11.sp,
-                                    color = balanceColor
-                                )
-                            }
-                        }
-                    },
                     modifier = Modifier.weight(1f)
                 )
 
@@ -312,6 +301,45 @@ fun AnalysisPage(
                     color = PurpleEnd,
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+
+        if (showIncomeSummary) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "$incomeLabel: $formattedIncome · $expenseSummaryLabel",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "$balanceLabel: ",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = formattedBalance,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.sp,
+                            color = if (balanceAmount >= 0) IncomeGreen else ExpenseRed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
         }
 
@@ -665,7 +693,6 @@ fun StatCard(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
-    extraContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -704,8 +731,6 @@ fun StatCard(
                 style = MaterialTheme.typography.titleLarge,
                 color = color
             )
-
-            extraContent?.invoke()
         }
     }
 }

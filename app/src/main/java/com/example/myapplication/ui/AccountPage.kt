@@ -18,7 +18,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.AlertDialog
@@ -50,7 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -79,18 +83,26 @@ fun AccountPage(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val resetEmailSentText = stringResource(R.string.auth_reset_email_sent)
+    val accountIdCopiedText = stringResource(R.string.account_id_copied)
+    val accountSaveSuccessText = stringResource(R.string.account_save_success)
+    val redeemFailedText = stringResource(R.string.account_code_error)
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var editedDisplayName by remember { mutableStateOf(TextFieldValue("")) }
     var showRedeemDialog by remember { mutableStateOf(false) }
     var redeemCode by remember { mutableStateOf("") }
     var redeemLoading by remember { mutableStateOf(false) }
     var redeemMessage by remember { mutableStateOf("") }
+    var redeemMessageIsSuccess by remember { mutableStateOf(false) }
     var usageStatus by remember { mutableStateOf<com.example.myapplication.data.AiExpenseParser.UsageStatus?>(null) }
     var isLoadingUsage by remember { mutableStateOf(false) }
 
     val userPlan by authViewModel.userPlan.collectAsStateWithLifecycle()
     val planExpiresAt by authViewModel.planExpiresAt.collectAsStateWithLifecycle()
+    val displayNameUpdateStatus by authViewModel.displayNameUpdateStatus.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         isLoadingUsage = true
@@ -98,12 +110,29 @@ fun AccountPage(
         isLoadingUsage = false
     }
 
-    val userEmail = when (val state = authState) {
-        is AuthState.Authenticated -> state.user.email
-        is AuthState.EmailNotVerified -> state.user.email
+    LaunchedEffect(displayNameUpdateStatus) {
+        if (displayNameUpdateStatus.isEmpty()) return@LaunchedEffect
+        val message = if (displayNameUpdateStatus == "success") {
+            accountSaveSuccessText
+        } else {
+            displayNameUpdateStatus
+        }
+        snackbarHostState.showSnackbar(message)
+        authViewModel.clearDisplayNameUpdateStatus()
+    }
+
+    val firebaseUser = when (val state = authState) {
+        is AuthState.Authenticated -> state.user
+        is AuthState.EmailNotVerified -> state.user
         else -> null
-    } ?: stringResource(R.string.account_email_placeholder)
-    val avatarText = userEmail.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    }
+
+    val userEmail = firebaseUser?.email ?: stringResource(R.string.account_email_placeholder)
+    val displayName = firebaseUser?.displayName?.trim().orEmpty()
+    val hasDisplayName = displayName.isNotBlank()
+    val shortUserId = firebaseUser?.uid?.take(8)?.uppercase().orEmpty()
+    val avatarChar = if (hasDisplayName) displayName.firstOrNull() else userEmail.firstOrNull()
+    val avatarText = avatarChar?.uppercaseChar()?.toString() ?: "?"
 
     Scaffold(
         topBar = {
@@ -152,11 +181,64 @@ fun AccountPage(
                         )
                     }
 
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (hasDisplayName) {
+                            Text(
+                                text = displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                editedDisplayName = TextFieldValue(displayName)
+                                showEditNameDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.account_edit_name)
+                            )
+                        }
+                    }
+
                     Text(
                         text = userEmail,
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
+
+                    if (shortUserId.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "${stringResource(R.string.account_user_id)}: $shortUserId",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            IconButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(shortUserId))
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(accountIdCopiedText)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = accountIdCopiedText
+                                )
+                            }
+                        }
+                    }
 
                     val expiresLabel = planExpiresAt?.take(10)?.let { dateStr ->
                         try {
@@ -171,9 +253,9 @@ fun AccountPage(
                         }
                     } ?: ""
                     val planLabel = if (userPlan == "pro") {
-                        stringResource(R.string.account_plan_pro_expires, expiresLabel)
+                        "${stringResource(R.string.account_pro_badge)} · ${stringResource(R.string.account_pro_expires, expiresLabel)}"
                     } else {
-                        stringResource(R.string.account_level_free)
+                        stringResource(R.string.account_free_badge)
                     }
                     val planColor = if (userPlan == "pro")
                         MaterialTheme.colorScheme.primaryContainer
@@ -394,8 +476,8 @@ fun AccountPage(
                     )
 
                     ListItem(
-                        headlineContent = { Text("Activate Pro") },
-                        supportingContent = { Text("Enter an activation code to unlock Pro features") },
+                        headlineContent = { Text(stringResource(R.string.account_activate_pro)) },
+                        supportingContent = { Text(stringResource(R.string.account_enter_code)) },
                         leadingContent = {
                             Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = null)
                         },
@@ -545,6 +627,40 @@ fun AccountPage(
         )
     }
 
+    if (showEditNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditNameDialog = false },
+            title = { Text(stringResource(R.string.account_edit_name)) },
+            text = {
+                OutlinedTextField(
+                    value = editedDisplayName,
+                    onValueChange = { editedDisplayName = it },
+                    label = { Text(stringResource(R.string.account_name_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showEditNameDialog = false
+                        coroutineScope.launch {
+                            authViewModel.updateDisplayName(editedDisplayName.text)
+                        }
+                    },
+                    enabled = editedDisplayName.text.isNotBlank()
+                ) {
+                    Text(stringResource(R.string.common_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditNameDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     if (showRedeemDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -552,16 +668,17 @@ fun AccountPage(
                     showRedeemDialog = false
                     redeemCode = ""
                     redeemMessage = ""
+                    redeemMessageIsSuccess = false
                 }
             },
-            title = { Text("Activate Pro") },
+            title = { Text(stringResource(R.string.account_activate_pro)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = redeemCode,
                         onValueChange = { redeemCode = it.uppercase() },
-                        label = { Text("Activation Code") },
-                        placeholder = { Text("SMART-XXXX-XXXX-XXXX") },
+                        label = { Text(stringResource(R.string.account_enter_code)) },
+                        placeholder = { Text(stringResource(R.string.account_code_hint)) },
                         singleLine = true,
                         enabled = !redeemLoading,
                         modifier = Modifier.fillMaxWidth()
@@ -570,7 +687,7 @@ fun AccountPage(
                         Text(
                             text = redeemMessage,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (redeemMessage.startsWith("✓"))
+                            color = if (redeemMessageIsSuccess)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.error
@@ -586,21 +703,26 @@ fun AccountPage(
                     onClick = {
                         redeemLoading = true
                         redeemMessage = ""
+                        redeemMessageIsSuccess = false
                         coroutineScope.launch {
                             val result = com.example.myapplication.data.AiExpenseParser.redeemCode(redeemCode.trim())
                             result.onSuccess { status ->
                                 authViewModel.refreshSubscriptionStatus()
-                                redeemMessage = "✓ Pro activated! Expires ${status.expiresAt?.take(10) ?: ""}"
+                                redeemMessage = context.getString(
+                                    R.string.account_code_success,
+                                    status.expiresAt?.take(10) ?: ""
+                                )
+                                redeemMessageIsSuccess = true
                             }
                             result.onFailure { e ->
-                                redeemMessage = e.message ?: "Redemption failed"
+                                redeemMessage = e.message ?: redeemFailedText
                             }
                             redeemLoading = false
                         }
                     },
                     enabled = redeemCode.isNotBlank() && !redeemLoading
                 ) {
-                    Text("Confirm")
+                    Text(stringResource(R.string.account_code_confirm))
                 }
             },
             dismissButton = {
@@ -610,10 +732,11 @@ fun AccountPage(
                             showRedeemDialog = false
                             redeemCode = ""
                             redeemMessage = ""
+                            redeemMessageIsSuccess = false
                         }
                     }
                 ) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.account_code_cancel))
                 }
             }
         )

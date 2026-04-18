@@ -28,6 +28,8 @@ import kotlinx.coroutines.launch
 fun SettingsPage(
     currentTheme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
+    currentFontScale: String,
+    onFontScaleChange: (String) -> Unit,
     currentBudget: Double?,
     onBudgetChange: (Double?) -> Unit,
     viewModel: ExpenseViewModel,
@@ -95,6 +97,11 @@ fun SettingsPage(
             ThemeSettingItem(
                 currentTheme = currentTheme,
                 onThemeChange = onThemeChange
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            FontScaleSettingItem(
+                currentFontScale = currentFontScale,
+                onFontScaleChange = onFontScaleChange
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             // 语言选择
@@ -1049,6 +1056,44 @@ fun LanguageSettingItem(
                         onLanguageChange(language)
                         expanded = false
                     }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FontScaleSettingItem(
+    currentFontScale: String,
+    onFontScaleChange: (String) -> Unit
+) {
+    val options = listOf(
+        "small" to stringResource(R.string.font_small),
+        "medium" to stringResource(R.string.font_medium),
+        "large" to stringResource(R.string.font_large)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settings_font_size),
+            fontSize = 16.sp,
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (value, label) ->
+                FilterChip(
+                    selected = currentFontScale == value,
+                    onClick = { onFontScaleChange(value) },
+                    label = { Text(label) },
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

@@ -13,11 +13,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuth.AuthStateListener
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 sealed class AuthState {
     data object Loading : AuthState()
@@ -47,6 +50,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _planExpiresAt = MutableStateFlow<String?>(null)
     val planExpiresAt: StateFlow<String?> = _planExpiresAt.asStateFlow()
+
+    private val _displayNameUpdateStatus = MutableStateFlow("")
+    val displayNameUpdateStatus: StateFlow<String> = _displayNameUpdateStatus.asStateFlow()
 
     private fun toAuthState(user: FirebaseUser?): AuthState {
         return when {
@@ -91,6 +97,47 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 prefs.setUserPlan(status.plan, status.expiresAt)
             }
         }
+    }
+
+    suspend fun updateDisplayName(newName: String): Result<Unit> {
+        val user = auth.currentUser
+            ?: return Result.failure(Exception("No authenticated user"))
+
+        val trimmedName = newName.trim()
+        if (trimmedName.isBlank()) {
+            val error = Exception("Display name cannot be empty")
+            _displayNameUpdateStatus.value = error.message ?: "Update failed"
+            return Result.failure(error)
+        }
+
+        return try {
+            _displayNameUpdateStatus.value = ""
+            suspendCancellableCoroutine { continuation ->
+                val profileUpdates = UserProfileChangeRequest.Builder()
+                    .setDisplayName(trimmedName)
+                    .build()
+
+                user.updateProfile(profileUpdates)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            _displayNameUpdateStatus.value = "success"
+                            _authState.value = toAuthState(auth.currentUser)
+                            continuation.resume(Result.success(Unit))
+                        } else {
+                            val exception = task.exception ?: Exception("Failed to update display name")
+                            _displayNameUpdateStatus.value = exception.message ?: "Failed to update display name"
+                            continuation.resume(Result.failure(exception))
+                        }
+                    }
+            }
+        } catch (e: Exception) {
+            _displayNameUpdateStatus.value = e.message ?: "Failed to update display name"
+            Result.failure(e)
+        }
+    }
+
+    fun clearDisplayNameUpdateStatus() {
+        _displayNameUpdateStatus.value = ""
     }
 
     private suspend fun setGuestModeFlag(enabled: Boolean) {

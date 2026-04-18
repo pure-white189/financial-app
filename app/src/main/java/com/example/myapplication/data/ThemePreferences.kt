@@ -33,6 +33,7 @@ class ThemePreferences(private val context: Context) {
         val AUTO_SYNC_ENABLED_KEY = booleanPreferencesKey("auto_sync_enabled")
         val USER_PLAN_KEY = stringPreferencesKey("user_plan")
         val PLAN_EXPIRES_AT_KEY = stringPreferencesKey("plan_expires_at")
+        val FONT_SCALE_KEY = stringPreferencesKey("font_scale")
     }
 
     // 读取主题设置
@@ -75,6 +76,10 @@ class ThemePreferences(private val context: Context) {
         preferences[AUTO_SYNC_ENABLED_KEY] ?: false
     }
 
+    val fontScaleFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[FONT_SCALE_KEY] ?: "medium"
+    }
+
     val userPlan: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[USER_PLAN_KEY] ?: "free"
     }
@@ -105,6 +110,16 @@ class ThemePreferences(private val context: Context) {
     suspend fun setAutoSyncEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[AUTO_SYNC_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun saveFontScale(scale: String) {
+        val normalized = when (scale) {
+            "small", "medium", "large" -> scale
+            else -> "medium"
+        }
+        context.dataStore.edit { preferences ->
+            preferences[FONT_SCALE_KEY] = normalized
         }
     }
 

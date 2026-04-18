@@ -24,7 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -151,6 +153,15 @@ class MainActivity : AppCompatActivity() {
             val autoSyncEnabled by themePreferences.autoSyncEnabled
                 .collectAsStateWithLifecycle(initialValue = false)
 
+            val fontScaleSetting by themePreferences.fontScaleFlow
+                .collectAsStateWithLifecycle(initialValue = "medium")
+
+            val fontScaleFloat = when (fontScaleSetting) {
+                "small" -> 0.85f
+                "large" -> 1.15f
+                else -> 1.0f
+            }
+
             LaunchedEffect(authState) {
                 if (authState !is AuthState.Authenticated) {
                     showAccountPage = false
@@ -175,21 +186,28 @@ class MainActivity : AppCompatActivity() {
             }
 
             MyApplicationTheme(darkTheme = isDarkTheme) {
-                // 首次启动：显示语言选择页，选完后再进入正常流程
-                 if (!hasChosenLanguage) {
-                     LanguageSelectionPage(
-                         onLanguageConfirmed = { language ->
-                             lifecycleScope.launch {
-                                 LanguageManager.saveLanguage(this@MainActivity, language)
-                                 LanguageManager.markLanguageChosen(this@MainActivity)
-                                 // saveLanguage 内部会调用 AppCompatDelegate.setApplicationLocales()
-                                 // 这会触发 Activity 重建，语言选择页自动消失
-                             }
-                         }
-                     )
-                     return@MyApplicationTheme
-                 }
-                when (authState) {
+                val currentDensity = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(
+                        density = currentDensity.density,
+                        fontScale = fontScaleFloat
+                    )
+                ) {
+                    // 首次启动：显示语言选择页，选完后再进入正常流程
+                    if (!hasChosenLanguage) {
+                        LanguageSelectionPage(
+                            onLanguageConfirmed = { language ->
+                                lifecycleScope.launch {
+                                    LanguageManager.saveLanguage(this@MainActivity, language)
+                                    LanguageManager.markLanguageChosen(this@MainActivity)
+                                    // saveLanguage 内部会调用 AppCompatDelegate.setApplicationLocales()
+                                    // 这会触发 Activity 重建，语言选择页自动消失
+                                }
+                            }
+                        )
+                        return@CompositionLocalProvider
+                    }
+                    when (authState) {
                     AuthState.Loading -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -230,6 +248,12 @@ class MainActivity : AppCompatActivity() {
                                 viewModel = viewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
+                                currentFontScale = fontScaleSetting,
+                                onFontScaleChange = { scale ->
+                                    lifecycleScope.launch {
+                                        themePreferences.saveFontScale(scale)
+                                    }
+                                },
                                 currentLanguage = currentLanguage,
                                 onLanguageChange = { newLanguage ->
                                     lifecycleScope.launch {
@@ -255,6 +279,12 @@ class MainActivity : AppCompatActivity() {
                                 viewModel = viewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
+                                currentFontScale = fontScaleSetting,
+                                onFontScaleChange = { scale ->
+                                    lifecycleScope.launch {
+                                        themePreferences.saveFontScale(scale)
+                                    }
+                                },
                                 currentLanguage = currentLanguage,
                                 onLanguageChange = { newLanguage ->
                                     lifecycleScope.launch {
@@ -312,6 +342,7 @@ class MainActivity : AppCompatActivity() {
                             onDismiss = null
                         )
                     }
+                    }
                 }
             }
         }
@@ -323,6 +354,8 @@ fun MainScreen(
     viewModel: ExpenseViewModel,
     themePreferences: ThemePreferences,
     currentTheme: ThemeMode,
+    currentFontScale: String,
+    onFontScaleChange: (String) -> Unit,
     currentLanguage: LanguageManager.AppLanguage,
     onLanguageChange: (LanguageManager.AppLanguage) -> Unit,
     currentBudget: Double?,
@@ -561,6 +594,8 @@ fun MainScreen(
             composable("settings") {
                 SettingsPage(
                     currentTheme = currentTheme,
+                    currentFontScale = currentFontScale,
+                    onFontScaleChange = onFontScaleChange,
                     currentLanguage = currentLanguage,
                     onLanguageChange = onLanguageChange,
                     onThemeChange = { newTheme ->

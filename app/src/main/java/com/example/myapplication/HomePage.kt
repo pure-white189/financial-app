@@ -35,10 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
+import com.example.myapplication.data.MonthlyIncome
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
 import com.example.myapplication.utils.displayName
 import com.example.myapplication.ui.theme.ExpenseRed
+import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
 import coil.compose.AsyncImage
@@ -51,6 +53,7 @@ fun HomePage(viewModel: ExpenseViewModel,
              onNavigateToEdit: (Expense) -> Unit = {},
              onNavigateToRecord: () -> Unit = {},
              onNavigateToSettings: () -> Unit = {},
+             onNavigateToIncome: () -> Unit = {},
              onNavigateToSaving: () -> Unit = {},
              onNavigateToStock: () -> Unit = {},
              onRequestShowTutorial: () -> Unit = {},
@@ -61,6 +64,7 @@ fun HomePage(viewModel: ExpenseViewModel,
              stocks: List<Stock> = emptyList()
 ) {
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
@@ -70,6 +74,14 @@ fun HomePage(viewModel: ExpenseViewModel,
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     var hasSeenSwipeHint by remember { mutableStateOf(prefs.getBoolean("has_seen_swipe_hint", false)) }
+    val currentYearMonth = remember {
+        val calendar = Calendar.getInstance()
+        "%d-%02d".format(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
+    }
+    val currentMonthIncome = remember(allIncome, currentYearMonth) {
+        allIncome.firstOrNull { it.yearMonth == currentYearMonth }
+    }
+    val currentMonthBalance = currentMonthIncome?.amount?.minus(monthlyTotal)
 
     // 根据筛选条件过滤消费记录
     val filteredExpenses = remember(expenses, selectedFilter) {
@@ -213,8 +225,9 @@ fun HomePage(viewModel: ExpenseViewModel,
         val hasBudget = monthlyBudget != null && monthlyBudget > 0
         val hasGoals = ongoingSavingGoals.isNotEmpty()
         val hasStocks = stocks.isNotEmpty()
+        val showIncomeCard = true
 
-        if (hasBudget || hasGoals || hasStocks) {
+        if (showIncomeCard || hasBudget || hasGoals || hasStocks) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
@@ -230,6 +243,18 @@ fun HomePage(viewModel: ExpenseViewModel,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
+                item {
+                    IncomeSummaryCard(
+                        currentMonthIncome = currentMonthIncome,
+                        monthlyExpense = monthlyTotal,
+                        balance = currentMonthBalance,
+                        currencySymbol = currencySymbol,
+                        onClick = onNavigateToIncome,
+                        modifier = Modifier
+                            .width(320.dp)
+                            .height(176.dp)
+                    )
+                }
                 if (hasBudget) {
                     item {
                         BudgetProgressCard(
@@ -476,6 +501,90 @@ fun HomePage(viewModel: ExpenseViewModel,
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IncomeSummaryCard(
+    currentMonthIncome: MonthlyIncome?,
+    monthlyExpense: Double,
+    balance: Double?,
+    currencySymbol: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val balanceColor = when {
+        balance == null -> MaterialTheme.colorScheme.onSurfaceVariant
+        balance >= 0 -> IncomeGreen
+        else -> ExpenseRed
+    }
+
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.income_this_month),
+                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = currentMonthIncome?.let {
+                        String.format(Locale.getDefault(), "%s %.2f", currencySymbol, it.amount)
+                    } ?: "—",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = IncomeGreen
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.income_balance),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = balance?.let {
+                        String.format(Locale.getDefault(), "%s %.2f", currencySymbol, it)
+                    } ?: "—",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = balanceColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = stringResource(
+                    R.string.income_expense_summary,
+                    String.format(Locale.getDefault(), "%s %.2f", currencySymbol, monthlyExpense)
+                ),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

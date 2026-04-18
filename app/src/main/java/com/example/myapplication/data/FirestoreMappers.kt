@@ -109,3 +109,21 @@ fun DocumentSnapshot.toStock(): Stock = Stock(
     updatedAt    = getLong("updatedAt") ?: 0L,
     isDeleted    = getBoolean("isDeleted") ?: false
 )
+
+// ── MonthlyIncome ───────────────────────────────
+fun MonthlyIncome.toFirestoreMap(): Map<String, Any> = mapOf(
+    "yearMonth" to yearMonth,
+    "amount" to amount,
+    "note" to note,
+    "updatedAt" to updatedAt,
+    "isDeleted" to isDeleted
+)
+
+fun Map<String, Any>.toMonthlyIncome(firestoreId: String): MonthlyIncome = MonthlyIncome(
+    yearMonth = this["yearMonth"] as String,
+    amount = (this["amount"] as Number).toDouble(),
+    note = (this["note"] as? String) ?: "",
+    firestoreId = firestoreId,
+    updatedAt = (this["updatedAt"] as Number).toLong(),
+    isDeleted = (this["isDeleted"] as? Boolean) ?: false
+)

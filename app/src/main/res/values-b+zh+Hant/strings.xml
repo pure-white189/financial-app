@@ -509,4 +509,21 @@
     <string name="export_csv_header_amount">金額</string>
     <string name="export_csv_header_category">類別</string>
     <string name="export_csv_header_note">備註</string>
+
+    <!-- ===== 收支頁 ===== -->
+    <string name="income_this_month">本月收入</string>
+    <string name="income_balance">本月結餘</string>
+    <string name="income_expense_summary">支出 %1$s</string>
+    <string name="income_page_title">收支記錄</string>
+    <string name="income_edit_title">設定收入</string>
+    <string name="income_edit_hint">輸入本月收入金額</string>
+    <string name="income_edit_note_hint">備註（可選）</string>
+    <string name="income_history_title">歷史收支</string>
+    <string name="income_transfer_to_goal">轉入儲蓄目標</string>
+    <string name="income_transfer_dialog_title">選擇儲蓄目標</string>
+    <string name="income_transfer_success">已成功存入 %1$s</string>
+    <string name="income_no_record">尚未設定本月收入</string>
+    <string name="income_set_now">立即設定</string>
+    <string name="income_balance_positive">結餘</string>
+    <string name="income_balance_negative">超支</string>
 </resources>

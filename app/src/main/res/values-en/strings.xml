@@ -509,4 +509,21 @@
     <string name="export_csv_header_amount">Amount</string>
     <string name="export_csv_header_category">Category</string>
     <string name="export_csv_header_note">Note</string>
+
+    <!-- ===== Income Page ===== -->
+    <string name="income_this_month">Monthly Income</string>
+    <string name="income_balance">Balance</string>
+    <string name="income_expense_summary">Spent %1$s</string>
+    <string name="income_page_title">Income &amp; Spending</string>
+    <string name="income_edit_title">Set Income</string>
+    <string name="income_edit_hint">Enter monthly income</string>
+    <string name="income_edit_note_hint">Note (optional)</string>
+    <string name="income_history_title">History</string>
+    <string name="income_transfer_to_goal">Transfer to Goal</string>
+    <string name="income_transfer_dialog_title">Choose Saving Goal</string>
+    <string name="income_transfer_success">Saved %1$s successfully</string>
+    <string name="income_no_record">No income set for this month</string>
+    <string name="income_set_now">Set Now</string>
+    <string name="income_balance_positive">Surplus</string>
+    <string name="income_balance_negative">Overspent</string>
 </resources>

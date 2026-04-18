@@ -22,7 +22,8 @@ class FinanceApplication : Application() {
             database.expenseDao(),
             database.loanDao(),
             database.savingGoalDao(),
-            database.stockDao()
+            database.stockDao(),
+            database.monthlyIncomeDao()
         )
     }
 }

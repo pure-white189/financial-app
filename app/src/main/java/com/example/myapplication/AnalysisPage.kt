@@ -64,6 +64,7 @@ fun AnalysisPage(
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val scope = rememberCoroutineScope()
     val thisMonthLabel = stringResource(R.string.home_this_month)
@@ -138,6 +139,13 @@ fun AnalysisPage(
     }
 
     val canGenerateAnalysis = thisMonthExpenses.isNotEmpty()
+    val currentYearMonth = remember {
+        val calendar = Calendar.getInstance()
+        "%d-%02d".format(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
+    }
+    val thisMonthIncome = remember(allIncome, currentYearMonth) {
+        allIncome.firstOrNull { it.yearMonth == currentYearMonth }
+    }
 
     val runAiAnalysis: () -> Unit = runAiAnalysis@{
         if (isGuest) {
@@ -271,6 +279,29 @@ fun AnalysisPage(
                     value = "$currencySymbol%.2f".format(monthlyTotal),
                     icon = Icons.Default.ShoppingCart,
                     color = PurpleStart,
+                    extraContent = {
+                        thisMonthIncome?.let { income ->
+                            val balance = income.amount - monthlyTotal
+                            val balanceColor = if (balance >= 0) IncomeGreen else ExpenseRed
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "收入 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, income.amount)} · 支出 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, monthlyTotal)} · ",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "结余 ${String.format(Locale.getDefault(), "%s%.2f", currencySymbol, balance)}",
+                                    fontSize = 11.sp,
+                                    color = balanceColor
+                                )
+                            }
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
 
@@ -634,6 +665,7 @@ fun StatCard(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
+    extraContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -672,6 +704,8 @@ fun StatCard(
                 style = MaterialTheme.typography.titleLarge,
                 color = color
             )
+
+            extraContent?.invoke()
         }
     }
 }

@@ -45,6 +45,7 @@ import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.ui.theme.PurpleStart
 import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
+import com.example.myapplication.ui.IncomePage
 import com.example.myapplication.ui.AccountPage
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
 import com.example.myapplication.ui.SyncViewModel
@@ -78,7 +79,8 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: ExpenseViewModel by viewModels {
         ExpenseViewModelFactory(
             (application as FinanceApplication).repository,
-            ThemePreferences(applicationContext)
+            ThemePreferences(applicationContext),
+            (application as FinanceApplication).database.monthlyIncomeDao()
         )
     }
 
@@ -553,6 +555,9 @@ fun MainScreen(
                     onNavigateToSettings = {
                         navController.navigate("settings")
                     },
+                    onNavigateToIncome = {
+                        navController.navigate("income")
+                    },
                     onNavigateToSaving = {
                         navController.navigate(BottomNavItem.Saving.route) {
                             launchSingleTop = true
@@ -646,6 +651,13 @@ fun MainScreen(
 
             composable("debt") {
                 DebtPage(viewModel = viewModel)
+            }
+
+            composable("income") {
+                IncomePage(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
 
             composable("saving") {

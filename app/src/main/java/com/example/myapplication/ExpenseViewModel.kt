@@ -8,6 +8,8 @@ import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseRepository
 import com.example.myapplication.data.ExpenseTemplate
 import com.example.myapplication.data.Loan
+import com.example.myapplication.data.MonthlyIncome
+import com.example.myapplication.data.MonthlyIncomeDao
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
 import com.example.myapplication.data.ThemePreferences
@@ -24,7 +26,8 @@ import java.util.Calendar
 
 class ExpenseViewModel(
     private val repository: ExpenseRepository,
-    themePreferences: ThemePreferences
+    themePreferences: ThemePreferences,
+    private val monthlyIncomeDao: MonthlyIncomeDao
 ) : ViewModel() {
 
     // 所有类别
@@ -37,6 +40,11 @@ class ExpenseViewModel(
     val stocks = repository.getAllStocks()
 
     val templates = repository.getAllTemplates()
+
+    // --- Income ---
+    val allIncome: StateFlow<List<MonthlyIncome>> = monthlyIncomeDao.getAllIncome()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // 本月总支出
     private val _monthlyTotal = MutableStateFlow(0.0)
     val monthlyTotal: StateFlow<Double> = _monthlyTotal.asStateFlow()
@@ -227,6 +235,19 @@ class ExpenseViewModel(
         }
     }
 
+    fun depositToGoal(goalId: Int, amount: Double) {
+        viewModelScope.launch {
+            val targetGoal = repository.getAllGoals().first().firstOrNull { it.id == goalId } ?: return@launch
+            val nextAmount = targetGoal.currentAmount + amount
+            repository.updateGoal(
+                targetGoal.copy(
+                    currentAmount = nextAmount,
+                    isCompleted = nextAmount >= targetGoal.targetAmount
+                )
+            )
+        }
+    }
+
     fun addStock(stock: Stock) {
         viewModelScope.launch {
             repository.insertStock(stock)
@@ -258,6 +279,33 @@ class ExpenseViewModel(
     fun updateStock(stock: Stock) {
         viewModelScope.launch {
             repository.updateStock(stock)
+        }
+    }
+
+    fun getCurrentYearMonth(): String {
+        val now = java.util.Calendar.getInstance()
+        return "%d-%02d".format(now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH) + 1)
+    }
+
+    fun getIncomeForCurrentMonth(): StateFlow<MonthlyIncome?> {
+        val yearMonth = getCurrentYearMonth()
+        return monthlyIncomeDao.getAllIncome()
+            .map { list -> list.firstOrNull { it.yearMonth == yearMonth } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }
+
+    fun upsertIncome(yearMonth: String, amount: Double, note: String = "") {
+        viewModelScope.launch {
+            val existing = monthlyIncomeDao.getIncomeForMonth(yearMonth)
+            val income = MonthlyIncome(
+                yearMonth = yearMonth,
+                amount = amount,
+                note = note,
+                firestoreId = existing?.firestoreId ?: "",
+                updatedAt = System.currentTimeMillis(),
+                isDeleted = false
+            )
+            monthlyIncomeDao.insertOrUpdate(income)
         }
     }
 
@@ -344,12 +392,13 @@ class ExpenseViewModel(
 
 class ExpenseViewModelFactory(
     private val repository: ExpenseRepository,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
+    private val monthlyIncomeDao: MonthlyIncomeDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExpenseViewModel(repository, themePreferences) as T
+            return ExpenseViewModel(repository, themePreferences, monthlyIncomeDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

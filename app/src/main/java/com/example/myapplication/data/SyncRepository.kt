@@ -10,7 +10,8 @@ class SyncRepository(
     private val expenseDao: ExpenseDao,
     private val loanDao: LoanDao,
     private val savingGoalDao: SavingGoalDao,
-    private val stockDao: StockDao
+    private val stockDao: StockDao,
+    private val monthlyIncomeDao: MonthlyIncomeDao
 ) {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -28,9 +29,10 @@ class SyncRepository(
             val loans     = syncLoans()
             val goals     = syncGoals()
             val stocks    = syncStocks()
+            val income    = syncMonthlyIncome()
             SyncResult.Success(
-                uploaded = expenses.first + loans.first + goals.first + stocks.first,
-                downloaded = expenses.second + loans.second + goals.second + stocks.second
+                uploaded = expenses.first + loans.first + goals.first + stocks.first + income.first,
+                downloaded = expenses.second + loans.second + goals.second + stocks.second + income.second
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -164,6 +166,40 @@ class SyncRepository(
         }
 
         stockDao.purgeDeleted()
+        return Pair(localAll.size, downloaded)
+    }
+
+    // ── Monthly Income ───────────────────────────
+    private suspend fun syncMonthlyIncome(): Pair<Int, Int> {
+        val col = userCol("monthly_income")
+
+        val localAll = monthlyIncomeDao.getAllIncomeOnce()
+        localAll.forEach { income ->
+            val fid = income.firestoreId.ifEmpty { UUID.randomUUID().toString() }
+            col.document(fid).set(income.toFirestoreMap(), SetOptions.merge()).await()
+            if (income.firestoreId.isEmpty()) {
+                monthlyIncomeDao.insertOrUpdate(income.copy(firestoreId = fid))
+            }
+        }
+
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data
+            val cloudIncome = data.toMonthlyIncome(doc.id)
+            val local = monthlyIncomeDao.getIncomeForMonth(cloudIncome.yearMonth)
+            when {
+                local == null -> {
+                    monthlyIncomeDao.insertOrUpdate(cloudIncome)
+                    downloaded++
+                }
+                cloudIncome.updatedAt > local.updatedAt -> {
+                    monthlyIncomeDao.insertOrUpdate(cloudIncome)
+                    downloaded++
+                }
+            }
+        }
+
         return Pair(localAll.size, downloaded)
     }
 }

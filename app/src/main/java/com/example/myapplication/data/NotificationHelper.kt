@@ -55,6 +55,7 @@ object NotificationHelper {
         context: Context,
         monthlyTotal: Double,
         monthlyBudget: Double,
+        currencySymbol: String,
         pinnedTemplates: List<com.example.myapplication.data.ExpenseTemplate> = emptyList()
     ) {
         // 检查权限
@@ -98,12 +99,14 @@ object NotificationHelper {
                 if (remaining >= 0) {
                     context.getString(
                         R.string.notif_persistent_used,
+                        currencySymbol,
                         String.format("%.2f", monthlyTotal),
                         String.format("%.2f", monthlyBudget)
                     )
                 } else {
                     context.getString(
                         R.string.notif_persistent_over,
+                        currencySymbol,
                         String.format("%.2f", -remaining)
                     )
                 }
@@ -135,7 +138,7 @@ object NotificationHelper {
 
             notificationBuilder.addAction(
                 R.drawable.ic_launcher_foreground,
-                "¥${template.amount.toInt()}",
+                "$currencySymbol${template.amount.toInt()}",
                 templatePendingIntent
             )
         }
@@ -171,6 +174,7 @@ object NotificationHelper {
         context: Context,
         monthlyTotal: Double,
         monthlyBudget: Double,
+        currencySymbol: String,
         isOverBudget: Boolean
     ) {
         // 检查权限
@@ -190,12 +194,14 @@ object NotificationHelper {
         val (title, text) = if (isOverBudget) {
             context.getString(R.string.notif_alert_over_title) to context.getString(
                 R.string.notif_alert_over_text,
+                currencySymbol,
                 String.format("%.2f", monthlyTotal - monthlyBudget)
             )
         } else {
             context.getString(R.string.notif_alert_usage_title) to context.getString(
                 R.string.notif_alert_usage_text,
                 percentage,
+                currencySymbol,
                 String.format("%.2f", monthlyBudget - monthlyTotal)
             )
         }

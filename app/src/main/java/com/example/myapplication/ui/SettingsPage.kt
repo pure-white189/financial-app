@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import com.example.myapplication.data.ThemeMode
+import com.example.myapplication.data.ThemePreferences
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.utils.LanguageManager
 import kotlinx.coroutines.launch
 
@@ -47,6 +50,11 @@ fun SettingsPage(
     currentLanguage: LanguageManager.AppLanguage = LanguageManager.AppLanguage.FOLLOW_SYSTEM,
     onLanguageChange: (LanguageManager.AppLanguage) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val themePreferences = remember(context) { ThemePreferences(context) }
+    val selectedCurrency by themePreferences.selectedCurrency.collectAsState(initial = "HKD")
+    val currencyScope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -102,6 +110,15 @@ fun SettingsPage(
             FontScaleSettingItem(
                 currentFontScale = currentFontScale,
                 onFontScaleChange = onFontScaleChange
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            CurrencySettingItem(
+                currentCurrency = selectedCurrency,
+                onCurrencyChange = { currency ->
+                    currencyScope.launch {
+                        themePreferences.setCurrency(currency)
+                    }
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             // 语言选择
@@ -1058,6 +1075,100 @@ fun LanguageSettingItem(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun CurrencySettingItem(
+    currentCurrency: String,
+    onCurrencyChange: (String) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val subtitle = "${getCurrencySymbol(currentCurrency)} ($currentCurrency)"
+    val options = listOf("HKD", "CNY", "USD")
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDialog = true }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_currency),
+                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text(stringResource(R.string.settings_currency)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        options.forEach { currency ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onCurrencyChange(currency)
+                                        showDialog = false
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = currentCurrency == currency,
+                                    onClick = {
+                                        onCurrencyChange(currency)
+                                        showDialog = false
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("$currency — ${getCurrencySymbol(currency)}")
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text(stringResource(R.string.common_close))
+                    }
+                }
+            )
         }
     }
 }

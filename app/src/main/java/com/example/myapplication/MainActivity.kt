@@ -39,6 +39,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.myapplication.data.ThemeMode
 import com.example.myapplication.data.ThemePreferences
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.ui.theme.PurpleStart
@@ -76,7 +77,8 @@ class MainActivity : AppCompatActivity() {
     }
     private val viewModel: ExpenseViewModel by viewModels {
         ExpenseViewModelFactory(
-            (application as FinanceApplication).repository
+            (application as FinanceApplication).repository,
+            ThemePreferences(applicationContext)
         )
     }
 
@@ -419,6 +421,7 @@ fun MainScreen(
 
     LaunchedEffect(monthlyTotal, currentBudget, showPersistentNotification) {
         if (showPersistentNotification && currentBudget != null && currentBudget > 0) {
+            val currencySymbol = getCurrencySymbol(themePreferences.selectedCurrency.first())
             // 获取置顶模板
             val templates = viewModel.templates.first()
             val pinnedTemplates = templates.filter { it.isPinned }
@@ -428,6 +431,7 @@ fun MainScreen(
                 context,
                 monthlyTotal,
                 currentBudget,
+                currencySymbol,
                 pinnedTemplates
             )
 
@@ -446,6 +450,7 @@ fun MainScreen(
                             context,
                             monthlyTotal,
                             currentBudget,
+                            currencySymbol,
                             isOverBudget = true
                         )
                         prefs.edit().putString("last_alert_date", today).apply()
@@ -455,6 +460,7 @@ fun MainScreen(
                             context,
                             monthlyTotal,
                             currentBudget,
+                            currencySymbol,
                             isOverBudget = false
                         )
                         prefs.edit().putString("last_alert_date", today).apply()

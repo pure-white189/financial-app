@@ -10,14 +10,22 @@ import com.example.myapplication.data.ExpenseTemplate
 import com.example.myapplication.data.Loan
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
+import com.example.myapplication.data.ThemePreferences
+import com.example.myapplication.data.getCurrencySymbol
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() {
+class ExpenseViewModel(
+    private val repository: ExpenseRepository,
+    themePreferences: ThemePreferences
+) : ViewModel() {
 
     // 所有类别
     val categories = repository.getAllCategories()
@@ -35,6 +43,10 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     private val _totalStockValue = MutableStateFlow(0.0)
     val totalStockValue: StateFlow<Double> = _totalStockValue.asStateFlow()
+
+    val currencySymbol: StateFlow<String> = themePreferences.selectedCurrency
+        .map { currency -> getCurrencySymbol(currency) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "HK$")
 
     init {
         loadMonthlyTotal()
@@ -330,11 +342,14 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
 }
 
-class ExpenseViewModelFactory(private val repository: ExpenseRepository) : ViewModelProvider.Factory {
+class ExpenseViewModelFactory(
+    private val repository: ExpenseRepository,
+    private val themePreferences: ThemePreferences
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExpenseViewModel(repository) as T
+            return ExpenseViewModel(repository, themePreferences) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

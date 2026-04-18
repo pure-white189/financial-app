@@ -34,6 +34,7 @@ class ThemePreferences(private val context: Context) {
         val USER_PLAN_KEY = stringPreferencesKey("user_plan")
         val PLAN_EXPIRES_AT_KEY = stringPreferencesKey("plan_expires_at")
         val FONT_SCALE_KEY = stringPreferencesKey("font_scale")
+        val CURRENCY_KEY = stringPreferencesKey("selected_currency")
     }
 
     // 读取主题设置
@@ -80,6 +81,10 @@ class ThemePreferences(private val context: Context) {
         preferences[FONT_SCALE_KEY] ?: "medium"
     }
 
+    val selectedCurrency: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[CURRENCY_KEY] ?: "HKD"
+    }
+
     val userPlan: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[USER_PLAN_KEY] ?: "free"
     }
@@ -123,6 +128,12 @@ class ThemePreferences(private val context: Context) {
         }
     }
 
+    suspend fun setCurrency(currency: String) {
+        context.dataStore.edit { preferences ->
+            preferences[CURRENCY_KEY] = currency
+        }
+    }
+
     suspend fun setUserPlan(plan: String, expiresAt: String?) {
         context.dataStore.edit { preferences ->
             preferences[USER_PLAN_KEY] = plan
@@ -162,4 +173,10 @@ class ThemePreferences(private val context: Context) {
             preferences[THEME_MODE_KEY] = mode.name
         }
     }
+}
+
+fun getCurrencySymbol(currency: String): String = when (currency) {
+    "CNY" -> "¥"
+    "USD" -> "US$"
+    else -> "HK$"
 }

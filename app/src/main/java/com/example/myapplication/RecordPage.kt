@@ -60,6 +60,7 @@ fun RecordPage(
     onNavigateToLogin: (() -> Unit)? = null
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
     val aiResultFilledText = stringResource(R.string.ai_result_filled)
@@ -179,7 +180,7 @@ fun RecordPage(
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = "¥${template.amount}",
+                                    text = "$currencySymbol${template.amount}",
                                     fontSize = 12.sp,
                                     style = MaterialTheme.typography.labelSmall
                                 )
@@ -445,7 +446,7 @@ fun RecordPage(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (amount.isEmpty()) "¥ 0" else "¥ $amount",
+                        text = if (amount.isEmpty()) "$currencySymbol 0" else "$currencySymbol $amount",
                         fontSize = 40.sp,
                         fontWeight = FontWeight.Bold,
                         color = PurpleStart
@@ -751,6 +752,7 @@ fun RecordPage(
                         TemplateItem(
                             template = template,
                             category = categories.find { it.id == template.categoryId },
+                            currencySymbol = currencySymbol,
                             onUse = {
                                 scope.launch {
                                     viewModel.createExpenseFromTemplate(template)
@@ -787,6 +789,7 @@ fun RecordPage(
                         RecentExpenseItem(
                             expense = expense,
                             category = category,
+                            currencySymbol = currencySymbol,
                             onCopy = {
                                 amount = expense.amount.toString()
                                 selectedCategory = category
@@ -889,7 +892,7 @@ fun RecordPage(
                                 }
                             }
                             Text(
-                                text = "¥${"%.2f".format(pendingExpense!!.amount)}",
+                                text = "$currencySymbol${"%.2f".format(pendingExpense!!.amount)}",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.error
@@ -1053,6 +1056,7 @@ fun CalculatorKeyboard(
 fun TemplateItem(
     template: ExpenseTemplate,
     category: Category?,
+    currencySymbol: String,
     onUse: () -> Unit,
     onDelete: () -> Unit,
     onTogglePin: () -> Unit  // 添加这个参数
@@ -1106,7 +1110,7 @@ fun TemplateItem(
                         )
                     }
                     Text(
-                        text = "${category?.displayName() ?: stringResource(R.string.analysis_unknown_category)} • ¥${template.amount}",
+                        text = "${category?.displayName() ?: stringResource(R.string.analysis_unknown_category)} • $currencySymbol${template.amount}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1148,6 +1152,7 @@ fun TemplateItem(
 fun RecentExpenseItem(
     expense: Expense,
     category: Category?,
+    currencySymbol: String,
     onCopy: () -> Unit
 ) {
     Card(
@@ -1188,7 +1193,7 @@ fun RecentExpenseItem(
             }
 
             Text(
-                text = "¥${expense.amount}",
+                text = "$currencySymbol${expense.amount}",
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.error
             )

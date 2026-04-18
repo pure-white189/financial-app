@@ -64,6 +64,7 @@ fun AnalysisPage(
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     val scope = rememberCoroutineScope()
     val thisMonthLabel = stringResource(R.string.home_this_month)
     val categoryOtherLabel = stringResource(R.string.category_other)
@@ -267,7 +268,7 @@ fun AnalysisPage(
             ) {
                 StatCard(
                     title = stringResource(R.string.analysis_total_spent),
-                    value = "¥%.2f".format(monthlyTotal),
+                    value = "$currencySymbol%.2f".format(monthlyTotal),
                     icon = Icons.Default.ShoppingCart,
                     color = PurpleStart,
                     modifier = Modifier.weight(1f)
@@ -309,19 +310,19 @@ fun AnalysisPage(
                             Column(modifier = Modifier.weight(1f)) {
                                 BudgetStatRow(
                                     label = stringResource(R.string.analysis_budget_spent_label),
-                                    value = "¥%.2f".format(monthlyTotal),
+                                    value = "$currencySymbol%.2f".format(monthlyTotal),
                                     color = ExpenseRed
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 BudgetStatRow(
                                     label = stringResource(R.string.analysis_budget_total_label),
-                                    value = "¥%.2f".format(monthlyBudget),
+                                    value = "$currencySymbol%.2f".format(monthlyBudget),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 BudgetStatRow(
                                     label = stringResource(R.string.analysis_budget_remaining_label),
-                                    value = "¥%.2f".format(monthlyBudget - monthlyTotal),
+                                    value = "$currencySymbol%.2f".format(monthlyBudget - monthlyTotal),
                                     color = if (monthlyBudget > monthlyTotal) IncomeGreen else ExpenseRed
                                 )
                             }
@@ -338,7 +339,7 @@ fun AnalysisPage(
             ) {
                 StatCard(
                     title = stringResource(R.string.analysis_avg_daily),
-                    value = "¥%.0f".format(
+                    value = "$currencySymbol%.0f".format(
                         if (thisMonthExpenses.isNotEmpty())
                             monthlyTotal / Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
                         else 0.0
@@ -415,7 +416,7 @@ fun AnalysisPage(
                         )
                     } else {
                         categoryStats.forEach { stat ->
-                            CategoryStatItem(stat)
+                            CategoryStatItem(stat = stat, currencySymbol = currencySymbol)
                             if (stat != categoryStats.last()) {
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
@@ -556,7 +557,7 @@ fun AnalysisPage(
                                 text = stringResource(
                                     R.string.analysis_ai_sheet_ready_message,
                                     thisMonthExpenses.size,
-                                    String.format("%.2f", monthlyTotal)
+                                    "$currencySymbol${String.format("%.2f", monthlyTotal)}"
                                 ),
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
@@ -719,7 +720,7 @@ fun DailyTrendChart(dailyStats: List<Pair<String, Double>>) {
 }
 
 @Composable
-fun CategoryStatItem(stat: CategoryStat) {
+fun CategoryStatItem(stat: CategoryStat, currencySymbol: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -756,7 +757,7 @@ fun CategoryStatItem(stat: CategoryStat) {
             horizontalAlignment = Alignment.End
         ) {
             Text(
-                text = "¥%.2f".format(stat.total),
+                text = "$currencySymbol%.2f".format(stat.total),
                 fontSize = 16.sp,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error

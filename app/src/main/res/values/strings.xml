@@ -282,6 +282,7 @@
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_currency">货币</string>
     <string name="settings_font_size">字体大小</string>
     <string name="font_small">小</string>
     <string name="font_medium">中</string>
@@ -409,13 +410,13 @@
     <string name="notif_channel_alert_name">预算警告</string>
     <string name="notif_channel_alert_desc">预算超支时的提醒通知</string>
     <string name="notif_persistent_title">💰 本月预算进度 %1$d%%</string>
-    <string name="notif_persistent_used">已用 ¥%1$s / ¥%2$s</string>
-    <string name="notif_persistent_over">超支 ¥%1$s</string>
+    <string name="notif_persistent_used">已用 %1$s%2$s / %1$s%3$s</string>
+    <string name="notif_persistent_over">超支 %1$s%2$s</string>
     <string name="notif_quick_record">快速记账</string>
     <string name="notif_alert_over_title">🚨 预算超支警告</string>
-    <string name="notif_alert_over_text">本月已超支 ¥%1$s，请注意控制消费</string>
+    <string name="notif_alert_over_text">本月已超支 %1$s%2$s，请注意控制消费</string>
     <string name="notif_alert_usage_title">⚠️ 预算使用警告</string>
-    <string name="notif_alert_usage_text">本月预算已使用 %1$d%%，还剩 ¥%2$s</string>
+    <string name="notif_alert_usage_text">本月预算已使用 %1$d%%，还剩 %2$s%3$s</string>
 
     <!-- ===== 登录 / 注册页 ===== -->
     <string name="auth_sign_in">登录</string>

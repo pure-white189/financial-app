@@ -61,6 +61,7 @@ fun HomePage(viewModel: ExpenseViewModel,
              stocks: List<Stock> = emptyList()
 ) {
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -191,15 +192,15 @@ fun HomePage(viewModel: ExpenseViewModel,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    "¥ %.2f".format(monthlyTotal),
+                    "$currencySymbol %.2f".format(monthlyTotal),
                     color = Color.White,
                     fontSize = 48.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    HeroStatItem(stringResource(R.string.home_today), "¥%.0f".format(todayTotal))
-                    HeroStatItem(stringResource(R.string.home_this_week), "¥%.0f".format(weeklyTotal))
+                    HeroStatItem(stringResource(R.string.home_today), "$currencySymbol%.0f".format(todayTotal))
+                    HeroStatItem(stringResource(R.string.home_this_week), "$currencySymbol%.0f".format(weeklyTotal))
                 }
             }
         }
@@ -234,6 +235,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                         BudgetProgressCard(
                             monthlyTotal = monthlyTotal,
                             monthlyBudget = monthlyBudget,
+                            currencySymbol = currencySymbol,
                             modifier = Modifier
                                 .width(320.dp)
                                 .height(176.dp)
@@ -244,6 +246,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                     item {
                         SavingGoalSummaryCard(
                             ongoingGoals = ongoingSavingGoals,
+                            currencySymbol = currencySymbol,
                             onClick = onNavigateToSaving,
                             modifier = Modifier
                                 .width(300.dp)
@@ -255,6 +258,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                     item {
                         StockOverviewCard(
                             stocks = stocks,
+                            currencySymbol = currencySymbol,
                             onClick = onNavigateToStock,
                             modifier = Modifier
                                 .width(300.dp)
@@ -446,6 +450,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                             ExpenseItem(
                                 expense = expense,
                                 category = category,
+                                currencySymbol = currencySymbol,
                                 requireDeleteConfirm = requireDeleteConfirm,
                                 onDelete = {
                                     scope.launch {
@@ -478,6 +483,7 @@ fun HomePage(viewModel: ExpenseViewModel,
 @Composable
 private fun StockOverviewCard(
     stocks: List<Stock>,
+    currencySymbol: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -519,7 +525,7 @@ private fun StockOverviewCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = stringResource(R.string.stock_total_value) + " HK$${String.format(Locale.getDefault(), "%.2f", totalValue)}",
+                text = stringResource(R.string.stock_total_value) + " $currencySymbol${String.format(Locale.getDefault(), "%.2f", totalValue)}",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
@@ -529,7 +535,7 @@ private fun StockOverviewCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = stringResource(R.string.stock_total_profit) + " ${formatSignedHkAmount(totalProfit)}",
+                text = stringResource(R.string.stock_total_profit) + " ${formatSignedAmount(totalProfit, currencySymbol)}",
                 fontSize = 14.sp,
                 color = profitColor
             )
@@ -537,14 +543,15 @@ private fun StockOverviewCard(
     }
 }
 
-private fun formatSignedHkAmount(amount: Double): String {
+private fun formatSignedAmount(amount: Double, currencySymbol: String): String {
     val sign = if (amount >= 0) "+" else "-"
-    return "${sign}HK$${String.format(Locale.getDefault(), "%.2f", kotlin.math.abs(amount))}"
+    return "${sign}${currencySymbol}${String.format(Locale.getDefault(), "%.2f", kotlin.math.abs(amount))}"
 }
 
 @Composable
 private fun SavingGoalSummaryCard(
     ongoingGoals: List<SavingGoal>,
+    currencySymbol: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -595,8 +602,8 @@ private fun SavingGoalSummaryCard(
                 text = String.format(
                     Locale.getDefault(),
                     "%s / %s",
-                    String.format(Locale.getDefault(), "¥ %.2f", latestGoal.currentAmount),
-                    String.format(Locale.getDefault(), "¥ %.2f", latestGoal.targetAmount)
+                    String.format(Locale.getDefault(), "$currencySymbol %.2f", latestGoal.currentAmount),
+                    String.format(Locale.getDefault(), "$currencySymbol %.2f", latestGoal.targetAmount)
                 ),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -639,6 +646,7 @@ private fun SavingGoalSummaryCard(
 fun ExpenseItem(
     expense: Expense,
     category: Category?,
+    currencySymbol: String,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     requireDeleteConfirm: Boolean
@@ -790,7 +798,7 @@ fun ExpenseItem(
                 }
 
                 Text(
-                    text = "¥ %.2f".format(expense.amount),
+                    text = "$currencySymbol %.2f".format(expense.amount),
                     fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
                     color = ExpenseRed
@@ -825,6 +833,7 @@ fun getCategoryIcon(iconName: String?): ImageVector {
 fun BudgetProgressCard(
     monthlyTotal: Double,
     monthlyBudget: Double,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     val percentage = (monthlyTotal / monthlyBudget * 100).coerceIn(0.0, 100.0)
@@ -910,7 +919,7 @@ fun BudgetProgressCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "¥${"%.2f".format(kotlin.math.abs(remaining))}",
+                        text = "$currencySymbol${"%.2f".format(kotlin.math.abs(remaining))}",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (remaining >= 0)
@@ -928,7 +937,7 @@ fun BudgetProgressCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "¥${"%.2f".format(dailyAvailable)}",
+                            text = "$currencySymbol${"%.2f".format(dailyAvailable)}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )

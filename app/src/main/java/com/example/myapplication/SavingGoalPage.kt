@@ -67,6 +67,7 @@ private val GoalDoneColor = IncomeGreen
 @Composable
 fun SavingGoalPage(viewModel: ExpenseViewModel) {
     val goals by viewModel.savingGoals.collectAsState(initial = emptyList())
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var depositTarget by remember { mutableStateOf<SavingGoal?>(null) }
     var deleteTarget by remember { mutableStateOf<SavingGoal?>(null) }
@@ -129,7 +130,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = stringResource(R.string.saving_total_saved), fontSize = 13.sp)
                         Text(
-                            text = String.format(Locale.getDefault(), "¥ %.2f", totalSaved),
+                            text = String.format(Locale.getDefault(), "$currencySymbol %.2f", totalSaved),
                             fontSize = 20.sp,
                             color = IncomeGreen
                         )
@@ -183,6 +184,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
                     items(goals, key = { it.id }) { goal ->
                         SavingGoalItemCard(
                             goal = goal,
+                            currencySymbol = currencySymbol,
                             onDeposit = { depositTarget = goal },
                             onEdit = { editTarget = goal },
                             onDelete = { deleteTarget = goal }
@@ -206,6 +208,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
     depositTarget?.let { target ->
         DepositDialog(
             goal = target,
+            currencySymbol = currencySymbol,
             onDismiss = { depositTarget = null },
             onConfirm = { amount ->
                 viewModel.addDeposit(target, amount)
@@ -252,6 +255,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
 @Composable
 private fun SavingGoalItemCard(
     goal: SavingGoal,
+    currencySymbol: String,
     onDeposit: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -313,8 +317,8 @@ private fun SavingGoalItemCard(
             Text(
                 text = stringResource(
                     R.string.saving_progress_amount,
-                    String.format(Locale.getDefault(), "¥ %.2f", goal.currentAmount),
-                    String.format(Locale.getDefault(), "¥ %.2f", goal.targetAmount)
+                    String.format(Locale.getDefault(), "$currencySymbol %.2f", goal.currentAmount),
+                    String.format(Locale.getDefault(), "$currencySymbol %.2f", goal.targetAmount)
                 ),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -643,6 +647,7 @@ private fun AddSavingGoalDialog(
 @Composable
 private fun DepositDialog(
     goal: SavingGoal,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
@@ -656,7 +661,7 @@ private fun DepositDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = stringResource(R.string.saving_remaining_amount, String.format(Locale.getDefault(), "¥ %.2f", remaining)),
+                    text = stringResource(R.string.saving_remaining_amount, String.format(Locale.getDefault(), "$currencySymbol %.2f", remaining)),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

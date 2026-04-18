@@ -80,6 +80,7 @@ private const val LOAN_TYPE_OUT = "借出"
 fun DebtPage(viewModel: ExpenseViewModel) {
     val context = LocalContext.current
     val loans by viewModel.loans.collectAsState(initial = emptyList())
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTargetLoan by remember { mutableStateOf<Loan?>(null) }
@@ -136,7 +137,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = stringResource(R.string.debt_total_lend), fontSize = 13.sp)
                         Text(
-                            text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidOut),
+                            text = String.format(Locale.getDefault(), "$currencySymbol %.2f", unrepaidOut),
                             fontSize = 20.sp,
                             color = PurpleStart
                         )
@@ -151,7 +152,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = stringResource(R.string.debt_total_borrow), fontSize = 13.sp)
                         Text(
-                            text = String.format(Locale.getDefault(), "¥ %.2f", unrepaidIn),
+                            text = String.format(Locale.getDefault(), "$currencySymbol %.2f", unrepaidIn),
                             fontSize = 20.sp,
                             color = ExpenseRed
                         )
@@ -221,6 +222,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
                     items(filteredLoans, key = { it.id }) { loan ->
                         LoanItemCard(
                             loan = loan,
+                            currencySymbol = currencySymbol,
                             onMarkAsRepaid = { viewModel.markAsRepaid(loan) },
                             onDelete = { deleteTargetLoan = loan }
                         )
@@ -272,6 +274,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
 @Composable
 private fun LoanItemCard(
     loan: Loan,
+    currencySymbol: String,
     onMarkAsRepaid: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -342,7 +345,7 @@ private fun LoanItemCard(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = String.format(Locale.getDefault(), "¥ %.2f", loan.amount),
+                        text = String.format(Locale.getDefault(), "$currencySymbol %.2f", loan.amount),
                         fontSize = 20.sp,
                         color = amountColor
                     )

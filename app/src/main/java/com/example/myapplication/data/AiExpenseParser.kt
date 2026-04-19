@@ -4,6 +4,9 @@ import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -12,6 +15,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 object AiExpenseParser {
@@ -33,10 +39,21 @@ object AiExpenseParser {
     private var localAnalyzeLimit: Int? = 2
     private var localPlan: String = "free"
 
+    private val _parseUsedToday = MutableStateFlow(0)
+    val parseUsedToday: StateFlow<Int> = _parseUsedToday.asStateFlow()
+
+    private val _parseLimit = MutableStateFlow<Int?>(10)
+    val parseLimitFlow: StateFlow<Int?> = _parseLimit.asStateFlow()
+
+    private val _planFlow = MutableStateFlow("free")
+    val planFlow: StateFlow<String> = _planFlow.asStateFlow()
+
     data class ParseResult(
         val amount: Double,
         val category: String,
-        val note: String
+        val note: String,
+        val date: String?,
+        val time: String?
     )
 
     data class ExpenseSummary(
@@ -112,7 +129,7 @@ object AiExpenseParser {
             try {
                 // Local quota pre-check (Plan B front-end guard)
                 if (localPlan != "pro" && localParseLimit != null) {
-                    val today = java.time.LocalDate.now().toString()
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                     if (localParseDate == today && localParseUsedToday >= localParseLimit!!) {
                         return@withContext Result.failure(
                             Exception("Daily limit reached ($localParseLimit uses/day). Upgrade to Pro for unlimited access.")
@@ -150,15 +167,18 @@ object AiExpenseParser {
                     val result = ParseResult(
                         amount = json.optDouble("amount", 0.0),
                         category = json.optString("category", ""),
-                        note = json.optString("note", "")
+                        note = json.optString("note", ""),
+                        date = json.optString("date", "").takeIf { it.isNotEmpty() && it != "null" },
+                        time = json.optString("time", "").takeIf { it.isNotEmpty() && it != "null" }
                     )
                     Result.success(result).also {
-                        val today = java.time.LocalDate.now().toString()
+                        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                         if (localParseDate != today) {
                             localParseDate = today
                             localParseUsedToday = 0
                         }
                         localParseUsedToday++
+                        _parseUsedToday.value = localParseUsedToday
                     }
                 }
             } catch (e: Exception) {
@@ -181,8 +201,7 @@ object AiExpenseParser {
         try {
             // Local quota pre-check
             if (localPlan != "pro" && localAnalyzeLimit != null) {
-                val month = java.time.LocalDate.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                val month = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
                 if (localAnalyzeMonth == month && localAnalyzeUsedThisMonth >= localAnalyzeLimit!!) {
                     return@withContext Result.failure(
                         Exception("Monthly limit reached ($localAnalyzeLimit analyses/month). Upgrade to Pro for unlimited access.")
@@ -236,8 +255,7 @@ object AiExpenseParser {
                 val json = JSONObject(responseBody)
                 val analysis = json.optString("analysis", "分析生成失败，请稍后重试")
                 Result.success(analysis).also {
-                    val month = java.time.LocalDate.now()
-                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                    val month = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
                     if (localAnalyzeMonth != month) {
                         localAnalyzeMonth = month
                         localAnalyzeUsedThisMonth = 0
@@ -369,6 +387,7 @@ object AiExpenseParser {
                     if (response.isSuccessful) {
                         if (type == "parse") {
                             localParseUsedToday = (localParseLimit ?: 10) - 1
+                            _parseUsedToday.value = localParseUsedToday
                         } else if (type == "analyze") {
                             localAnalyzeUsedThisMonth = (localAnalyzeLimit ?: 2) - 1
                         }
@@ -407,15 +426,18 @@ object AiExpenseParser {
                         analyzeLimit = if (analyzeObj.isNull("limit")) null else analyzeObj.optInt("limit")
                     )
                     // Sync local counters
-                    val now = java.time.LocalDate.now()
-                    localParseDate = now.toString()
+                    val now = Date()
+                    localParseDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(now)
                     localParseUsedToday = status.parseUsed
+                    _parseUsedToday.value = localParseUsedToday
                     localParseLimit = status.parseLimit
-                    val month = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                    _parseLimit.value = localParseLimit
+                    val month = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(now)
                     localAnalyzeMonth = month
                     localAnalyzeUsedThisMonth = status.analyzeUsed
                     localAnalyzeLimit = status.analyzeLimit
                     localPlan = status.plan
+                    _planFlow.value = localPlan
                     Result.success(status)
                 }
             } catch (e: Exception) {

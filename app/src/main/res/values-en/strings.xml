@@ -100,6 +100,11 @@
     <string name="ai_limit_reached">Daily AI limit reached</string>
     <string name="ai_monthly_limit_reached">Monthly AI analysis limit reached</string>
     <string name="ai_go_login">Log In</string>
+    <string name="ai_parse_quota_remaining">Today: %1$d / %2$s left</string>
+    <string name="token_redeem_success">Redeemed! Token balance: %1$d</string>
+    <string name="ai_report_history_title">Report History</string>
+    <string name="ai_report_history_empty">No reports yet</string>
+    <string name="ai_report_history_button">History</string>
 
     <!-- ===== AI Monthly Analysis ===== -->
     <string name="analysis_ai_entry_title">AI Monthly Analysis</string>

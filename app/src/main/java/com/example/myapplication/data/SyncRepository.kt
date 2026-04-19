@@ -14,7 +14,8 @@ class SyncRepository(
     private val monthlyIncomeDao: MonthlyIncomeDao,
     private val checkInDao: CheckInDao,
     private val achievementDao: AchievementDao,
-    private val tokenTransactionDao: TokenTransactionDao
+    private val tokenTransactionDao: TokenTransactionDao,
+    private val aiReportDao: AiReportDao
 ) {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -36,13 +37,14 @@ class SyncRepository(
             val checkIns     = syncCheckIns()
             val achievements = syncAchievements()
             val tokens       = syncTokenTransactions()
+            val reports      = syncAiReports()
             SyncResult.Success(
                 uploaded = expenses.first + loans.first + goals.first +
                         stocks.first + income.first + checkIns.first +
-                        achievements.first + tokens.first,
+                        achievements.first + tokens.first + reports.first,
                 downloaded = expenses.second + loans.second + goals.second +
                         stocks.second + income.second + checkIns.second +
-                        achievements.second + tokens.second
+                        achievements.second + tokens.second + reports.second
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -312,6 +314,48 @@ class SyncRepository(
         }
 
         return Pair(localAll.size, downloaded)
+    }
+
+    private suspend fun syncAiReports(): Pair<Int, Int> {
+        val uid = auth.currentUser?.uid ?: return Pair(0, 0)
+        val col = firestore.collection("users").document(uid).collection("ai_reports")
+        var uploaded = 0
+        var downloaded = 0
+
+        val localReports = aiReportDao.getAllReportsOnce()
+        for (report in localReports) {
+            val id = report.yearMonth
+            val ref = col.document(id)
+            val snap = ref.get().await()
+            if (!snap.exists()) {
+                ref.set(report.toFirestoreMap()).await()
+                aiReportDao.insertOrUpdate(report.copy(firestoreId = id))
+                uploaded++
+            } else {
+                val remoteUpdatedAt = (snap.data?.get("updatedAt") as? Number)?.toLong() ?: 0L
+                if (report.updatedAt >= remoteUpdatedAt) {
+                    ref.set(report.toFirestoreMap()).await()
+                    uploaded++
+                } else {
+                    val remote = snap.data!!.toAiReport(id)
+                    aiReportDao.insertOrUpdate(remote)
+                    downloaded++
+                }
+            }
+        }
+
+        val remoteSnaps = col.get().await()
+        for (snap in remoteSnaps.documents) {
+            val id = snap.id
+            if (localReports.none { it.yearMonth == id }) {
+                val remote = snap.data!!.toAiReport(id)
+                if (remote.isDeleted == 0) {
+                    aiReportDao.insertOrUpdate(remote)
+                    downloaded++
+                }
+            }
+        }
+        return Pair(uploaded, downloaded)
     }
 }
 

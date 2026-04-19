@@ -26,7 +26,8 @@ class FinanceApplication : Application() {
             database.monthlyIncomeDao(),
             database.checkInDao(),
             database.achievementDao(),
-            database.tokenTransactionDao()
+            database.tokenTransactionDao(),
+            database.aiReportDao()
         )
     }
 }

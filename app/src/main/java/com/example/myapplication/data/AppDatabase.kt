@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class, CheckIn::class, Achievement::class, TokenTransaction::class],
-    version = 11,          // v10 → v11：新增 check_ins / achievements / token_transactions 表
+    entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class, CheckIn::class, Achievement::class, TokenTransaction::class, AiReport::class],
+    version = 12,          // v11 → v12：新增 ai_reports 表
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checkInDao(): CheckInDao
     abstract fun achievementDao(): AchievementDao
     abstract fun tokenTransactionDao(): TokenTransactionDao
+    abstract fun aiReportDao(): AiReportDao
 
     companion object {
         @Volatile
@@ -192,6 +193,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS ai_reports (
+                        yearMonth TEXT NOT NULL PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        generatedAt INTEGER NOT NULL,
+                        firestoreId TEXT NOT NULL DEFAULT '',
+                        updatedAt INTEGER NOT NULL,
+                        isDeleted INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -200,7 +218,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_app_database"
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

@@ -1,8 +1,10 @@
 package com.example.myapplication.data
 
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class CheckInRepository(
     private val checkInDao: CheckInDao,
@@ -47,9 +49,9 @@ class CheckInRepository(
             "budget_24"          to 200
         )
 
-        private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        private const val DATE_PATTERN = "yyyy-MM-dd"
 
-        fun todayString(): String = LocalDate.now().format(DATE_FORMATTER)
+        fun todayString(): String = SimpleDateFormat(DATE_PATTERN, Locale.getDefault()).format(Date())
     }
 
     // ── Flows ──────────────────────────────────────────────────────────────
@@ -123,14 +125,17 @@ class CheckInRepository(
      * Calculate consecutive check-in streak ending on the day before [todayStr].
      */
     private suspend fun calculateStreakBefore(todayStr: String): Int {
-        val today = LocalDate.parse(todayStr, DATE_FORMATTER)
+        val sdf = SimpleDateFormat(DATE_PATTERN, Locale.getDefault())
         var streak = 0
-        var checkDate = today.minusDays(1)
+        val calendar = Calendar.getInstance().apply {
+            time = sdf.parse(todayStr) ?: Date()
+            add(Calendar.DAY_OF_YEAR, -1)
+        }
         while (true) {
-            val record = checkInDao.getCheckInByDate(checkDate.format(DATE_FORMATTER))
+            val record = checkInDao.getCheckInByDate(sdf.format(calendar.time))
             if (record != null && record.isDeleted == 0) {
                 streak++
-                checkDate = checkDate.minusDays(1)
+                calendar.add(Calendar.DAY_OF_YEAR, -1)
             } else {
                 break
             }

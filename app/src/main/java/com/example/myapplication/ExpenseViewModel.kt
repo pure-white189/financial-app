@@ -7,6 +7,9 @@ import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseRepository
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.data.AiReport
+import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.data.AiReportDao
 import com.example.myapplication.data.Loan
 import com.example.myapplication.data.MonthlyIncome
 import com.example.myapplication.data.MonthlyIncomeDao
@@ -27,7 +30,8 @@ import java.util.Calendar
 class ExpenseViewModel(
     private val repository: ExpenseRepository,
     themePreferences: ThemePreferences,
-    private val monthlyIncomeDao: MonthlyIncomeDao
+    private val monthlyIncomeDao: MonthlyIncomeDao,
+    private val aiReportDao: AiReportDao
 ) : ViewModel() {
 
     // 所有类别
@@ -45,6 +49,9 @@ class ExpenseViewModel(
     val allIncome: StateFlow<List<MonthlyIncome>> = monthlyIncomeDao.getAllIncome()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allReports: StateFlow<List<AiReport>> = aiReportDao.getAllReports()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // 本月总支出
     private val _monthlyTotal = MutableStateFlow(0.0)
     val monthlyTotal: StateFlow<Double> = _monthlyTotal.asStateFlow()
@@ -55,6 +62,10 @@ class ExpenseViewModel(
     val currencySymbol: StateFlow<String> = themePreferences.selectedCurrency
         .map { currency -> getCurrencySymbol(currency) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "HK$")
+
+    val parseUsedToday: StateFlow<Int> = AiExpenseParser.parseUsedToday
+    val parseLimit: StateFlow<Int?> = AiExpenseParser.parseLimitFlow
+    val aiPlan: StateFlow<String> = AiExpenseParser.planFlow
 
     init {
         loadMonthlyTotal()
@@ -309,6 +320,19 @@ class ExpenseViewModel(
         }
     }
 
+    suspend fun saveReport(yearMonth: String, content: String) {
+        val now = System.currentTimeMillis()
+        aiReportDao.insertOrUpdate(
+            AiReport(
+                yearMonth = yearMonth,
+                content = content,
+                generatedAt = now,
+                firestoreId = yearMonth,
+                updatedAt = now
+            )
+        )
+    }
+
     // 切换模板置顶状态
     fun toggleTemplatePinned(template: ExpenseTemplate) {
         viewModelScope.launch {
@@ -393,12 +417,13 @@ class ExpenseViewModel(
 class ExpenseViewModelFactory(
     private val repository: ExpenseRepository,
     private val themePreferences: ThemePreferences,
-    private val monthlyIncomeDao: MonthlyIncomeDao
+    private val monthlyIncomeDao: MonthlyIncomeDao,
+    private val aiReportDao: AiReportDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExpenseViewModel(repository, themePreferences, monthlyIncomeDao) as T
+            return ExpenseViewModel(repository, themePreferences, monthlyIncomeDao, aiReportDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

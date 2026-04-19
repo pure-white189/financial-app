@@ -70,9 +70,14 @@ fun RecordPage(
     val aiResultFilledText = stringResource(R.string.ai_result_filled)
     val aiParseFailedText = stringResource(R.string.ai_parse_failed)
     val tokenRedeemFailedText = stringResource(R.string.token_redeem_failed)
+    val tokenRedeemSuccessText = stringResource(R.string.token_redeem_success)
+    val snackbarHostState = remember { SnackbarHostState() }
     val templates by viewModel.templates.collectAsState(initial = emptyList())
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val tokenBalance by checkInViewModel.tokenBalance.collectAsState()
+    val parseUsedToday by viewModel.parseUsedToday.collectAsState()
+    val parseLimit by viewModel.parseLimit.collectAsState()
+    val aiPlan by viewModel.aiPlan.collectAsState()
     val scope = rememberCoroutineScope()
 
     var amount by remember { mutableStateOf("") }
@@ -202,49 +207,170 @@ fun RecordPage(
             }
 
             // AI 自然语言输入区
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .zIndex(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        brush = Brush.linearGradient(
-                            listOf(
-                                PurpleStart.copy(alpha = 0.1f),
-                                PurpleEnd.copy(alpha = 0.1f)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    PurpleStart.copy(alpha = 0.1f),
+                                    PurpleEnd.copy(alpha = 0.1f)
+                                )
                             )
                         )
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = PurpleStart,
+                        modifier = Modifier.size(20.dp)
                     )
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = PurpleStart,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedTextField(
-                    value = aiInput,
-                    onValueChange = { aiInput = it },
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.ai_input_hint),
-                            fontSize = 13.sp
-                        )
-                    },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (isGuest) {
-                                onNavigateToLogin?.invoke()
-                                return@KeyboardActions
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedTextField(
+                        value = aiInput,
+                        onValueChange = { aiInput = it },
+                        placeholder = {
+                            Text(
+                                text = stringResource(R.string.ai_input_hint),
+                                fontSize = 13.sp
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (isGuest) {
+                                    onNavigateToLogin?.invoke()
+                                    return@KeyboardActions
+                                }
+                                if (aiInput.isNotBlank()) {
+                                    scope.launch {
+                                        isAiLoading = true
+                                        aiError = null
+                                        aiSuccess = null
+                                        val result = AiExpenseParser.parseExpense(aiInput, aiLang)
+                                        result.onSuccess { parsed ->
+                                            Log.d(
+                                                "AiParser",
+                                                "解析结果: amount=${parsed.amount} category=${parsed.category} note=${parsed.note}"
+                                            )
+
+                                            if (parsed.amount > 0) {
+                                                amount = parsed.amount.toString()
+                                            }
+
+                                            val parsedCategory = parsed.category
+                                            val matchedCategory = categories.find { it.categoryKey == parsedCategory }
+                                            if (matchedCategory != null) {
+                                                selectedCategory = matchedCategory
+                                            }
+
+                                            if (parsed.note.isNotEmpty()) {
+                                                note = parsed.note
+                                            }
+
+                                            // Backfill date and time from AI parse result
+                                            val parsedDate = parsed.date     // "YYYY-MM-DD" or null
+                                            val parsedTime = parsed.time     // "HH:MM" or null
+
+                                            if (parsedDate != null || parsedTime != null) {
+                                                val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+
+                                                if (parsedDate != null) {
+                                                    runCatching {
+                                                        val parts = parsedDate.split("-")
+                                                        cal.set(Calendar.YEAR, parts[0].toInt())
+                                                        cal.set(Calendar.MONTH, parts[1].toInt() - 1)
+                                                        cal.set(Calendar.DAY_OF_MONTH, parts[2].toInt())
+                                                    }
+                                                }
+
+                                                if (parsedTime != null) {
+                                                    runCatching {
+                                                        val parts = parsedTime.split(":")
+                                                        cal.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+                                                        cal.set(Calendar.MINUTE, parts[1].toInt())
+                                                    }
+                                                }
+
+                                                // Clamp to now if the result is in the future
+                                                if (cal.timeInMillis > System.currentTimeMillis()) {
+                                                    cal.timeInMillis = System.currentTimeMillis()
+                                                }
+
+                                                selectedDate = cal.timeInMillis
+                                            }
+
+                                            onAchievementUnlocked("first_ai_parse")
+
+                                            aiSuccess = aiResultFilledText
+                                            aiInput = ""
+                                            delay(4000)
+                                            aiSuccess = null
+                                        }
+                                        result.onFailure { error ->
+                                            val message = error.message ?: ""
+                                            val messageLower = message.lowercase()
+                                            val isQuotaError = messageLower.contains("limit reached") ||
+                                                messageLower.contains("upgrade to pro")
+                                            val isNetworkFailure = messageLower.contains("failed to connect") ||
+                                                messageLower.contains("timeout") ||
+                                                messageLower.contains("unable to resolve host") ||
+                                                messageLower.contains("connection")
+                                            when {
+                                                isQuotaError -> {
+                                                    quotaDialogMessage = message
+                                                    pendingAiInput = aiInput
+                                                    if (tokenBalance >= 5) {
+                                                        showTokenRedeemDialog = true
+                                                        showQuotaDialog = false
+                                                    } else {
+                                                        showTokenRedeemDialog = false
+                                                        showQuotaDialog = true
+                                                    }
+                                                }
+                                                isNetworkFailure -> aiError = aiParseFailedText
+                                                else -> aiError = message
+                                            }
+                                        }
+                                        isAiLoading = false
+                                    }
+                                }
                             }
-                            if (aiInput.isNotBlank()) {
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PurpleStart,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.linearGradient(
+                                    listOf(PurpleStart, PurpleEnd)
+                                )
+                            )
+                            .clickable {
+                                if (isGuest) {
+                                    onNavigateToLogin?.invoke()
+                                    return@clickable
+                                }
+                                Log.d("AiParser", "发送按钮被点击，aiInput=$aiInput, isLoading=$isAiLoading")
                                 scope.launch {
+                                    if (aiInput.isBlank() || isAiLoading) {
+                                        return@launch
+                                    }
                                     isAiLoading = true
                                     aiError = null
                                     aiSuccess = null
@@ -259,10 +385,8 @@ fun RecordPage(
                                             amount = parsed.amount.toString()
                                         }
 
-                                        val matchedCategory = categories.find {
-                                            it.name.contains(parsed.category) ||
-                                                parsed.category.contains(it.name)
-                                        }
+                                        val parsedCategory = parsed.category
+                                        val matchedCategory = categories.find { it.categoryKey == parsedCategory }
                                         if (matchedCategory != null) {
                                             selectedCategory = matchedCategory
                                         }
@@ -271,11 +395,43 @@ fun RecordPage(
                                             note = parsed.note
                                         }
 
+                                        // Backfill date and time from AI parse result
+                                        val parsedDate = parsed.date     // "YYYY-MM-DD" or null
+                                        val parsedTime = parsed.time     // "HH:MM" or null
+
+                                        if (parsedDate != null || parsedTime != null) {
+                                            val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+
+                                            if (parsedDate != null) {
+                                                runCatching {
+                                                    val parts = parsedDate.split("-")
+                                                    cal.set(Calendar.YEAR, parts[0].toInt())
+                                                    cal.set(Calendar.MONTH, parts[1].toInt() - 1)
+                                                    cal.set(Calendar.DAY_OF_MONTH, parts[2].toInt())
+                                                }
+                                            }
+
+                                            if (parsedTime != null) {
+                                                runCatching {
+                                                    val parts = parsedTime.split(":")
+                                                    cal.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+                                                    cal.set(Calendar.MINUTE, parts[1].toInt())
+                                                }
+                                            }
+
+                                            // Clamp to now if the result is in the future
+                                            if (cal.timeInMillis > System.currentTimeMillis()) {
+                                                cal.timeInMillis = System.currentTimeMillis()
+                                            }
+
+                                            selectedDate = cal.timeInMillis
+                                        }
+
                                         onAchievementUnlocked("first_ai_parse")
 
                                         aiSuccess = aiResultFilledText
                                         aiInput = ""
-                                        delay(2000)
+                                        delay(4000)
                                         aiSuccess = null
                                     }
                                     result.onFailure { error ->
@@ -305,113 +461,39 @@ fun RecordPage(
                                     }
                                     isAiLoading = false
                                 }
-                            }
-                        }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PurpleStart,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.linearGradient(
-                                listOf(PurpleStart, PurpleEnd)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isAiLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
                             )
-                        )
-                        .clickable {
-                            if (isGuest) {
-                                onNavigateToLogin?.invoke()
-                                return@clickable
-                            }
-                            Log.d("AiParser", "发送按钮被点击，aiInput=$aiInput, isLoading=$isAiLoading")
-                            scope.launch {
-                                if (aiInput.isBlank() || isAiLoading) {
-                                    return@launch
-                                }
-                                isAiLoading = true
-                                aiError = null
-                                aiSuccess = null
-                                val result = AiExpenseParser.parseExpense(aiInput, aiLang)
-                                result.onSuccess { parsed ->
-                                    Log.d(
-                                        "AiParser",
-                                        "解析结果: amount=${parsed.amount} category=${parsed.category} note=${parsed.note}"
-                                    )
-
-                                    if (parsed.amount > 0) {
-                                        amount = parsed.amount.toString()
-                                    }
-
-                                    val matchedCategory = categories.find {
-                                        it.name.contains(parsed.category) ||
-                                            parsed.category.contains(it.name)
-                                    }
-                                    if (matchedCategory != null) {
-                                        selectedCategory = matchedCategory
-                                    }
-
-                                    if (parsed.note.isNotEmpty()) {
-                                        note = parsed.note
-                                    }
-
-                                    onAchievementUnlocked("first_ai_parse")
-
-                                    aiSuccess = aiResultFilledText
-                                    aiInput = ""
-                                    delay(2000)
-                                    aiSuccess = null
-                                }
-                                result.onFailure { error ->
-                                    val message = error.message ?: ""
-                                    val messageLower = message.lowercase()
-                                    val isQuotaError = messageLower.contains("limit reached") ||
-                                        messageLower.contains("upgrade to pro")
-                                    val isNetworkFailure = messageLower.contains("failed to connect") ||
-                                        messageLower.contains("timeout") ||
-                                        messageLower.contains("unable to resolve host") ||
-                                        messageLower.contains("connection")
-                                    when {
-                                        isQuotaError -> {
-                                            quotaDialogMessage = message
-                                            pendingAiInput = aiInput
-                                            if (tokenBalance >= 5) {
-                                                showTokenRedeemDialog = true
-                                                showQuotaDialog = false
-                                            } else {
-                                                showTokenRedeemDialog = false
-                                                showQuotaDialog = true
-                                            }
-                                        }
-                                        isNetworkFailure -> aiError = aiParseFailedText
-                                        else -> aiError = message
-                                    }
-                                }
-                                isAiLoading = false
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isAiLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = stringResource(R.string.analysis_ai_generate),
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = stringResource(R.string.analysis_ai_generate),
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
+                }
+
+                // quota text below, only for free users
+                if (aiPlan != "pro") {
+                    val remaining = (parseLimit ?: 10) - parseUsedToday
+                    val limitDisplay = parseLimit?.toString() ?: "10"
+                    Text(
+                        text = stringResource(R.string.ai_parse_quota_remaining, remaining.coerceAtLeast(0), limitDisplay),
+                        fontSize = 11.sp,
+                        color = if (remaining <= 0) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(end = 4.dp, top = 2.dp)
+                    )
                 }
             }
 
@@ -682,7 +764,7 @@ fun RecordPage(
         // 成功提示
         if (showSuccess) {
             LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(2000)
+                kotlinx.coroutines.delay(4000)
                 showSuccess = false
             }
 
@@ -694,6 +776,10 @@ fun RecordPage(
                 Text(stringResource(R.string.record_add_success))
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     // 保存模板对话框
@@ -982,6 +1068,7 @@ fun RecordPage(
                         scope.launch {
                             when (checkInViewModel.redeemTokensAndNotifyBackend("parse")) {
                                 is CheckInRepository.RedeemResult.Success -> {
+                                    snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(tokenBalance))
                                     val retryInput = pendingAiInput
                                     if (retryInput.isBlank()) {
                                         return@launch
@@ -1382,260 +1469,268 @@ fun DateTimePickerDialog(
         ),
         modifier = Modifier
             .fillMaxWidth(0.95f)  // 添加这行，使用屏幕95%宽度
-            .heightIn(max = 900.dp)  // 限制最大高度
-            .wrapContentHeight(),  // 添加这行，高度自适应
+            .fillMaxHeight(0.92f),
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // 快捷按钮
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val now = Calendar.getInstance()
-                            datePickerState.selectedDateMillis = now.timeInMillis
-                            selectedHour = now.get(Calendar.HOUR_OF_DAY)
-                            selectedMinute = now.get(Calendar.MINUTE)
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
+                    // 快捷按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(stringResource(R.string.common_now), fontSize = 12.sp)
+                        OutlinedButton(
+                            onClick = {
+                                val now = Calendar.getInstance()
+                                datePickerState.selectedDateMillis = now.timeInMillis
+                                selectedHour = now.get(Calendar.HOUR_OF_DAY)
+                                selectedMinute = now.get(Calendar.MINUTE)
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.common_now), fontSize = 12.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val today = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 12)
+                                    set(Calendar.MINUTE, 0)
+                                }
+                                datePickerState.selectedDateMillis = today.timeInMillis
+                                selectedHour = 12
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.home_today), fontSize = 12.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val yesterday = Calendar.getInstance().apply {
+                                    add(Calendar.DAY_OF_YEAR, -1)
+                                    set(Calendar.HOUR_OF_DAY, 12)
+                                    set(Calendar.MINUTE, 0)
+                                }
+                                datePickerState.selectedDateMillis = yesterday.timeInMillis
+                                selectedHour = 12
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.record_yesterday), fontSize = 12.sp)
+                        }
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            val today = Calendar.getInstance().apply {
-                                set(Calendar.HOUR_OF_DAY, 12)
-                                set(Calendar.MINUTE, 0)
-                            }
-                            datePickerState.selectedDateMillis = today.timeInMillis
-                            selectedHour = 12
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.home_today), fontSize = 12.sp)
-                    }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    OutlinedButton(
-                        onClick = {
-                            val yesterday = Calendar.getInstance().apply {
-                                add(Calendar.DAY_OF_YEAR, -1)
-                                set(Calendar.HOUR_OF_DAY, 12)
-                                set(Calendar.MINUTE, 0)
-                            }
-                            datePickerState.selectedDateMillis = yesterday.timeInMillis
-                            selectedHour = 12
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.record_yesterday), fontSize = 12.sp)
-                    }
-                }
+                    // 日期选择器
+                    DatePicker(state = datePickerState)
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                // 日期选择器
-                DatePicker(state = datePickerState)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 时间选择标题
-                Text(
-                    text = stringResource(R.string.record_time),
-                    fontSize = 14.sp,
-                    style = MaterialTheme.typography.labelMedium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 显示当前选择的时间
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
+                    // 时间选择标题
                     Text(
-                        text = String.format("%02d:%02d", selectedHour, selectedMinute),
-                        fontSize = 36.sp,
-                        style = MaterialTheme.typography.headlineLarge,
+                        text = stringResource(R.string.record_time),
+                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 显示当前选择的时间
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = String.format("%02d:%02d", selectedHour, selectedMinute),
+                            fontSize = 36.sp,
+                            style = MaterialTheme.typography.headlineLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // iOS 风格的滚动选择器
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            .height(150.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 小时选择器
+                        TimePickerWheel(
+                            items = (0..23).toList(),
+                            selectedItem = selectedHour,
+                            onItemSelected = {
+                                selectedHour = it
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Text(
+                            text = ":",
+                            fontSize = 32.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        // 分钟选择器
+                        TimePickerWheel(
+                            items = (0..59).toList(),
+                            selectedItem = selectedMinute,
+                            onItemSelected = {
+                                selectedMinute = it
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 常用时间快捷按钮
+                    Text(
+                        text = stringResource(R.string.record_common_times),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 第一行：上午时间
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                selectedHour = 0
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(stringResource(R.string.record_time_midnight), fontSize = 10.sp)
+                                Text("00:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                selectedHour = 6
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(stringResource(R.string.record_time_morning), fontSize = 10.sp)
+                                Text("06:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 第二行：下午时间
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                selectedHour = 12
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(stringResource(R.string.record_time_noon), fontSize = 10.sp)
+                                Text("12:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                selectedHour = 18
+                                selectedMinute = 0
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(stringResource(R.string.record_time_evening), fontSize = 10.sp)
+                                Text("18:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+                    }
+
+                    // 错误提示
+                    if (showError) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.record_future_time_error),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // iOS 风格的滚动选择器
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    // 小时选择器
-                    TimePickerWheel(
-                        items = (0..23).toList(),
-                        selectedItem = selectedHour,
-                        onItemSelected = {
-                            selectedHour = it
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Text(
-                        text = ":",
-                        fontSize = 32.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-
-                    // 分钟选择器
-                    TimePickerWheel(
-                        items = (0..59).toList(),
-                        selectedItem = selectedMinute,
-                        onItemSelected = {
-                            selectedMinute = it
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 常用时间快捷按钮
-                Text(
-                    text = stringResource(R.string.record_common_times),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-// 第一行：上午时间
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            selectedHour = 0
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.record_time_midnight), fontSize = 10.sp)
-                            Text("00:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
-                        }
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.common_cancel))
                     }
-
-                    OutlinedButton(
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
                         onClick = {
-                            selectedHour = 6
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.record_time_morning), fontSize = 10.sp)
-                            Text("06:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
+                            datePickerState.selectedDateMillis?.let { dateMillis ->
+                                val finalCalendar = Calendar.getInstance().apply {
+                                    timeInMillis = dateMillis
+                                    set(Calendar.HOUR_OF_DAY, selectedHour)
+                                    set(Calendar.MINUTE, selectedMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
+                                val now = System.currentTimeMillis()
+                                if (finalCalendar.timeInMillis > now) {
+                                    showError = true
+                                } else {
+                                    onConfirm(finalCalendar.timeInMillis)
+                                }
+                            }
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-// 第二行：下午时间
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            selectedHour = 12
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.record_time_noon), fontSize = 10.sp)
-                            Text("12:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
-                        }
+                        Text(stringResource(R.string.common_confirm))
                     }
-
-                    OutlinedButton(
-                        onClick = {
-                            selectedHour = 18
-                            selectedMinute = 0
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.record_time_evening), fontSize = 10.sp)
-                            Text("18:00", fontSize = 14.sp, style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
-                }
-
-                // 错误提示
-                if (showError) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.record_future_time_error),
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    datePickerState.selectedDateMillis?.let { dateMillis ->
-                        val finalCalendar = Calendar.getInstance().apply {
-                            timeInMillis = dateMillis
-                            set(Calendar.HOUR_OF_DAY, selectedHour)
-                            set(Calendar.MINUTE, selectedMinute)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-
-                        val now = System.currentTimeMillis()
-                        if (finalCalendar.timeInMillis > now) {
-                            showError = true
-                        } else {
-                            onConfirm(finalCalendar.timeInMillis)
-                        }
-                    }
-                }
-            ) {
-                Text(stringResource(R.string.common_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        }
+        confirmButton = {},
+        dismissButton = {}
     )
 }
 
@@ -1778,6 +1873,7 @@ fun CategoryChip(
                 shape = RoundedCornerShape(16.dp)
             )
         }
+
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -1806,4 +1902,5 @@ fun CategoryChip(
             )
         }
     }
+
 }

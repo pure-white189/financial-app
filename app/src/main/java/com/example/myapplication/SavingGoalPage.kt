@@ -200,6 +200,7 @@ fun SavingGoalPage(
 
     if (showAddDialog) {
         AddSavingGoalDialog(
+            currencySymbol = currencySymbol,
             onDismiss = { showAddDialog = false },
             onConfirm = { goal ->
                 viewModel.addGoal(goal)
@@ -224,6 +225,7 @@ fun SavingGoalPage(
     editTarget?.let { target ->
         EditSavingGoalDialog(
             goal = target,
+            currencySymbol = currencySymbol,
             onDismiss = { editTarget = null },
             onConfirm = { updatedGoal ->
                 viewModel.updateGoal(updatedGoal)
@@ -405,6 +407,7 @@ private fun SavingGoalItemCard(
 @Composable
 private fun EditSavingGoalDialog(
     goal: SavingGoal,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (SavingGoal) -> Unit
 ) {
@@ -442,7 +445,7 @@ private fun EditSavingGoalDialog(
                         showError = false
                     },
                     label = { Text(stringResource(R.string.saving_target_amount_hint)) },
-                    prefix = { Text("¥") },
+                    prefix = { Text(currencySymbol) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -528,6 +531,7 @@ private fun EditSavingGoalDialog(
 
 @Composable
 private fun AddSavingGoalDialog(
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (SavingGoal) -> Unit
 ) {
@@ -565,7 +569,7 @@ private fun AddSavingGoalDialog(
                         showError = false
                     },
                     label = { Text(stringResource(R.string.saving_target_amount_hint)) },
-                    prefix = { Text("¥") },
+                    prefix = { Text(currencySymbol) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -677,7 +681,7 @@ private fun DepositDialog(
                         showError = false
                     },
                     label = { Text(stringResource(R.string.debt_amount_hint)) },
-                    prefix = { Text("¥") },
+                    prefix = { Text(currencySymbol) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -741,4 +745,3 @@ private fun DepositDialog(
         }
     )
 }
-

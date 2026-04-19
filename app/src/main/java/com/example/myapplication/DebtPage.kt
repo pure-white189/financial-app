@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -237,6 +238,7 @@ fun DebtPage(
 
     if (showAddDialog) {
         AddLoanDialog(
+            currencySymbol = currencySymbol,
             onDismiss = { showAddDialog = false },
             onConfirm = { loan ->
                 viewModel.addLoan(loan)
@@ -397,6 +399,7 @@ private fun LoanItemCard(
 
 @Composable
 private fun AddLoanDialog(
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Loan) -> Unit
 ) {
@@ -447,7 +450,7 @@ private fun AddLoanDialog(
                         showError = false
                     },
                     label = { Text(stringResource(R.string.debt_amount_hint)) },
-                    prefix = { Text("¥") },
+                    prefix = { Text(currencySymbol) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -592,159 +595,171 @@ fun DueDatePickerDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.debt_select_due_date)) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.fillMaxWidth(0.95f),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .fillMaxHeight(0.92f),
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val nextWeek = Calendar.getInstance().apply {
-                                add(Calendar.WEEK_OF_YEAR, 1)
-                            }
-                            datePickerState.selectedDateMillis = nextWeek.timeInMillis
-                            selectedHour = nextWeek.get(Calendar.HOUR_OF_DAY)
-                            selectedMinute = nextWeek.get(Calendar.MINUTE)
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(stringResource(R.string.debt_next_week), fontSize = 12.sp)
+                        OutlinedButton(
+                            onClick = {
+                                val nextWeek = Calendar.getInstance().apply {
+                                    add(Calendar.WEEK_OF_YEAR, 1)
+                                }
+                                datePickerState.selectedDateMillis = nextWeek.timeInMillis
+                                selectedHour = nextWeek.get(Calendar.HOUR_OF_DAY)
+                                selectedMinute = nextWeek.get(Calendar.MINUTE)
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.debt_next_week), fontSize = 12.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val nextMonth = Calendar.getInstance().apply {
+                                    add(Calendar.MONTH, 1)
+                                }
+                                datePickerState.selectedDateMillis = nextMonth.timeInMillis
+                                selectedHour = nextMonth.get(Calendar.HOUR_OF_DAY)
+                                selectedMinute = nextMonth.get(Calendar.MINUTE)
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.debt_next_month), fontSize = 12.sp)
+                        }
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            val nextMonth = Calendar.getInstance().apply {
-                                add(Calendar.MONTH, 1)
-                            }
-                            datePickerState.selectedDateMillis = nextMonth.timeInMillis
-                            selectedHour = nextMonth.get(Calendar.HOUR_OF_DAY)
-                            selectedMinute = nextMonth.get(Calendar.MINUTE)
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.debt_next_month), fontSize = 12.sp)
-                    }
-                }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    DatePicker(state = datePickerState)
 
-                DatePicker(state = datePickerState)
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(R.string.record_time),
-                    fontSize = 14.sp,
-                    style = MaterialTheme.typography.labelMedium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
                     Text(
-                        text = String.format("%02d:%02d", selectedHour, selectedMinute),
-                        fontSize = 36.sp,
-                        style = MaterialTheme.typography.headlineLarge,
+                        text = stringResource(R.string.record_time),
+                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = String.format("%02d:%02d", selectedHour, selectedMinute),
+                            fontSize = 36.sp,
+                            style = MaterialTheme.typography.headlineLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
+                            .height(150.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TimePickerWheel(
+                            items = (0..23).toList(),
+                            selectedItem = selectedHour,
+                            onItemSelected = {
+                                selectedHour = it
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = ":",
+                            fontSize = 32.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        TimePickerWheel(
+                            items = (0..59).toList(),
+                            selectedItem = selectedMinute,
+                            onItemSelected = {
+                                selectedMinute = it
+                                showError = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (showError) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.debt_due_date_error),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    TimePickerWheel(
-                        items = (0..23).toList(),
-                        selectedItem = selectedHour,
-                        onItemSelected = {
-                            selectedHour = it
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { dateMillis ->
+                                val finalCalendar = Calendar.getInstance().apply {
+                                    timeInMillis = dateMillis
+                                    set(Calendar.HOUR_OF_DAY, selectedHour)
+                                    set(Calendar.MINUTE, selectedMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
 
-                    Text(
-                        text = ":",
-                        fontSize = 32.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
+                                val today = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
 
-                    TimePickerWheel(
-                        items = (0..59).toList(),
-                        selectedItem = selectedMinute,
-                        onItemSelected = {
-                            selectedMinute = it
-                            showError = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                if (showError) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.debt_due_date_error),
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    datePickerState.selectedDateMillis?.let { dateMillis ->
-                        val finalCalendar = Calendar.getInstance().apply {
-                            timeInMillis = dateMillis
-                            set(Calendar.HOUR_OF_DAY, selectedHour)
-                            set(Calendar.MINUTE, selectedMinute)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
+                                if (finalCalendar.timeInMillis < today.timeInMillis) {
+                                    showError = true
+                                } else {
+                                    onConfirm(finalCalendar.timeInMillis)
+                                }
+                            }
                         }
-
-                        val today = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-
-                        if (finalCalendar.timeInMillis < today.timeInMillis) {
-                            showError = true
-                        } else {
-                            onConfirm(finalCalendar.timeInMillis)
-                        }
+                    ) {
+                        Text(stringResource(R.string.common_confirm))
                     }
                 }
-            ) {
-                Text(stringResource(R.string.common_confirm))
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        }
+        confirmButton = {},
+        dismissButton = {}
     )
 }

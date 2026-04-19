@@ -247,12 +247,10 @@ fun AccountPage(
 
                     val expiresLabel = planExpiresAt?.take(10)?.let { dateStr ->
                         try {
-                            val parsed = java.time.LocalDate.parse(dateStr)
-                            val formatter = java.time.format.DateTimeFormatter.ofPattern(
-                                "MMM d, yyyy",
-                                java.util.Locale.getDefault()
-                            )
-                            parsed.format(formatter)
+                            val inputSdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                            val outputSdf = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
+                            val parsed = inputSdf.parse(dateStr)
+                            if (parsed != null) outputSdf.format(parsed) else dateStr
                         } catch (_: Exception) {
                             dateStr
                         }
@@ -792,5 +790,4 @@ fun AccountPage(
 private fun AuthViewModel.deleteAccount() {
     // Placeholder until delete-account behavior is implemented in AuthViewModel.
 }
-
 

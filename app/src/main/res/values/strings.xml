@@ -101,6 +101,11 @@
     <string name="ai_limit_reached">今日 AI 次数已用完</string>
     <string name="ai_monthly_limit_reached">本月 AI 分析次数已用完</string>
     <string name="ai_go_login">去登录</string>
+    <string name="ai_parse_quota_remaining">今日剩余：%1$d / %2$s 次</string>
+    <string name="token_redeem_success">兑换成功！当前代币余额：%1$d</string>
+    <string name="ai_report_history_title">历史报告</string>
+    <string name="ai_report_history_empty">暂无历史报告</string>
+    <string name="ai_report_history_button">历史</string>
 
     <!-- ===== AI 月度分析 ===== -->
     <string name="analysis_ai_entry_title">AI 月度消费分析</string>

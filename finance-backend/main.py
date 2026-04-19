@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as _date
 
 import firebase_admin
 import yfinance as yf
@@ -52,21 +52,25 @@ minute_counts = defaultdict(lambda: {"minute": "", "count": 0})
 # ─── 语言配置 ────────────────────────────────────────────────
 
 
-def get_lang_config(lang: str) -> dict:
+def get_lang_config(lang: str, currency: str = "HKD") -> dict:
     """根据 lang 返回对应语言的 prompt 片段和回退文字。"""
+    currency_symbols = {"HKD": "HK$", "CNY": "¥", "USD": "US$"}
+    symbol = currency_symbols.get(currency, "HK$")
     if lang == "en":
         return {
             "parse_instruction": (
                 "Extract expense info from this sentence and return JSON.\n"
                 'Sentence: "{text}"\n'
-                'Format: {{"amount": number, "category": "category", "note": "note"}}\n'
-                "Categories must be one of: food, transport, shopping, entertainment, healthcare, other\n"
+                "Today's date is {today}. Use this as the reference for relative date expressions like 'yesterday', 'this morning', 'last Monday'.\n"
+                'Format: {{"amount": number, "category": "category_key", "note": "note", "date": "YYYY-MM-DD or null", "time": "HH:MM or null"}}\n'
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "For date/time: extract only if explicitly mentioned in the sentence (e.g. 'yesterday', 'this morning', '3pm'). If not mentioned, return null.\n"
                 "Return JSON only, no other content."
             ),
             "analyze_instruction": (
                 "You are a friendly personal finance assistant. "
                 "Based on the following expense data for {month}, write a brief friendly analysis (under 150 words):\n\n"
-                "Total spending: ${total:.0f}\n"
+                "Total spending: {symbol}{total:.0f}\n"
                 "Number of transactions: {count}\n"
                 "Top categories: {category_summary}\n\n"
                 "Requirements:\n"
@@ -79,21 +83,23 @@ def get_lang_config(lang: str) -> dict:
             "no_expense_reply": "No expenses recorded this month. Start tracking your first transaction!",
             "analyze_failed": "Analysis failed, please try again later.",
             "category_separator": ", ",
-            "currency_prefix": "$",
+            "currency_prefix": symbol,
         }
     elif lang == "zh-Hant":
         return {
             "parse_instruction": (
                 "從這句話中提取記帳資訊，返回JSON格式。\n"
                 '句子："{text}"\n'
-                '返回格式：{{"amount": 金額數字, "category": "分類", "note": "備註"}}\n'
-                "分類只能是：餐飲、交通、購物、娛樂、醫療、其他\n"
+                "今天的日期是{today}。請以此為基準推算「昨天」「今天早上」「上週」等相對時間。\n"
+                '返回格式：{{"amount": 金額數字, "category": "category_key", "note": "備註", "date": "YYYY-MM-DD或null", "time": "HH:MM或null"}}\n'
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "date和time：只在句子中明確提到時間時才提取（如「昨天」「今天早上」「下午3點」）。未提及則返回null。\n"
                 "只返回JSON，不要任何其他內容。"
             ),
             "analyze_instruction": (
                 "你是一個友善的個人財務助手，請用繁體中文回覆。\n"
                 "根據以下{month}消費數據，生成一段簡潔友好的分析報告（150字以內）：\n\n"
-                "總支出：¥{total:.0f}\n"
+                "總支出：{symbol}{total:.0f}\n"
                 "消費筆數：{count}筆\n"
                 "主要分類：{category_summary}\n\n"
                 "要求：\n"
@@ -106,21 +112,23 @@ def get_lang_config(lang: str) -> dict:
             "no_expense_reply": "本月暫無消費記錄，快去記錄你的第一筆消費吧！",
             "analyze_failed": "分析生成失敗，請稍後重試",
             "category_separator": "、",
-            "currency_prefix": "¥",
+            "currency_prefix": symbol,
         }
     else:  # 默认简体中文
         return {
             "parse_instruction": (
                 "从这句话中提取记账信息，返回JSON格式。\n"
                 '句子："{text}"\n'
-                '返回格式：{{"amount": 金额数字, "category": "分类", "note": "备注"}}\n'
-                "分类只能是：餐饮、交通、购物、娱乐、医疗、其他\n"
+                "今天的日期是{today}。请以此为基准推算「昨天」「今天早上」「上周」等相对时间。\n"
+                '返回格式：{{"amount": 金额数字, "category": "category_key", "note": "备注", "date": "YYYY-MM-DD或null", "time": "HH:MM或null"}}\n'
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "date和time：只在句子中明确提到时间时才提取（如\"昨天\"、\"今天早上\"、\"下午3点\"）。未提及则返回null。\n"
                 "只返回JSON，不要任何其他内容。"
             ),
             "analyze_instruction": (
                 "你是一个友善的个人财务助手。\n"
                 "根据以下{month}消费数据，生成一段简洁友好的分析报告（150字以内）：\n\n"
-                "总支出：¥{total:.0f}\n"
+                "总支出：{symbol}{total:.0f}\n"
                 "消费笔数：{count}笔\n"
                 "主要分类：{category_summary}\n\n"
                 "要求：\n"
@@ -133,7 +141,7 @@ def get_lang_config(lang: str) -> dict:
             "no_expense_reply": "本月暂无消费记录，快去记录你的第一笔消费吧！",
             "analyze_failed": "分析生成失败，请稍后重试",
             "category_separator": "、",
-            "currency_prefix": "¥",
+            "currency_prefix": symbol,
         }
 
 
@@ -364,7 +372,8 @@ def parse_expense(
     commit_parse = check_rate_limit_parse(user["uid"], user["role"])
 
     lc = get_lang_config(lang)
-    prompt = lc["parse_instruction"].format(text=text)
+    today_str = _date.today().strftime("%Y-%m-%d")
+    prompt = lc["parse_instruction"].format(text=text, today=today_str)
 
     response = client.chat.completions.create(
         model="glm-5",
@@ -394,8 +403,9 @@ def analyze_expenses(data: dict, authorization: str | None = Header(default=None
     expenses = data.get("expenses", [])
     month = data.get("month", "本月")
     lang = data.get("lang", "zh")
+    currency = data.get("currency", "HKD")
 
-    lc = get_lang_config(lang)
+    lc = get_lang_config(lang, currency)
 
     if not expenses:
         return {"analysis": lc["no_expense_reply"]}
@@ -418,6 +428,7 @@ def analyze_expenses(data: dict, authorization: str | None = Header(default=None
         total=total,
         count=len(expenses),
         category_summary=category_summary,
+        symbol=lc["currency_prefix"],
     )
 
     response = client.chat.completions.create(

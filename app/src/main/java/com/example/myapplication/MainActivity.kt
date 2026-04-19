@@ -47,6 +47,7 @@ import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
 import com.example.myapplication.ui.IncomePage
 import com.example.myapplication.ui.AccountPage
+import com.example.myapplication.ui.AiReportHistoryPage
 import com.example.myapplication.ui.CheckInPage
 import com.example.myapplication.ui.CheckInViewModel
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
@@ -82,7 +83,8 @@ class MainActivity : AppCompatActivity() {
         ExpenseViewModelFactory(
             (application as FinanceApplication).repository,
             ThemePreferences(applicationContext),
-            (application as FinanceApplication).database.monthlyIncomeDao()
+            (application as FinanceApplication).database.monthlyIncomeDao(),
+            (application as FinanceApplication).database.aiReportDao()
         )
     }
 
@@ -640,6 +642,7 @@ fun MainScreen(
                         onNavigateToStock = {
                             navController.navigate("stock")
                         },
+                        onNavigateToReportHistory = { navController.navigate("ai_report_history") },
                         expenses = expenses,
                         categories = categories,
                         isGuest = isGuest,
@@ -736,6 +739,13 @@ fun MainScreen(
                     onFirstStockAdded = {
                         checkInViewModel.unlockAchievement("first_stock")
                     }
+                )
+            }
+
+            composable("ai_report_history") {
+                AiReportHistoryPage(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
 

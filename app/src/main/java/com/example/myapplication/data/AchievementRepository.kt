@@ -1,8 +1,9 @@
 package com.example.myapplication.data
 
 import kotlinx.coroutines.flow.Flow
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AchievementRepository(
     private val achievementDao: AchievementDao,
@@ -47,8 +48,7 @@ class AchievementRepository(
         if (monthlyBudget <= 0.0) return emptyList()
 
         // Build sorted list of past months (exclude current month, most recent first)
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM")
-        val currentMonth = YearMonth.now().format(formatter)
+        val currentMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
         val sortedMonths = monthlyTotals.keys
             .filter { it != currentMonth }
             .sortedDescending()

@@ -59,6 +59,7 @@ fun AnalysisPage(
     viewModel: ExpenseViewModel,
     monthlyBudget: Double? = null,
     onNavigateToStock: () -> Unit = {},
+    onNavigateToReportHistory: () -> Unit = {},
     expenses: List<Expense> = emptyList(),
     categories: List<Category> = emptyList(),
     isGuest: Boolean = false,
@@ -77,6 +78,8 @@ fun AnalysisPage(
     val categoryOtherLabel = stringResource(R.string.category_other)
     val aiFeatureLockedLabel = stringResource(R.string.ai_feature_locked)
     val aiAnalysisErrorLabel = stringResource(R.string.analysis_ai_error)
+    val tokenRedeemSuccessText = stringResource(R.string.token_redeem_success)
+    val snackbarHostState = remember { SnackbarHostState() }
     var aiAnalysis by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
@@ -185,6 +188,8 @@ fun AnalysisPage(
             val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
             result.onSuccess { analysis ->
                 aiAnalysis = analysis
+                val ym = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+                scope.launch { viewModel.saveReport(ym, analysis) }
                 onFirstAnalyzeGenerated()
             }
             result.onFailure { error ->
@@ -544,7 +549,10 @@ fun AnalysisPage(
                         .padding(horizontal = 24.dp, vertical = 16.dp)
                         .verticalScroll(sheetScrollState)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Icon(
                             Icons.Default.AutoAwesome,
                             contentDescription = null,
@@ -552,7 +560,22 @@ fun AnalysisPage(
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(stringResource(R.string.analysis_ai_entry_title), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.analysis_ai_entry_title),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = {
+                            showAiSheet = false
+                            onNavigateToReportHistory()
+                        }) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = stringResource(R.string.ai_report_history_button),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -679,6 +702,7 @@ fun AnalysisPage(
                             scope.launch {
                                 when (checkInViewModel.redeemTokensAndNotifyBackend("analyze")) {
                                     is CheckInRepository.RedeemResult.Success -> {
+                                        snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(tokenBalance))
                                         runAiAnalysis()
                                         showAiSheet = true
                                     }
@@ -755,6 +779,13 @@ fun AnalysisPage(
                 }
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+        )
     }
 }
 

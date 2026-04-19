@@ -50,6 +50,7 @@
     <string name="home_budget_over_short">超支</string>
     <string name="home_daily_available">每日可用</string>
     <string name="home_days_to_month_end">距月底還有 %1$d 天</string>
+    <string name="insight_title">💡 今日洞察</string>
 
     <!-- ===== 記帳 FAB / 記錄頁 ===== -->
     <string name="record_title">記一筆</string>

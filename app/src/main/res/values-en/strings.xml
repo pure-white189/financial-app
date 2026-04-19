@@ -50,6 +50,7 @@
     <string name="home_budget_over_short">Over</string>
     <string name="home_daily_available">Daily Available</string>
     <string name="home_days_to_month_end">%1$d days until month end</string>
+    <string name="insight_title">💡 Today\'s Insight</string>
 
     <!-- ===== Record Page ===== -->
     <string name="record_title">Add Expense</string>

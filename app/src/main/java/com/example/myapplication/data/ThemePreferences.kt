@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,9 @@ class ThemePreferences(private val context: Context) {
         val PLAN_EXPIRES_AT_KEY = stringPreferencesKey("plan_expires_at")
         val FONT_SCALE_KEY = stringPreferencesKey("font_scale")
         val CURRENCY_KEY = stringPreferencesKey("selected_currency")
+        val RECOMMENDATIONS_CACHE_KEY = stringPreferencesKey("recommendations_cache")
+        val RECOMMENDATIONS_VERSION_KEY = intPreferencesKey("recommendations_version")
+        val INSIGHT_DISMISSED_DATE_KEY = stringPreferencesKey("insight_dismissed_date")
     }
 
     // 读取主题设置

@@ -84,7 +84,8 @@ class MainActivity : AppCompatActivity() {
             (application as FinanceApplication).repository,
             ThemePreferences(applicationContext),
             (application as FinanceApplication).database.monthlyIncomeDao(),
-            (application as FinanceApplication).database.aiReportDao()
+            (application as FinanceApplication).database.aiReportDao(),
+            applicationContext
         )
     }
 

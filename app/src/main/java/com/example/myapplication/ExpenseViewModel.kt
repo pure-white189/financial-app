@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.content.Context
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,7 +18,10 @@ import com.example.myapplication.data.MonthlyIncomeDao
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
 import com.example.myapplication.data.ThemePreferences
+import com.example.myapplication.data.dataStore
 import com.example.myapplication.data.getCurrencySymbol
+import com.example.myapplication.utils.RecommendationEngine
+import com.example.myapplication.utils.RecommendationTrigger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -26,13 +31,19 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ExpenseViewModel(
     private val repository: ExpenseRepository,
-    themePreferences: ThemePreferences,
+    private val themePreferences: ThemePreferences,
     private val monthlyIncomeDao: MonthlyIncomeDao,
-    private val aiReportDao: AiReportDao
+    private val aiReportDao: AiReportDao,
+    private val appContext: Context
 ) : ViewModel() {
+
+    private val aiExpenseParser = AiExpenseParser
 
     // 所有类别
     val categories = repository.getAllCategories()
@@ -66,10 +77,86 @@ class ExpenseViewModel(
     val parseUsedToday: StateFlow<Int> = AiExpenseParser.parseUsedToday
     val parseLimit: StateFlow<Int?> = AiExpenseParser.parseLimitFlow
     val aiPlan: StateFlow<String> = AiExpenseParser.planFlow
+    val lastAnalysisRecommendationType: MutableStateFlow<String?> = MutableStateFlow(null)
+    val lastAnalysisRecommendationStat: MutableStateFlow<String?> = MutableStateFlow(null)
+
+    val todayRecommendation: MutableStateFlow<RecommendationTrigger?> = MutableStateFlow(null)
+    val recommendationsJson: MutableStateFlow<String?> = MutableStateFlow(null)
+    val insightDismissedDate: MutableStateFlow<String> = MutableStateFlow("")
 
     init {
         loadMonthlyTotal()
         loadTotalStockValue()
+        computeTodayRecommendation()
+        viewModelScope.launch {
+            loadRecommendationsJson(appContext)
+        }
+        viewModelScope.launch {
+            appContext.dataStore.data.collect { prefs ->
+                insightDismissedDate.value = prefs[ThemePreferences.INSIGHT_DISMISSED_DATE_KEY] ?: ""
+            }
+        }
+    }
+
+    fun dismissTodayInsight() {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        insightDismissedDate.value = today
+        viewModelScope.launch {
+            appContext.dataStore.edit { it[ThemePreferences.INSIGHT_DISMISSED_DATE_KEY] = today }
+        }
+    }
+
+    fun computeTodayRecommendation() {
+        viewModelScope.launch {
+            val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+            val currentYearMonth = monthFormat.format(Date())
+
+            val allExpenses = expenses.first()
+            val currentMonthExpenses = allExpenses.filter { expense ->
+                monthFormat.format(Date(expense.date)) == currentYearMonth
+            }
+
+            val monthlyBudget = (themePreferences.monthlyBudget.first() ?: 0.0).toFloat()
+            val currentMonthSpend = currentMonthExpenses.sumOf { it.amount }.toFloat()
+            val categoryKeyMap = categories.first().associate { it.id.toLong() to it.categoryKey }
+            val stockCount = stocks.first().size
+            val streakDays = 0
+            val totalExpenseCount = allExpenses.size
+            val symbol = currencySymbol.value
+
+            todayRecommendation.value = RecommendationEngine.evaluate(
+                expenses = currentMonthExpenses,
+                monthlyBudget = monthlyBudget,
+                currentMonthSpend = currentMonthSpend,
+                stockCount = stockCount,
+                streakDays = streakDays,
+                totalExpenseCount = totalExpenseCount,
+                currencySymbol = symbol,
+                categoryKeyMap = categoryKeyMap
+            )
+        }
+    }
+
+    suspend fun loadRecommendationsJson(context: Context) {
+        recommendationsJson.value = aiExpenseParser.loadRecommendations(context)
+    }
+
+    suspend fun analyzeExpensesWithRecommendation(
+        expenses: List<AiExpenseParser.ExpenseSummary>,
+        month: String,
+        lang: String
+    ): Result<String> {
+        val result = aiExpenseParser.analyzeExpensesDetailed(expenses = expenses, month = month, lang = lang)
+        return result.fold(
+            onSuccess = { detailed ->
+                lastAnalysisRecommendationType.value = detailed.recommendationType
+                lastAnalysisRecommendationStat.value = detailed.recommendationStat
+                Result.success(detailed.analysis)
+            },
+            onFailure = { error ->
+                Result.failure(error)
+            }
+        )
     }
 
     private fun loadTotalStockValue() {
@@ -418,12 +505,13 @@ class ExpenseViewModelFactory(
     private val repository: ExpenseRepository,
     private val themePreferences: ThemePreferences,
     private val monthlyIncomeDao: MonthlyIncomeDao,
-    private val aiReportDao: AiReportDao
+    private val aiReportDao: AiReportDao,
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExpenseViewModel(repository, themePreferences, monthlyIncomeDao, aiReportDao) as T
+            return ExpenseViewModel(repository, themePreferences, monthlyIncomeDao, aiReportDao, appContext) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

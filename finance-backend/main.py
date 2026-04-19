@@ -1,7 +1,8 @@
 import json
 import os
 from collections import defaultdict
-from datetime import datetime, timezone, date as _date
+from datetime import date as _date
+from datetime import datetime, timezone
 
 import firebase_admin
 import yfinance as yf
@@ -122,7 +123,7 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 "今天的日期是{today}。请以此为基准推算「昨天」「今天早上」「上周」等相对时间。\n"
                 '返回格式：{{"amount": 金额数字, "category": "category_key", "note": "备注", "date": "YYYY-MM-DD或null", "time": "HH:MM或null"}}\n'
                 "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
-                "date和time：只在句子中明确提到时间时才提取（如\"昨天\"、\"今天早上\"、\"下午3点\"）。未提及则返回null。\n"
+                'date和time：只在句子中明确提到时间时才提取（如"昨天"、"今天早上"、"下午3点"）。未提及则返回null。\n'
                 "只返回JSON，不要任何其他内容。"
             ),
             "analyze_instruction": (
@@ -265,7 +266,9 @@ def redeem_code_endpoint(data: dict, authorization: str | None = Header(default=
 
 
 @app.post("/redeem-tokens")
-def redeem_tokens_endpoint(data: dict, authorization: str | None = Header(default=None)):
+def redeem_tokens_endpoint(
+    data: dict, authorization: str | None = Header(default=None)
+):
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required")
@@ -350,6 +353,36 @@ def admin_generate_codes(data: dict, x_admin_key: str | None = Header(default=No
         count=count, max_uses=max_uses, duration_days=duration, note=note
     )
     return {"codes": codes}
+
+
+@app.post("/admin/reset-usage")
+def admin_reset_usage(data: dict, x_admin_key: str | None = Header(default=None)):
+    """
+    手动设置某用户的使用计数，方便测试。
+    Body: {"uid": "xxx", "parse_count": 9, "analyze_count": 2}
+    """
+    if not ADMIN_KEY or x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+
+    uid = data.get("uid", "")
+    if not uid:
+        raise HTTPException(status_code=400, detail="uid required")
+
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    month = now.strftime("%Y-%m")
+
+    if "parse_count" in data:
+        parse_counts[uid] = {"date": today, "count": int(data["parse_count"])}
+
+    if "analyze_count" in data:
+        analyze_counts[uid] = {"month": month, "count": int(data["analyze_count"])}
+
+    return {
+        "uid": uid,
+        "parse": parse_counts[uid],
+        "analyze": analyze_counts[uid],
+    }
 
 
 # ─── AI 接口 ──────────────────────────────────────────────────
@@ -437,7 +470,29 @@ def analyze_expenses(data: dict, authorization: str | None = Header(default=None
     result = response.choices[0].message.content
     if result:
         commit_analyze()  # AI 成功返回后才计数
-    return {"analysis": result.strip() if result else lc["analyze_failed"]}
+
+    # 计算推荐类型（基于类别占比，纯后端计算，不依赖 AI）
+    rec_type = None
+    rec_stat = None
+    if category_totals and total > 0:
+        food_ratio = category_totals.get("food", 0) / total
+        shopping_ratio = category_totals.get("shopping", 0) / total
+        entertainment_ratio = category_totals.get("entertainment", 0) / total
+        if food_ratio > 0.35:
+            rec_type = "food_heavy"
+            rec_stat = f"{food_ratio:.0%}"
+        elif shopping_ratio > 0.30:
+            rec_type = "shopaholic"
+            rec_stat = f"{shopping_ratio:.0%}"
+        elif entertainment_ratio > 0.25:
+            rec_type = "entertainment_heavy"
+            rec_stat = f"{entertainment_ratio:.0%}"
+
+    return {
+        "analysis": result.strip() if result else lc["analyze_failed"],
+        "recommendation_type": rec_type,
+        "recommendation_stat": rec_stat,
+    }
 
 
 # ─── 股票接口 ─────────────────────────────────────────────────
@@ -476,3 +531,13 @@ def get_stock_prices(symbols: str):
         except Exception as e:
             results[symbol] = {"error": str(e)}
     return results
+
+
+# ─── 个性化推荐接口 ─────────────────────────────────────────────────
+
+
+@app.get("/recommendations")
+def get_recommendations():
+    """返回推荐内容库，无需登录，app 启动时拉取缓存"""
+    with open("recommendations.json", "r", encoding="utf-8") as f:
+        return json.load(f)

@@ -1,0 +1,224 @@
+{
+  "version": 4,
+  "items": [
+    {
+      "id": "dining_heavy_001",
+      "trigger": "food_heavy",
+      "type": "maps_search",
+      "priority": 1,
+      "title": {
+        "zh": "🍜 吃货专属发现",
+        "zh-Hant": "🍜 吃貨專屬發現",
+        "en": "🍜 Foodie Pick"
+      },
+      "subtitle": {
+        "zh": "本月餐饮占比 {stat}，不如探索一家新餐厅犒劳自己？",
+        "zh-Hant": "本月餐飲佔比 {stat}，不如探索一家新餐廳犒勞自己？",
+        "en": "Dining is {stat} of your spending this month. Treat yourself!"
+      },
+      "cta_label": {
+        "zh": "探索附近餐厅",
+        "zh-Hant": "探索附近餐廳",
+        "en": "Find Nearby Restaurants"
+      },
+      "cta_query": {
+        "zh": "餐厅",
+        "zh-Hant": "餐廳",
+        "en": "restaurants"
+      }
+    },
+    {
+      "id": "surplus_invest_001",
+      "trigger": "has_surplus",
+      "type": "in_app",
+      "priority": 2,
+      "title": {
+        "zh": "💰 结余健康，考虑理财？",
+        "zh-Hant": "💰 結餘健康，考慮理財？",
+        "en": "💰 Healthy Surplus Detected"
+      },
+      "subtitle": {
+        "zh": "本月结余 {stat}，通货膨胀正在侵蚀现金，了解稳健理财方案？",
+        "zh-Hant": "本月結餘 {stat}，通貨膨脹正在侵蝕現金，了解穩健理財方案？",
+        "en": "You saved {stat} this month. Inflation erodes cash — explore low-risk options?"
+      },
+      "cta_label": {
+        "zh": "查看建议",
+        "zh-Hant": "查看建議",
+        "en": "View Tips"
+      },
+      "cta_destination": "saving_goals"
+    },
+    {
+      "id": "over_budget_001",
+      "trigger": "over_budget",
+      "type": "article",
+      "priority": 1,
+      "title": {
+        "zh": "⚠️ 预算告急",
+        "zh-Hant": "⚠️ 預算告急",
+        "en": "⚠️ Budget Running Low"
+      },
+      "subtitle": {
+        "zh": "本月预算已用 {stat}，3个小技巧帮你撑到月底",
+        "zh-Hant": "本月預算已用 {stat}，3個小技巧幫你撐到月底",
+        "en": "You've used {stat} of your budget. 3 tips to finish the month strong."
+      },
+      "cta_label": {
+        "zh": "查看技巧",
+        "zh-Hant": "查看技巧",
+        "en": "See Tips"
+      },
+      "article_key": "budget_tips"
+    },
+    {
+      "id": "shopping_heavy_001",
+      "trigger": "shopaholic",
+      "type": "article",
+      "priority": 2,
+      "title": {
+        "zh": "🛍️ 购物达人",
+        "zh-Hant": "🛍️ 購物達人",
+        "en": "🛍️ Shopping Enthusiast"
+      },
+      "subtitle": {
+        "zh": "购物占比 {stat}，分享一个「买前等48小时」的克制消费法",
+        "zh-Hant": "購物佔比 {stat}，分享一個「買前等48小時」的克制消費法",
+        "en": "Shopping is {stat} of spending. Try the 48-hour rule before buying."
+      },
+      "cta_label": {
+        "zh": "了解方法",
+        "zh-Hant": "了解方法",
+        "en": "Learn More"
+      },
+      "article_key": "shopping_48h_rule"
+    },
+    {
+      "id": "saving_goal_complete_001",
+      "trigger": "goal_completed",
+      "type": "in_app",
+      "priority": 1,
+      "title": {
+        "zh": "🎉 目标达成！",
+        "zh-Hant": "🎉 目標達成！",
+        "en": "🎉 Goal Achieved!"
+      },
+      "subtitle": {
+        "zh": "您已完成储蓄目标，资金积累到一定规模，考虑设置下一个目标？",
+        "zh-Hant": "您已完成儲蓄目標，資金積累到一定規模，考慮設置下一個目標？",
+        "en": "You crushed your savings goal! Ready to set a new challenge?"
+      },
+      "cta_label": {
+        "zh": "设置新目标",
+        "zh-Hant": "設置新目標",
+        "en": "Set New Goal"
+      },
+      "cta_destination": "saving_goals"
+    },
+    {
+      "id": "new_user_001",
+      "trigger": "new_user",
+      "type": "in_app",
+      "priority": 3,
+      "title": {
+        "zh": "👋 欢迎使用财务管家",
+        "zh-Hant": "👋 歡迎使用財務管家",
+        "en": "👋 Welcome to SmartSpend"
+      },
+      "subtitle": {
+        "zh": "设置本月预算，开启你的第一步财务规划",
+        "zh-Hant": "設置本月預算，開啟你的第一步財務規劃",
+        "en": "Set a monthly budget to start your financial journey."
+      },
+      "cta_label": {
+        "zh": "设置预算",
+        "zh-Hant": "設置預算",
+        "en": "Set Budget"
+      },
+      "cta_destination": "settings"
+    },
+    {
+      "id": "investor_001",
+      "trigger": "investor",
+      "type": "in_app",
+      "priority": 2,
+      "title": {
+        "zh": "📈 投资者洞察",
+        "zh-Hant": "📈 投資者洞察",
+        "en": "📈 Investor Insight"
+      },
+      "subtitle": {
+        "zh": "您持有 {stat} 支股票，前往持仓页查看最新浮盈？",
+        "zh-Hant": "您持有 {stat} 支股票，前往持倉頁查看最新浮盈？",
+        "en": "You hold {stat} stocks. Check your latest P&L?"
+      },
+      "cta_label": {
+        "zh": "查看持仓",
+        "zh-Hant": "查看持倉",
+        "en": "View Portfolio"
+      },
+      "cta_destination": "stocks"
+    },
+    {
+      "id": "streak_user_001",
+      "trigger": "streak_user",
+      "type": "in_app",
+      "priority": 3,
+      "title": {
+        "zh": "🔥 连续签到 {stat} 天",
+        "zh-Hant": "🔥 連續簽到 {stat} 天",
+        "en": "🔥 {stat}-Day Streak!"
+      },
+      "subtitle": {
+        "zh": "自律的你值得更多奖励，查看今日成就进度？",
+        "zh-Hant": "自律的你值得更多獎勵，查看今日成就進度？",
+        "en": "Your discipline deserves a reward. Check today's achievement progress?"
+      },
+      "cta_label": {
+        "zh": "查看成就",
+        "zh-Hant": "查看成就",
+        "en": "View Achievements"
+      },
+      "cta_destination": "check_in"
+    },
+    {
+      "id": "medical_heavy_001",
+      "trigger": "medical_heavy",
+      "type": "article",
+      "priority": 1,
+      "title": {
+        "zh": "🏥 医疗支出较高",
+        "zh-Hant": "🏥 醫療支出較高",
+        "en": "🏥 High Medical Spending"
+      },
+      "subtitle": {
+        "zh": "本月医疗占比 {stat}，了解如何用保险减少自付费用？",
+        "zh-Hant": "本月醫療佔比 {stat}，了解如何用保險減少自付費用？",
+        "en": "Medical is {stat} of spending this month. Learn how insurance can reduce out-of-pocket costs."
+      },
+      "cta_label": {
+        "zh": "查看建议",
+        "zh-Hant": "查看建議",
+        "en": "See Tips"
+      },
+      "article_key": "medical_tips"
+    }
+  ],
+  "articles": {
+    "budget_tips": {
+      "zh": "**撑过月底的3个方法**\n\n1. **冻结非必要支出** — 接下来的消费只保留餐饮和交通，购物和娱乐暂停一周。\n\n2. **用现金感受消费** — 把剩余预算提现，花光就停，比看数字更有约束感。\n\n3. **提前规划剩余天数** — 用剩余预算除以剩余天数，算出每天的\"安全额度\"，贴在手机壳里。",
+      "zh-Hant": "**撐過月底的3個方法**\n\n1. **凍結非必要支出** — 接下來只保留餐飲和交通，購物和娛樂暫停一週。\n\n2. **用現金感受消費** — 把剩餘預算提現，花光就停。\n\n3. **提前規劃剩餘天數** — 剩餘預算除以剩餘天數，算出每天安全額度。",
+      "en": "**3 Ways to Finish the Month Strong**\n\n1. **Freeze non-essentials** — Only allow food and transport for the next week.\n\n2. **Use cash** — Withdraw your remaining budget. When it's gone, it's gone.\n\n3. **Daily allowance** — Divide remaining budget by remaining days. That's your daily limit."
+    },
+    "shopping_48h_rule": {
+      "zh": "**买前等48小时法则**\n\n每次想买非必需品时，把它加入购物车，但等待48小时再决定。\n\n研究显示，**超过60%的冲动消费**在48小时后会自然消退。\n\n试试看：把\"想买的东西\"记在备忘录里，两天后重新审视，你会惊讶地发现大多数欲望已经消失了。",
+      "zh-Hant": "**買前等48小時法則**\n\n每次想買非必需品時，加入購物車但等待48小時再決定。\n\n研究顯示，**超過60%的衝動消費**在48小時後會自然消退。",
+      "en": "**The 48-Hour Rule**\n\nBefore buying anything non-essential, add it to your cart and wait 48 hours.\n\nStudies show **over 60% of impulse purchases** feel unnecessary after two days.\n\nTry it: write down what you want to buy, revisit in 48 hours."
+    },
+    "medical_tips": {
+      "zh": "**减少医疗自付费用的3个方法**\n\n1. **核查保险覆盖范围** — 许多医疗费用可通过医保或商业保险报销，就诊前先确认覆盖项目。\n\n2. **选择网络内医生** — 使用保险指定的医疗网络，自付比例通常低30-50%。\n\n3. **建立医疗备用金** — 建议将月收入的3-5%存入专项医疗储蓄，应对突发医疗支出。",
+      "zh-Hant": "**減少醫療自付費用的3個方法**\n\n1. **核查保險覆蓋範圍** — 許多醫療費用可透過醫保或商業保險報銷，就診前先確認覆蓋項目。\n\n2. **選擇網絡內醫生** — 使用保險指定的醫療網絡，自付比例通常低30-50%。\n\n3. **建立醫療備用金** — 建議將月收入的3-5%存入專項醫療儲蓄，應對突發醫療支出。",
+      "en": "**3 Ways to Reduce Medical Out-of-Pocket Costs**\n\n1. **Check your coverage** — Many costs are reimbursable through insurance. Confirm coverage before your appointment.\n\n2. **Choose in-network providers** — Using your insurer's network typically reduces your share by 30-50%.\n\n3. **Build a medical fund** — Set aside 3-5% of monthly income into a dedicated medical savings buffer."
+    }
+  }
+}

@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -33,6 +35,7 @@ import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
 import com.example.myapplication.ui.CheckInViewModel
+import com.example.myapplication.ui.components.RecommendationCard
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
@@ -72,6 +75,10 @@ fun AnalysisPage(
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val recommendationsJson by viewModel.recommendationsJson.collectAsState()
+    val todayRecommendation by viewModel.todayRecommendation.collectAsState()
+    val lastAnalysisRecType by viewModel.lastAnalysisRecommendationType.collectAsState()
+    val lastAnalysisRecStat by viewModel.lastAnalysisRecommendationStat.collectAsState()
     val tokenBalance by checkInViewModel.tokenBalance.collectAsState()
     val scope = rememberCoroutineScope()
     val thisMonthLabel = stringResource(R.string.home_this_month)
@@ -185,7 +192,7 @@ fun AnalysisPage(
                     ?: categoryOtherLabel
                 AiExpenseParser.ExpenseSummary(amount = expense.amount, category = categoryName)
             }
-            val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
+            val result = viewModel.analyzeExpensesWithRecommendation(expenses = summaries, month = thisMonthLabel, lang = aiLang)
             result.onSuccess { analysis ->
                 aiAnalysis = analysis
                 val ym = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
@@ -601,6 +608,30 @@ fun AnalysisPage(
                             lineHeight = 24.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
+                        // Recommendation card
+                        val recTrigger = lastAnalysisRecType ?: todayRecommendation?.trigger
+                        val recStat = lastAnalysisRecStat ?: todayRecommendation?.stat
+
+                        if (recommendationsJson != null && recTrigger != null) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            RecommendationCard(
+                                recommendationsJson = recommendationsJson!!,
+                                trigger = recTrigger,
+                                stat = recStat ?: "",
+                                lang = stringResource(R.string.ai_prompt_language),
+                                onMapsSearch = { query ->
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+                                    )
+                                    context.startActivity(intent)
+                                },
+                                onInAppNavigate = { destination ->
+                                    // handle in next step
+                                }
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(32.dp))
 

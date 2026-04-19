@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.SavingGoal
+import com.example.myapplication.ui.components.RecommendationCard
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
@@ -71,6 +74,8 @@ fun SavingGoalPage(
 ) {
     val goals by viewModel.savingGoals.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val recommendationsJson by viewModel.recommendationsJson.collectAsState()
+    val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
     var depositTarget by remember { mutableStateOf<SavingGoal?>(null) }
     var deleteTarget by remember { mutableStateOf<SavingGoal?>(null) }
@@ -188,6 +193,7 @@ fun SavingGoalPage(
                         SavingGoalItemCard(
                             goal = goal,
                             currencySymbol = currencySymbol,
+                            recommendationsJson = recommendationsJson,
                             onDeposit = { depositTarget = goal },
                             onEdit = { editTarget = goal },
                             onDelete = { deleteTarget = goal }
@@ -262,6 +268,7 @@ fun SavingGoalPage(
 private fun SavingGoalItemCard(
     goal: SavingGoal,
     currencySymbol: String,
+    recommendationsJson: String?,
     onDeposit: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -313,6 +320,26 @@ private fun SavingGoalItemCard(
                             text = stringResource(R.string.saving_completed),
                             fontSize = 12.sp,
                             color = GoalDoneColor
+                        )
+                    }
+
+                    if (recommendationsJson != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        RecommendationCard(
+                            recommendationsJson = recommendationsJson,
+                            trigger = "goal_completed",
+                            stat = "",
+                            lang = stringResource(R.string.ai_prompt_language),
+                            onMapsSearch = { query ->
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+                                )
+                                context.startActivity(intent)
+                            },
+                            onInAppNavigate = { destination ->
+                                // saving goals page — no further navigation needed
+                            }
                         )
                     }
                 }

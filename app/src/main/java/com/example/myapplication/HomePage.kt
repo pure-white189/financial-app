@@ -1,6 +1,13 @@
 package com.example.myapplication
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -38,6 +45,7 @@ import com.example.myapplication.data.Expense
 import com.example.myapplication.data.MonthlyIncome
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
+import com.example.myapplication.ui.components.RecommendationCard
 import com.example.myapplication.utils.displayName
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
@@ -46,6 +54,8 @@ import com.example.myapplication.ui.theme.PurpleStart
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -66,6 +76,9 @@ fun HomePage(viewModel: ExpenseViewModel,
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val recommendationsJson by viewModel.recommendationsJson.collectAsState()
+    val todayRecommendation by viewModel.todayRecommendation.collectAsState()
+    val insightDismissedDate by viewModel.insightDismissedDate.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -297,6 +310,70 @@ fun HomePage(viewModel: ExpenseViewModel,
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val showInsight = recommendationsJson != null &&
+            todayRecommendation != null &&
+            insightDismissedDate != today
+
+        AnimatedVisibility(
+            visible = showInsight,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.insight_title),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    IconButton(
+                        onClick = { viewModel.dismissTodayInsight() },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    RecommendationCard(
+                        recommendationsJson = recommendationsJson!!,
+                        trigger = todayRecommendation!!.trigger,
+                        stat = todayRecommendation!!.stat,
+                        lang = stringResource(R.string.ai_prompt_language),
+                        onMapsSearch = { query ->
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+                            )
+                            context.startActivity(intent)
+                        },
+                        onInAppNavigate = { destination ->
+                            when (destination) {
+                                "saving_goals" -> onNavigateToSaving()
+                                "stocks" -> onNavigateToStock()
+                                "settings" -> onNavigateToSettings()
+                                "check_in" -> Unit
+                            }
+                        }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
 
         // ===== 筛选按钮 =====
         Row(

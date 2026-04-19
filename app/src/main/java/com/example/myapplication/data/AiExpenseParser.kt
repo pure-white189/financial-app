@@ -1,12 +1,15 @@
 package com.example.myapplication.data
 
+import android.content.Context
 import android.util.Log
+import androidx.datastore.preferences.core.edit
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -78,6 +81,12 @@ object AiExpenseParser {
         val parseLimit: Int?,
         val analyzeUsed: Int,
         val analyzeLimit: Int?
+    )
+
+    data class AnalyzeResult(
+        val analysis: String,
+        val recommendationType: String?,
+        val recommendationStat: String?
     )
 
     private fun requireIdToken(): Result<String> {
@@ -253,11 +262,96 @@ object AiExpenseParser {
                 }
 
                 val json = JSONObject(responseBody)
-                val analysis = json.optString("analysis", "分析生成失败，请稍后重试")
-                Result.success(analysis).also {
+                val result = AnalyzeResult(
+                    analysis = json.optString("analysis", "分析生成失败，请稍后重试"),
+                    recommendationType = if (json.isNull("recommendation_type")) null else json.optString("recommendation_type", "").takeIf { it.isNotEmpty() },
+                    recommendationStat = if (json.isNull("recommendation_stat")) null else json.optString("recommendation_stat", "").takeIf { it.isNotEmpty() }
+                )
+                Result.success(result.analysis).also {
                     val month = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
                     if (localAnalyzeMonth != month) {
                         localAnalyzeMonth = month
+                        localAnalyzeUsedThisMonth = 0
+                    }
+                    localAnalyzeUsedThisMonth++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("AiParser", "分析异常: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun analyzeExpensesDetailed(
+        expenses: List<ExpenseSummary>,
+        month: String = "本月",
+        lang: String = "zh"
+    ): Result<AnalyzeResult> = withContext(Dispatchers.IO) {
+        try {
+            // Local quota pre-check
+            if (localPlan != "pro" && localAnalyzeLimit != null) {
+                val currentMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+                if (localAnalyzeMonth == currentMonth && localAnalyzeUsedThisMonth >= localAnalyzeLimit!!) {
+                    return@withContext Result.failure(
+                        Exception("Monthly limit reached ($localAnalyzeLimit analyses/month). Upgrade to Pro for unlimited access.")
+                    )
+                }
+            }
+
+            val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
+            Log.d("AiParser", "开始分析，共${expenses.size}条记录，lang=$lang")
+
+            val expenseJsonArray = JSONArray(
+                expenses.map {
+                    JSONObject().apply {
+                        put("amount", it.amount)
+                        put("category", it.category)
+                    }
+                }
+            )
+
+            val requestBody = JSONObject().apply {
+                put("expenses", expenseJsonArray)
+                put("month", month)
+                put("lang", lang)
+            }
+
+            val body = requestBody.toString()
+                .toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/analyze-expenses")
+                .post(body)
+                .header("Authorization", "Bearer $token")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("空响应"))
+
+                if (!response.isSuccessful) {
+                    val message = if (response.code == 429) {
+                        parseServerErrorMessage(
+                            responseBody,
+                            "Daily limit reached. Upgrade to Pro for unlimited access."
+                        )
+                    } else {
+                        "HTTP ${response.code}: $responseBody"
+                    }
+                    return@withContext Result.failure(Exception(message))
+                }
+
+                val json = JSONObject(responseBody)
+                val result = AnalyzeResult(
+                    analysis = json.optString("analysis", "分析生成失败，请稍后重试"),
+                    recommendationType = if (json.isNull("recommendation_type")) null else json.optString("recommendation_type", "").takeIf { it.isNotEmpty() },
+                    recommendationStat = if (json.isNull("recommendation_stat")) null else json.optString("recommendation_stat", "").takeIf { it.isNotEmpty() }
+                )
+
+                Result.success(result).also {
+                    val currentMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+                    if (localAnalyzeMonth != currentMonth) {
+                        localAnalyzeMonth = currentMonth
                         localAnalyzeUsedThisMonth = 0
                     }
                     localAnalyzeUsedThisMonth++
@@ -444,4 +538,40 @@ object AiExpenseParser {
                 Result.failure(e)
             }
         }
+
+    suspend fun fetchRecommendations(): String? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$BASE_URL/recommendations")
+                .get()
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                response.body?.string()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun loadRecommendations(context: Context): String? = withContext(Dispatchers.IO) {
+        val prefs = context.dataStore.data.first()
+        val cachedVersion = prefs[ThemePreferences.RECOMMENDATIONS_VERSION_KEY] ?: 0
+        val cachedJson = prefs[ThemePreferences.RECOMMENDATIONS_CACHE_KEY]
+
+        val freshJson = fetchRecommendations() ?: return@withContext cachedJson
+
+        return@withContext try {
+            val fetchedVersion = JSONObject(freshJson).optInt("version", 0)
+            if (fetchedVersion >= cachedVersion) {
+                context.dataStore.edit { preferences ->
+                    preferences[ThemePreferences.RECOMMENDATIONS_CACHE_KEY] = freshJson
+                    preferences[ThemePreferences.RECOMMENDATIONS_VERSION_KEY] = fetchedVersion
+                }
+            }
+            freshJson
+        } catch (_: Exception) {
+            cachedJson
+        }
+    }
 }

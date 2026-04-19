@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -66,6 +67,7 @@ import com.example.myapplication.AuthState
 import com.example.myapplication.AuthViewModel
 import com.example.myapplication.R
 import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.ui.CheckInViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +79,9 @@ fun AccountPage(
     onSyncNow: () -> Unit,
     isSyncing: Boolean = false,
     syncMessage: String = "",
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToCheckIn: () -> Unit,
+    checkInViewModel: CheckInViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -101,6 +105,7 @@ fun AccountPage(
     var isLoadingUsage by remember { mutableStateOf(false) }
 
     val userPlan by authViewModel.userPlan.collectAsStateWithLifecycle()
+    val tokenBalance by checkInViewModel.tokenBalance.collectAsStateWithLifecycle()
     val planExpiresAt by authViewModel.planExpiresAt.collectAsStateWithLifecycle()
     val displayNameUpdateStatus by authViewModel.displayNameUpdateStatus.collectAsStateWithLifecycle()
 
@@ -275,6 +280,47 @@ fun AccountPage(
                             fontWeight = FontWeight.Medium
                         )
                     }
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToCheckIn() }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Stars,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.checkin_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = stringResource(R.string.token_balance, tokenBalance),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .then(Modifier.padding(0.dp)),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

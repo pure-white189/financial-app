@@ -65,7 +65,10 @@ private val GoalDoneColor = IncomeGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SavingGoalPage(viewModel: ExpenseViewModel) {
+fun SavingGoalPage(
+    viewModel: ExpenseViewModel,
+    onFirstGoalCreated: () -> Unit = {},
+) {
     val goals by viewModel.savingGoals.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -200,6 +203,7 @@ fun SavingGoalPage(viewModel: ExpenseViewModel) {
             onDismiss = { showAddDialog = false },
             onConfirm = { goal ->
                 viewModel.addGoal(goal)
+                onFirstGoalCreated()
                 showAddDialog = false
             }
         )

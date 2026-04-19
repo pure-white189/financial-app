@@ -23,7 +23,10 @@ class FinanceApplication : Application() {
             database.loanDao(),
             database.savingGoalDao(),
             database.stockDao(),
-            database.monthlyIncomeDao()
+            database.monthlyIncomeDao(),
+            database.checkInDao(),
+            database.achievementDao(),
+            database.tokenTransactionDao()
         )
     }
 }

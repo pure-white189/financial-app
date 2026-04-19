@@ -11,7 +11,10 @@ class SyncRepository(
     private val loanDao: LoanDao,
     private val savingGoalDao: SavingGoalDao,
     private val stockDao: StockDao,
-    private val monthlyIncomeDao: MonthlyIncomeDao
+    private val monthlyIncomeDao: MonthlyIncomeDao,
+    private val checkInDao: CheckInDao,
+    private val achievementDao: AchievementDao,
+    private val tokenTransactionDao: TokenTransactionDao
 ) {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -25,19 +28,25 @@ class SyncRepository(
     // ── 公开入口 ──────────────────────────────────
     suspend fun syncAll(): SyncResult {
         return try {
-            val expenses  = syncExpenses()
-            val loans     = syncLoans()
-            val goals     = syncGoals()
-            val stocks    = syncStocks()
-            val income    = syncMonthlyIncome()
+            val expenses     = syncExpenses()
+            val loans        = syncLoans()
+            val goals        = syncGoals()
+            val stocks       = syncStocks()
+            val income       = syncMonthlyIncome()
+            val checkIns     = syncCheckIns()
+            val achievements = syncAchievements()
+            val tokens       = syncTokenTransactions()
             SyncResult.Success(
-                uploaded = expenses.first + loans.first + goals.first + stocks.first + income.first,
-                downloaded = expenses.second + loans.second + goals.second + stocks.second + income.second
+                uploaded = expenses.first + loans.first + goals.first +
+                        stocks.first + income.first + checkIns.first +
+                        achievements.first + tokens.first,
+                downloaded = expenses.second + loans.second + goals.second +
+                        stocks.second + income.second + checkIns.second +
+                        achievements.second + tokens.second
             )
         } catch (e: Exception) {
             e.printStackTrace()
             SyncResult.Error(e.message ?: "同步失败")
-
         }
     }
 
@@ -195,6 +204,108 @@ class SyncRepository(
                 }
                 cloudIncome.updatedAt > local.updatedAt -> {
                     monthlyIncomeDao.insertOrUpdate(cloudIncome)
+                    downloaded++
+                }
+            }
+        }
+
+        return Pair(localAll.size, downloaded)
+    }
+
+    // ── CheckIns ──────────────────────────────────────
+    private suspend fun syncCheckIns(): Pair<Int, Int> {
+        val col = userCol("check_ins")
+
+        val localAll = checkInDao.getAllCheckInsOnce()
+        localAll.forEach { checkIn ->
+            val fid = checkIn.firestoreId.ifEmpty { checkIn.date }
+            col.document(fid).set(checkIn.toFirestoreMap(), SetOptions.merge()).await()
+            if (checkIn.firestoreId.isEmpty()) {
+                checkInDao.insertCheckIn(checkIn.copy(firestoreId = fid))
+            }
+        }
+
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data ?: return@forEach
+            val cloudCheckIn = data.toCheckIn(doc.id)
+            val local = checkInDao.getCheckInByDate(cloudCheckIn.date)
+            when {
+                local == null -> {
+                    checkInDao.insertCheckIn(cloudCheckIn)
+                    downloaded++
+                }
+                cloudCheckIn.updatedAt > local.updatedAt -> {
+                    checkInDao.insertCheckIn(cloudCheckIn)
+                    downloaded++
+                }
+            }
+        }
+
+        return Pair(localAll.size, downloaded)
+    }
+
+    // ── Achievements ──────────────────────────────────
+    private suspend fun syncAchievements(): Pair<Int, Int> {
+        val col = userCol("achievements")
+
+        val localAll = achievementDao.getAllAchievementsOnce()
+        localAll.forEach { achievement ->
+            val fid = achievement.firestoreId.ifEmpty { achievement.achievementId }
+            col.document(fid).set(achievement.toFirestoreMap(), SetOptions.merge()).await()
+            if (achievement.firestoreId.isEmpty()) {
+                achievementDao.insertAchievement(achievement.copy(firestoreId = fid))
+            }
+        }
+
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data ?: return@forEach
+            val cloudAchievement = data.toAchievement(doc.id)
+            val local = achievementDao.getAchievementById(cloudAchievement.achievementId)
+            when {
+                local == null -> {
+                    achievementDao.insertAchievement(cloudAchievement)
+                    downloaded++
+                }
+                cloudAchievement.updatedAt > local.updatedAt -> {
+                    achievementDao.insertAchievement(cloudAchievement)
+                    downloaded++
+                }
+            }
+        }
+
+        return Pair(localAll.size, downloaded)
+    }
+
+    // ── TokenTransactions ─────────────────────────────
+    private suspend fun syncTokenTransactions(): Pair<Int, Int> {
+        val col = userCol("token_transactions")
+
+        val localAll = tokenTransactionDao.getAllTransactionsOnce()
+        localAll.forEach { tx ->
+            val fid = tx.firestoreId.ifEmpty { UUID.randomUUID().toString() }
+            col.document(fid).set(tx.toFirestoreMap(), SetOptions.merge()).await()
+            if (tx.firestoreId.isEmpty()) {
+                tokenTransactionDao.insertTransaction(tx.copy(firestoreId = fid))
+            }
+        }
+
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data ?: return@forEach
+            val cloudTx = data.toTokenTransaction(doc.id)
+            val local = tokenTransactionDao.getByFirestoreId(doc.id)
+            when {
+                local == null -> {
+                    tokenTransactionDao.insertTransaction(cloudTx)
+                    downloaded++
+                }
+                cloudTx.updatedAt > local.updatedAt -> {
+                    tokenTransactionDao.insertTransaction(cloudTx)
                     downloaded++
                 }
             }

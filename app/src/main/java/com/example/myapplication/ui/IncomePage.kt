@@ -59,7 +59,8 @@ import java.util.Locale
 @Composable
 fun IncomePage(
     viewModel: ExpenseViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFirstIncomeRecorded: () -> Unit = {},
 ) {
     val allIncome by viewModel.allIncome.collectAsState()
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
@@ -273,6 +274,7 @@ fun IncomePage(
                     enabled = parsedAmount != null && parsedAmount >= 0,
                     onClick = {
                         viewModel.upsertIncome(currentYearMonth, parsedAmount ?: 0.0, noteInput)
+                        onFirstIncomeRecorded()
                         showEditDialog = false
                     }
                 ) {

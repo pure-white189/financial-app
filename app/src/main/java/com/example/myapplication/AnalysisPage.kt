@@ -60,7 +60,8 @@ fun AnalysisPage(
     expenses: List<Expense> = emptyList(),
     categories: List<Category> = emptyList(),
     isGuest: Boolean = false,
-    onNavigateToLogin: (() -> Unit)? = null
+    onNavigateToLogin: (() -> Unit)? = null,
+    onFirstAnalyzeGenerated: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
@@ -176,7 +177,10 @@ fun AnalysisPage(
                 AiExpenseParser.ExpenseSummary(amount = expense.amount, category = categoryName)
             }
             val result = AiExpenseParser.analyzeExpenses(expenses = summaries, month = thisMonthLabel, lang = aiLang)
-            result.onSuccess { analysis -> aiAnalysis = analysis }
+            result.onSuccess { analysis ->
+                aiAnalysis = analysis
+                onFirstAnalyzeGenerated()
+            }
             result.onFailure { error ->
                 val message = error.message ?: ""
                 val isQuotaError = message.lowercase().contains("limit reached") ||

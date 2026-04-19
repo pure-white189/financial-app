@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class],
-    version = 10,          // v9 → v10：新增 monthly_income 表
+    entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class, CheckIn::class, Achievement::class, TokenTransaction::class],
+    version = 11,          // v10 → v11：新增 check_ins / achievements / token_transactions 表
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun savingGoalDao(): SavingGoalDao
     abstract fun stockDao(): StockDao
     abstract fun monthlyIncomeDao(): MonthlyIncomeDao
+    abstract fun checkInDao(): CheckInDao
+    abstract fun achievementDao(): AchievementDao
+    abstract fun tokenTransactionDao(): TokenTransactionDao
 
     companion object {
         @Volatile
@@ -147,6 +150,48 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS check_ins (
+                        date TEXT NOT NULL PRIMARY KEY,
+                        tokensEarned INTEGER NOT NULL DEFAULT 0,
+                        firestoreId TEXT NOT NULL DEFAULT '',
+                        updatedAt INTEGER NOT NULL DEFAULT 0,
+                        isDeleted INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS achievements (
+                        achievementId TEXT NOT NULL PRIMARY KEY,
+                        unlockedAt INTEGER NOT NULL DEFAULT 0,
+                        tokensAwarded INTEGER NOT NULL DEFAULT 0,
+                        firestoreId TEXT NOT NULL DEFAULT '',
+                        updatedAt INTEGER NOT NULL DEFAULT 0,
+                        isDeleted INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS token_transactions (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        type TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        timestamp INTEGER NOT NULL DEFAULT 0,
+                        firestoreId TEXT NOT NULL DEFAULT '',
+                        updatedAt INTEGER NOT NULL DEFAULT 0,
+                        isDeleted INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -155,7 +200,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_app_database"
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

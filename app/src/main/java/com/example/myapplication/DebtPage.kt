@@ -77,7 +77,10 @@ private const val LOAN_TYPE_OUT = "借出"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DebtPage(viewModel: ExpenseViewModel) {
+fun DebtPage(
+    viewModel: ExpenseViewModel,
+    onFirstLoanCreated: () -> Unit = {},
+) {
     val context = LocalContext.current
     val loans by viewModel.loans.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
@@ -237,6 +240,7 @@ fun DebtPage(viewModel: ExpenseViewModel) {
             onDismiss = { showAddDialog = false },
             onConfirm = { loan ->
                 viewModel.addLoan(loan)
+                onFirstLoanCreated()
                 showAddDialog = false
             }
         )

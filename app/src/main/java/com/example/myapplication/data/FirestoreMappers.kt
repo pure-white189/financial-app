@@ -127,3 +127,58 @@ fun Map<String, Any>.toMonthlyIncome(firestoreId: String): MonthlyIncome = Month
     updatedAt = (this["updatedAt"] as Number).toLong(),
     isDeleted = (this["isDeleted"] as? Boolean) ?: false
 )
+
+// ── CheckIn ──────────────────────────────────────
+fun CheckIn.toFirestoreMap(): Map<String, Any> = mapOf(
+    "date"         to date,
+    "tokensEarned" to tokensEarned,
+    "updatedAt"    to updatedAt,
+    "isDeleted"    to isDeleted
+)
+
+fun Map<String, Any>.toCheckIn(firestoreId: String): CheckIn = CheckIn(
+    date         = this["date"] as String,
+    tokensEarned = (this["tokensEarned"] as? Number)?.toInt() ?: 0,
+    firestoreId  = firestoreId,
+    updatedAt    = (this["updatedAt"] as? Number)?.toLong() ?: 0L,
+    isDeleted    = (this["isDeleted"] as? Number)?.toInt() ?: 0
+)
+
+// ── Achievement ───────────────────────────────────
+fun Achievement.toFirestoreMap(): Map<String, Any> = mapOf(
+    "achievementId" to achievementId,
+    "unlockedAt"    to unlockedAt,
+    "tokensAwarded" to tokensAwarded,
+    "updatedAt"     to updatedAt,
+    "isDeleted"     to isDeleted
+)
+
+fun Map<String, Any>.toAchievement(firestoreId: String): Achievement = Achievement(
+    achievementId = this["achievementId"] as String,
+    unlockedAt    = (this["unlockedAt"] as? Number)?.toLong() ?: 0L,
+    tokensAwarded = (this["tokensAwarded"] as? Number)?.toInt() ?: 0,
+    firestoreId   = firestoreId,
+    updatedAt     = (this["updatedAt"] as? Number)?.toLong() ?: 0L,
+    isDeleted     = (this["isDeleted"] as? Number)?.toInt() ?: 0
+)
+
+// ── TokenTransaction ──────────────────────────────
+fun TokenTransaction.toFirestoreMap(): Map<String, Any> = mapOf(
+    "type"        to type,
+    "amount"      to amount,
+    "description" to description,
+    "timestamp"   to timestamp,
+    "updatedAt"   to updatedAt,
+    "isDeleted"   to isDeleted
+)
+
+fun Map<String, Any>.toTokenTransaction(firestoreId: String): TokenTransaction = TokenTransaction(
+    type        = this["type"] as String,
+    amount      = (this["amount"] as? Number)?.toInt() ?: 0,
+    description = (this["description"] as? String) ?: "",
+    timestamp   = (this["timestamp"] as? Number)?.toLong() ?: 0L,
+    firestoreId = firestoreId,
+    updatedAt   = (this["updatedAt"] as? Number)?.toLong() ?: 0L,
+    isDeleted   = (this["isDeleted"] as? Number)?.toInt() ?: 0
+)
+

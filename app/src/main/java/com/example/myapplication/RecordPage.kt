@@ -57,7 +57,8 @@ fun RecordPage(
     onBack: () -> Unit = {},
     alertThreshold: Double? = null,
     isGuest: Boolean = false,
-    onNavigateToLogin: (() -> Unit)? = null
+    onNavigateToLogin: (() -> Unit)? = null,
+    onAchievementUnlocked: (String) -> Unit = {},
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
@@ -262,6 +263,8 @@ fun RecordPage(
                                             note = parsed.note
                                         }
 
+                                        onAchievementUnlocked("first_ai_parse")
+
                                         aiSuccess = aiResultFilledText
                                         aiInput = ""
                                         delay(2000)
@@ -342,6 +345,8 @@ fun RecordPage(
                                     if (parsed.note.isNotEmpty()) {
                                         note = parsed.note
                                     }
+
+                                    onAchievementUnlocked("first_ai_parse")
 
                                     aiSuccess = aiResultFilledText
                                     aiInput = ""
@@ -621,6 +626,7 @@ fun RecordPage(
                                     // 直接添加
                                     scope.launch {
                                         viewModel.addExpense(expense)
+                                        onAchievementUnlocked("first_expense")
                                         amount = ""
                                         selectedCategory = null
                                         note = ""
@@ -906,6 +912,7 @@ fun RecordPage(
                     onClick = {
                         scope.launch {
                             viewModel.addExpense(pendingExpense!!)
+                            onAchievementUnlocked("first_expense")
                             amount = ""
                             selectedCategory = null
                             note = ""

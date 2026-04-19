@@ -47,6 +47,8 @@ import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.ExportPage
 import com.example.myapplication.ui.IncomePage
 import com.example.myapplication.ui.AccountPage
+import com.example.myapplication.ui.CheckInPage
+import com.example.myapplication.ui.CheckInViewModel
 import com.example.myapplication.ui.components.FeatureHighlightOverlay
 import com.example.myapplication.ui.SyncViewModel
 import com.example.myapplication.ui.SyncState
@@ -104,7 +106,9 @@ class MainActivity : AppCompatActivity() {
             val authViewModel: AuthViewModel = viewModel()
             val authState by authViewModel.authState.collectAsStateWithLifecycle()
             var showAccountPage by remember { mutableStateOf(false) }
+            var showCheckInPage by remember { mutableStateOf(false) }
             var showAuthModal by remember { mutableStateOf(false) }
+            val checkInViewModel: CheckInViewModel = viewModel()
             val syncViewModel: SyncViewModel = viewModel(
                 factory = SyncViewModel.Factory(
                     (application as FinanceApplication).syncRepository
@@ -178,7 +182,27 @@ class MainActivity : AppCompatActivity() {
             // 自动同步：登录状态下且开关开启时，启动时触发一次
             LaunchedEffect(authState, autoSyncEnabled) {
                 if (authState is AuthState.Authenticated && autoSyncEnabled) {
+                    syncViewModel.onFirstSyncCompleted = {
+                        checkInViewModel.unlockAchievement("first_sync")
+                    }
                     syncViewModel.syncNow()
+                }
+            }
+
+            LaunchedEffect(authState) {
+                if (authState is AuthState.Authenticated) {
+                    val budget = themePreferences.monthlyBudget.first() ?: 0.0
+                    if (budget > 0.0) {
+                        val allExpenses = viewModel.expenses.first()
+                        val monthlyTotals = allExpenses
+                            .filter { !it.isDeleted }
+                            .groupBy {
+                                java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+                                    .format(java.util.Date(it.date))
+                            }
+                            .mapValues { (_, list) -> list.sumOf { it.amount } }
+                        checkInViewModel.checkBudgetAchievementsOnStartup(monthlyTotals, budget)
+                    }
                 }
             }
 
@@ -222,7 +246,12 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     is AuthState.Authenticated -> {
-                        if (showAccountPage) {
+                        if (showCheckInPage) {
+                            CheckInPage(
+                                viewModel = checkInViewModel,
+                                onBack = { showCheckInPage = false }
+                            )
+                        } else if (showAccountPage) {
                             AccountPage(
                                 authViewModel = authViewModel,
                                 autoSyncEnabled = autoSyncEnabled,
@@ -231,7 +260,12 @@ class MainActivity : AppCompatActivity() {
                                         themePreferences.setAutoSyncEnabled(enabled)
                                     }
                                 },
-                                onSyncNow = { syncViewModel.syncNow() },
+                                onSyncNow = {
+                                    syncViewModel.onFirstSyncCompleted = {
+                                        checkInViewModel.unlockAchievement("first_sync")
+                                    }
+                                    syncViewModel.syncNow()
+                                },
                                 isSyncing = syncState is SyncState.Syncing,
                                 syncMessage = when (val s = syncState) {
                                     is SyncState.Success -> stringResource(
@@ -245,11 +279,16 @@ class MainActivity : AppCompatActivity() {
                                     )
                                     else -> ""
                                 },
+                                onNavigateToCheckIn = {
+                                    showAccountPage = false
+                                    showCheckInPage = true
+                                },
                                 onNavigateBack = { showAccountPage = false }
                             )
                         } else {
                             MainScreen(
                                 viewModel = viewModel,
+                                checkInViewModel = checkInViewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
                                 currentFontScale = fontScaleSetting,
@@ -281,6 +320,7 @@ class MainActivity : AppCompatActivity() {
                         Box(modifier = Modifier.fillMaxSize()) {
                             MainScreen(
                                 viewModel = viewModel,
+                                checkInViewModel = checkInViewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
                                 currentFontScale = fontScaleSetting,
@@ -370,7 +410,8 @@ fun MainScreen(
     quickTemplateId: Int? = null,
     isGuest: Boolean = false,
     onNavigateToAccount: () -> Unit = {},
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    checkInViewModel: CheckInViewModel
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
@@ -581,6 +622,9 @@ fun MainScreen(
                     onNavigateToCategory = {
                         navController.navigate("category_management")
                     },
+                    onAchievementUnlocked = { id: String ->
+                        checkInViewModel.unlockAchievement(id)
+                    },
                     onBack = { navController.popBackStack() },
                     alertThreshold = currentAlertThreshold,
                     isGuest = isGuest,
@@ -598,7 +642,10 @@ fun MainScreen(
                     expenses = expenses,
                     categories = categories,
                     isGuest = isGuest,
-                    onNavigateToLogin = onNavigateToLogin
+                    onNavigateToLogin = onNavigateToLogin,
+                    onFirstAnalyzeGenerated = {
+                        checkInViewModel.unlockAchievement("first_ai_analyze")
+                    },
                 )
             }
 
@@ -645,29 +692,48 @@ fun MainScreen(
                         navController.navigate("export")
                     },
                     onNavigateToAccount = onNavigateToAccount,
-                    onNavigateToLogin = onNavigateToLogin
+                    onNavigateToLogin = onNavigateToLogin,
+                    onBudgetAchievementUnlocked = {
+                        checkInViewModel.unlockAchievement("set_budget")
+                    },
                 )
             }
 
             composable("debt") {
-                DebtPage(viewModel = viewModel)
+                DebtPage(
+                    viewModel = viewModel,
+                    onFirstLoanCreated = {
+                        checkInViewModel.unlockAchievement("first_loan")
+                    }
+                )
             }
 
             composable("income") {
                 IncomePage(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onFirstIncomeRecorded = {
+                        checkInViewModel.unlockAchievement("first_income")
+                    }
                 )
             }
 
             composable("saving") {
-                SavingGoalPage(viewModel = viewModel)
+                SavingGoalPage(
+                    viewModel = viewModel,
+                    onFirstGoalCreated = {
+                        checkInViewModel.unlockAchievement("set_saving_goal")
+                    }
+                )
             }
 
             composable("stock") {
                 StockPage(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onFirstStockAdded = {
+                        checkInViewModel.unlockAchievement("first_stock")
+                    }
                 )
             }
 

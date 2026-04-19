@@ -527,4 +527,69 @@
     <string name="income_set_now">立即设置</string>
     <string name="income_balance_positive">结余</string>
     <string name="income_balance_negative">超支</string>
+
+    <!-- Check-in & Achievements -->
+    <string name="checkin_title">签到与成就</string>
+    <string name="checkin_button">今日签到</string>
+    <string name="checkin_done">今日已签到</string>
+    <string name="checkin_streak">连续签到 %d 天</string>
+    <string name="checkin_tokens_earned">+%d 代币</string>
+    <string name="checkin_streak_bonus">连续 %d 天里程碑！额外 +%d 代币</string>
+    <string name="token_balance">代币余额：%d</string>
+    <string name="token_history">代币明细</string>
+    <string name="token_type_checkin">签到奖励</string>
+    <string name="token_type_achievement">成就奖励</string>
+    <string name="token_type_redeem">兑换消耗</string>
+    <string name="achievements_title">成就</string>
+    <string name="achievements_behavior">行为成就</string>
+    <string name="achievements_streak">连续签到</string>
+    <string name="achievements_budget">财务自律</string>
+    <string name="achievement_unlocked">成就解锁</string>
+    <string name="achievement_locked">未解锁</string>
+    <string name="achievement_tokens">+%d 代币</string>
+    <!-- Behavior achievements -->
+    <string name="achievement_first_expense">第一步</string>
+    <string name="achievement_first_expense_desc">记录第一笔消费</string>
+    <string name="achievement_set_budget">未雨绸缪</string>
+    <string name="achievement_set_budget_desc">设置每月预算</string>
+    <string name="achievement_set_saving_goal">心中有数</string>
+    <string name="achievement_set_saving_goal_desc">设置第一个储蓄目标</string>
+    <string name="achievement_first_loan">借贷无忧</string>
+    <string name="achievement_first_loan_desc">记录第一笔借贷</string>
+    <string name="achievement_first_sync">云端守护</string>
+    <string name="achievement_first_sync_desc">首次完成云端同步</string>
+    <string name="achievement_first_ai_parse">AI初体验</string>
+    <string name="achievement_first_ai_parse_desc">首次使用自然语言记账</string>
+    <string name="achievement_first_ai_analyze">深度洞察</string>
+    <string name="achievement_first_ai_analyze_desc">首次生成AI月度报告</string>
+    <string name="achievement_first_stock">投资起步</string>
+    <string name="achievement_first_stock_desc">添加第一支股票</string>
+    <string name="achievement_first_income">工资入账</string>
+    <string name="achievement_first_income_desc">首次录入月度收入</string>
+    <!-- Streak achievements -->
+    <string name="achievement_streak_7">初见坚持</string>
+    <string name="achievement_streak_7_desc">连续签到 7 天</string>
+    <string name="achievement_streak_30">月度常客</string>
+    <string name="achievement_streak_30_desc">连续签到 30 天</string>
+    <string name="achievement_streak_90">季度达人</string>
+    <string name="achievement_streak_90_desc">连续签到 90 天</string>
+    <string name="achievement_streak_365">年度坚守</string>
+    <string name="achievement_streak_365_desc">连续签到 365 天</string>
+    <string name="achievement_streak_730">传说之路</string>
+    <string name="achievement_streak_730_desc">连续签到 730 天</string>
+    <!-- Budget achievements -->
+    <string name="achievement_budget_1">量入为出</string>
+    <string name="achievement_budget_1_desc">连续 1 个月不超预算</string>
+    <string name="achievement_budget_3">持之以恒</string>
+    <string name="achievement_budget_3_desc">连续 3 个月不超预算</string>
+    <string name="achievement_budget_6">财务自律</string>
+    <string name="achievement_budget_6_desc">连续 6 个月不超预算</string>
+    <string name="achievement_budget_9">理财达人</string>
+    <string name="achievement_budget_9_desc">连续 9 个月不超预算</string>
+    <string name="achievement_budget_12">年度典范</string>
+    <string name="achievement_budget_12_desc">连续 12 个月不超预算</string>
+    <string name="achievement_budget_18">财富掌控者</string>
+    <string name="achievement_budget_18_desc">连续 18 个月不超预算</string>
+    <string name="achievement_budget_24">传奇</string>
+    <string name="achievement_budget_24_desc">连续 24 个月不超预算</string>
 </resources>

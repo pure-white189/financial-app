@@ -47,6 +47,7 @@ fun SettingsPage(
     onNavigateToExport: () -> Unit = {},
     onNavigateToAccount: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+    onBudgetAchievementUnlocked: () -> Unit = {},
     currentLanguage: LanguageManager.AppLanguage = LanguageManager.AppLanguage.FOLLOW_SYSTEM,
     onLanguageChange: (LanguageManager.AppLanguage) -> Unit = {}
 ) {
@@ -271,6 +272,9 @@ fun SettingsPage(
                 onDismiss = { showBudgetDialog = false },
                 onConfirm = { newBudget ->
                     onBudgetChange(newBudget)
+                    if (newBudget != null && newBudget > 0.0) {
+                        onBudgetAchievementUnlocked()
+                    }
                     showBudgetDialog = false
                 }
             )

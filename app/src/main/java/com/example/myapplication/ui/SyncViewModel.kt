@@ -13,17 +13,23 @@ class SyncViewModel(private val syncRepository: SyncRepository) : ViewModel() {
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState
+    var onFirstSyncCompleted: (() -> Unit)? = null
 
     fun syncNow() {
         if (_syncState.value is SyncState.Syncing) return
         viewModelScope.launch {
             _syncState.value = SyncState.Syncing
-            _syncState.value = when (val result = syncRepository.syncAll()) {
+            val newState = when (val result = syncRepository.syncAll()) {
                 is SyncResult.Success -> SyncState.Success(
                     uploaded = result.uploaded,
                     downloaded = result.downloaded
                 )
                 is SyncResult.Error -> SyncState.Error(result.message)
+            }
+            _syncState.value = newState
+            if (newState is SyncState.Success) {
+                onFirstSyncCompleted?.invoke()
+                onFirstSyncCompleted = null   // only fire once
             }
         }
     }

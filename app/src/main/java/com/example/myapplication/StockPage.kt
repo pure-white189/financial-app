@@ -87,7 +87,8 @@ private val ProfitColor = IncomeGreen
 @Composable
 fun StockPage(
     viewModel: ExpenseViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFirstStockAdded: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val stocks by viewModel.stocks.collectAsState(initial = emptyList())
@@ -314,6 +315,7 @@ fun StockPage(
             onDismiss = { showAddDialog = false },
             onConfirm = { newStock ->
                 viewModel.addStock(newStock)
+                onFirstStockAdded()
                 showAddDialog = false
 
                 if (newStock.currentPrice == 0.0) {

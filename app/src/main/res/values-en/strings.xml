@@ -588,4 +588,15 @@
     <string name="achievement_budget_18_desc">Stay under budget for 18 months</string>
     <string name="achievement_budget_24">Legend</string>
     <string name="achievement_budget_24_desc">Stay under budget for 24 months</string>
+    <!-- Token Redemption Dialog -->
+    <string name="token_redeem_parse_title">Redeem tokens for analysis?</string>
+    <string name="token_redeem_analyze_title">Redeem tokens for in-depth analysis?</string>
+    <string name="token_redeem_parse_desc">Spend 5 tokens for this AI analysis (Current balance: %d)</string>
+    <string name="token_redeem_analyze_desc">Spend 15 tokens for this AI in-depth analysis (Current balance: %d)</string>
+    <string name="token_redeem_confirm">Redeem &amp; Continue</string>
+    <string name="token_redeem_cancel">Cancel</string>
+    <string name="token_insufficient_parse">Insufficient tokens (Required: 5, Current: %d)</string>
+    <string name="token_insufficient_analyze">Insufficient tokens (Required: 15, Current: %d)</string>
+    <string name="token_redeem_failed">Redemption failed. Please check your network connection.</string>
+    <string name="token_redeeming">Redeeming…</string>
 </resources>

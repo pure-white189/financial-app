@@ -11,6 +11,8 @@ from firebase_admin import auth, credentials
 from openai import OpenAI
 from subscription import (
     RedeemError,
+    add_token_quota,
+    consume_token_quota,
     get_subscription_detail,
     get_user_plan,
     init_db,
@@ -176,6 +178,8 @@ def check_rate_limit_parse(uid: str, role: str):
         p["date"] = today
         p["count"] = 0
     if p["count"] >= FREE_PARSE_DAILY:
+        if consume_token_quota(uid, "parse"):
+            return lambda: None
         raise HTTPException(
             status_code=429,
             detail=f"Daily limit reached ({FREE_PARSE_DAILY} uses/day). Upgrade to Pro for unlimited access.",
@@ -203,6 +207,8 @@ def check_rate_limit_analyze(uid: str, role: str):
         a["month"] = month
         a["count"] = 0
     if a["count"] >= FREE_ANALYZE_MONTHLY:
+        if consume_token_quota(uid, "analyze"):
+            return lambda: None
         raise HTTPException(
             status_code=429,
             detail=f"Monthly limit reached ({FREE_ANALYZE_MONTHLY} analyses/month). Upgrade to Pro for unlimited access.",
@@ -248,6 +254,20 @@ def redeem_code_endpoint(data: dict, authorization: str | None = Header(default=
         return result
     except RedeemError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/redeem-tokens")
+def redeem_tokens_endpoint(data: dict, authorization: str | None = Header(default=None)):
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    quota_type = str(data.get("type", "")).strip().lower()
+    if quota_type not in {"parse", "analyze"}:
+        raise HTTPException(status_code=400, detail="type must be 'parse' or 'analyze'")
+
+    add_token_quota(user["uid"], quota_type)
+    return {"success": True}
 
 
 @app.get("/subscription-status")

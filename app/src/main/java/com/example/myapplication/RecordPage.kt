@@ -38,8 +38,10 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.ui.CheckInViewModel
 import com.example.myapplication.utils.displayName
 import com.example.myapplication.utils.displayNote
 import com.example.myapplication.ui.theme.IncomeGreen
@@ -59,6 +61,7 @@ fun RecordPage(
     isGuest: Boolean = false,
     onNavigateToLogin: (() -> Unit)? = null,
     onAchievementUnlocked: (String) -> Unit = {},
+    checkInViewModel: CheckInViewModel,
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
@@ -66,8 +69,10 @@ fun RecordPage(
     val aiLang = context.getString(R.string.ai_prompt_language)
     val aiResultFilledText = stringResource(R.string.ai_result_filled)
     val aiParseFailedText = stringResource(R.string.ai_parse_failed)
+    val tokenRedeemFailedText = stringResource(R.string.token_redeem_failed)
     val templates by viewModel.templates.collectAsState(initial = emptyList())
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
+    val tokenBalance by checkInViewModel.tokenBalance.collectAsState()
     val scope = rememberCoroutineScope()
 
     var amount by remember { mutableStateOf("") }
@@ -87,6 +92,9 @@ fun RecordPage(
     var aiSuccess by remember { mutableStateOf<String?>(null) }
     var showQuotaDialog by remember { mutableStateOf(false) }
     var quotaDialogMessage by remember { mutableStateOf("") }
+    var pendingAiInput by remember { mutableStateOf("") }
+    var showTokenRedeemDialog by remember { mutableStateOf(false) }
+    var isRedeeming by remember { mutableStateOf(false) }
 
     val recentExpenses = remember(expenses) {
         expenses.take(5)
@@ -282,7 +290,14 @@ fun RecordPage(
                                         when {
                                             isQuotaError -> {
                                                 quotaDialogMessage = message
-                                                showQuotaDialog = true
+                                                pendingAiInput = aiInput
+                                                if (tokenBalance >= 5) {
+                                                    showTokenRedeemDialog = true
+                                                    showQuotaDialog = false
+                                                } else {
+                                                    showTokenRedeemDialog = false
+                                                    showQuotaDialog = true
+                                                }
                                             }
                                             isNetworkFailure -> aiError = aiParseFailedText
                                             else -> aiError = message
@@ -365,7 +380,14 @@ fun RecordPage(
                                     when {
                                         isQuotaError -> {
                                             quotaDialogMessage = message
-                                            showQuotaDialog = true
+                                            pendingAiInput = aiInput
+                                            if (tokenBalance >= 5) {
+                                                showTokenRedeemDialog = true
+                                                showQuotaDialog = false
+                                            } else {
+                                                showTokenRedeemDialog = false
+                                                showQuotaDialog = true
+                                            }
                                         }
                                         isNetworkFailure -> aiError = aiParseFailedText
                                         else -> aiError = message
@@ -942,6 +964,119 @@ fun RecordPage(
         )
     }
 
+    if (showTokenRedeemDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showTokenRedeemDialog = false
+                isRedeeming = false
+            },
+            title = { Text(stringResource(R.string.token_redeem_parse_title)) },
+            text = { Text(stringResource(R.string.token_redeem_parse_desc, tokenBalance)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !isRedeeming,
+                    onClick = {
+                        isRedeeming = true
+                        showTokenRedeemDialog = false
+                        isRedeeming = false
+                        scope.launch {
+                            when (checkInViewModel.redeemTokensAndNotifyBackend("parse")) {
+                                is CheckInRepository.RedeemResult.Success -> {
+                                    val retryInput = pendingAiInput
+                                    if (retryInput.isBlank()) {
+                                        return@launch
+                                    }
+
+                                    isAiLoading = true
+                                    aiError = null
+                                    aiSuccess = null
+                                    val result = AiExpenseParser.parseExpense(retryInput, aiLang)
+                                    result.onSuccess { parsed ->
+                                        Log.d(
+                                            "AiParser",
+                                            "解析结果: amount=${parsed.amount} category=${parsed.category} note=${parsed.note}"
+                                        )
+
+                                        if (parsed.amount > 0) {
+                                            amount = parsed.amount.toString()
+                                        }
+
+                                        val matchedCategory = categories.find {
+                                            it.name.contains(parsed.category) ||
+                                                parsed.category.contains(it.name)
+                                        }
+                                        if (matchedCategory != null) {
+                                            selectedCategory = matchedCategory
+                                        }
+
+                                        if (parsed.note.isNotEmpty()) {
+                                            note = parsed.note
+                                        }
+
+                                        onAchievementUnlocked("first_ai_parse")
+
+                                        aiSuccess = aiResultFilledText
+                                        aiInput = ""
+                                        pendingAiInput = ""
+                                        delay(2000)
+                                        aiSuccess = null
+                                    }
+                                    result.onFailure { error ->
+                                        val message = error.message ?: ""
+                                        val messageLower = message.lowercase()
+                                        val isQuotaError = messageLower.contains("limit reached") ||
+                                            messageLower.contains("upgrade to pro")
+                                        val isNetworkFailure = messageLower.contains("failed to connect") ||
+                                            messageLower.contains("timeout") ||
+                                            messageLower.contains("unable to resolve host") ||
+                                            messageLower.contains("connection")
+                                        when {
+                                            isQuotaError -> {
+                                                quotaDialogMessage = message
+                                                pendingAiInput = retryInput
+                                                if (tokenBalance >= 5) {
+                                                    showTokenRedeemDialog = true
+                                                    showQuotaDialog = false
+                                                } else {
+                                                    showTokenRedeemDialog = false
+                                                    showQuotaDialog = true
+                                                }
+                                            }
+                                            isNetworkFailure -> aiError = aiParseFailedText
+                                            else -> aiError = message
+                                        }
+                                    }
+                                    isAiLoading = false
+                                }
+
+                                is CheckInRepository.RedeemResult.InsufficientTokens -> {
+                                    aiError = tokenRedeemFailedText
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    if (isRedeeming) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(stringResource(R.string.token_redeem_confirm))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showTokenRedeemDialog = false
+                    isRedeeming = false
+                }) {
+                    Text(stringResource(R.string.token_redeem_cancel))
+                }
+            }
+        )
+    }
+
     if (showQuotaDialog) {
         AlertDialog(
             onDismissRequest = { showQuotaDialog = false },
@@ -967,7 +1102,7 @@ fun RecordPage(
                         }
                     )
                     Text(
-                        text = stringResource(R.string.ai_quota_dialog_hint),
+                        text = stringResource(R.string.token_insufficient_parse, tokenBalance),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

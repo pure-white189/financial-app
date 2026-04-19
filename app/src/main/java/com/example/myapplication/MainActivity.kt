@@ -616,38 +616,40 @@ fun MainScreen(
                 )
             }
 
-            composable("record") {
-                RecordPage(
-                    viewModel = viewModel,
-                    onNavigateToCategory = {
-                        navController.navigate("category_management")
-                    },
-                    onAchievementUnlocked = { id: String ->
-                        checkInViewModel.unlockAchievement(id)
-                    },
-                    onBack = { navController.popBackStack() },
-                    alertThreshold = currentAlertThreshold,
-                    isGuest = isGuest,
-                    onNavigateToLogin = onNavigateToLogin
-                )
-            }
+                composable("record") {
+                    RecordPage(
+                        viewModel = viewModel,
+                        onNavigateToCategory = {
+                            navController.navigate("category_management")
+                        },
+                        onAchievementUnlocked = { id: String ->
+                            checkInViewModel.unlockAchievement(id)
+                        },
+                        checkInViewModel = checkInViewModel,
+                        onBack = { navController.popBackStack() },
+                        alertThreshold = currentAlertThreshold,
+                        isGuest = isGuest,
+                        onNavigateToLogin = onNavigateToLogin
+                    )
+                }
 
-            composable(BottomNavItem.Analysis.route) {
-                AnalysisPage(
-                    viewModel = viewModel,
-                    monthlyBudget = currentBudget,
-                    onNavigateToStock = {
-                        navController.navigate("stock")
-                    },
-                    expenses = expenses,
-                    categories = categories,
-                    isGuest = isGuest,
-                    onNavigateToLogin = onNavigateToLogin,
-                    onFirstAnalyzeGenerated = {
-                        checkInViewModel.unlockAchievement("first_ai_analyze")
-                    },
-                )
-            }
+                composable(BottomNavItem.Analysis.route) {
+                    AnalysisPage(
+                        viewModel = viewModel,
+                        monthlyBudget = currentBudget,
+                        onNavigateToStock = {
+                            navController.navigate("stock")
+                        },
+                        expenses = expenses,
+                        categories = categories,
+                        isGuest = isGuest,
+                        onNavigateToLogin = onNavigateToLogin,
+                        onFirstAnalyzeGenerated = {
+                            checkInViewModel.unlockAchievement("first_ai_analyze")
+                        },
+                        checkInViewModel = checkInViewModel,
+                    )
+                }
 
             composable("settings") {
                 SettingsPage(

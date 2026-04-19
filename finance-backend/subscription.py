@@ -40,7 +40,55 @@ def init_db():
                 expires_at    TEXT,
                 updated_at    TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS token_quota (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                uid           TEXT NOT NULL,
+                type          TEXT NOT NULL,
+                granted_at    TEXT NOT NULL,
+                expires_at    TEXT NOT NULL
+            );
         """)
+
+
+def add_token_quota(uid: str, type: str):
+    now = datetime.now(timezone.utc)
+    now_str = now.isoformat()
+
+    if type == "parse":
+        expires_at = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    elif type == "analyze":
+        month_start_next = (now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) + timedelta(days=32)).replace(day=1)
+        expires_at = month_start_next - timedelta(seconds=1)
+    else:
+        raise ValueError(f"Unsupported quota type: {type}")
+
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO token_quota (uid, type, granted_at, expires_at) VALUES (?, ?, ?, ?)",
+            (uid, type, now_str, expires_at.isoformat())
+        )
+
+
+def consume_token_quota(uid: str, type: str) -> bool:
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    with _conn() as conn:
+        row = conn.execute(
+            """
+            SELECT id FROM token_quota
+            WHERE uid = ? AND type = ? AND expires_at > ?
+            ORDER BY expires_at ASC
+            LIMIT 1
+            """,
+            (uid, type, now_str)
+        ).fetchone()
+
+        if row is None:
+            return False
+
+        conn.execute("DELETE FROM token_quota WHERE id = ?", (row["id"],))
+        return True
 
 
 @contextmanager

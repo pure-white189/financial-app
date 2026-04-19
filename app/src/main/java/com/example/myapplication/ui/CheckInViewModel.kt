@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.AchievementRepository
+import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.AppDatabase
 import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.CheckInResult
@@ -137,6 +138,10 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
             is CheckInRepository.RedeemResult.Success -> result.remaining
             is CheckInRepository.RedeemResult.InsufficientTokens -> -1
         }
+    }
+
+    suspend fun redeemTokensAndNotifyBackend(type: String): CheckInRepository.RedeemResult {
+        return checkInRepository.redeemTokensAndNotifyBackend(type, AiExpenseParser)
     }
 }
 

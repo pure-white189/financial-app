@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit
 object AiExpenseParser {
 
     private const val BASE_URL = "http://20.199.169.108"
+    private const val FREE_PARSE_DAILY_DEFAULT = 10
+    private const val FREE_ANALYZE_MONTHLY_DEFAULT = 2
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -345,6 +347,35 @@ object AiExpenseParser {
                             expiresAt = if (json.isNull("expires_at")) null else json.optString("expires_at")
                         )
                     )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    suspend fun redeemTokensForAi(type: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
+                val requestBody = JSONObject().apply { put("type", type) }
+                    .toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$BASE_URL/redeem-tokens")
+                    .post(requestBody)
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                    if (response.isSuccessful) {
+                        if (type == "parse") {
+                            localParseUsedToday = (localParseLimit ?: 10) - 1
+                        } else if (type == "analyze") {
+                            localAnalyzeUsedThisMonth = (localAnalyzeLimit ?: 2) - 1
+                        }
+                        return@withContext Result.success(Unit)
+                    }
+                    val message = parseServerErrorMessage(body, "Redemption failed")
+                    Result.failure(Exception(message))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

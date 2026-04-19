@@ -592,4 +592,15 @@
     <string name="achievement_budget_18_desc">连续 18 个月不超预算</string>
     <string name="achievement_budget_24">传奇</string>
     <string name="achievement_budget_24_desc">连续 24 个月不超预算</string>
+    <!-- 代币兑换 Dialog -->
+    <string name="token_redeem_parse_title">使用代币兑换解析次数？</string>
+    <string name="token_redeem_analyze_title">使用代币兑换分析次数？</string>
+    <string name="token_redeem_parse_desc">消耗 5 代币兑换本次 AI 解析（当前余额：%d）</string>
+    <string name="token_redeem_analyze_desc">消耗 15 代币兑换本次 AI 分析（当前余额：%d）</string>
+    <string name="token_redeem_confirm">兑换并继续</string>
+    <string name="token_redeem_cancel">放弃</string>
+    <string name="token_insufficient_parse">代币不足（需要 5，当前 %d）</string>
+    <string name="token_insufficient_analyze">代币不足（需要 15，当前 %d）</string>
+    <string name="token_redeem_failed">兑换失败，请检查网络连接</string>
+    <string name="token_redeeming">正在兑换…</string>
 </resources>

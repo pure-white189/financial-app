@@ -222,6 +222,29 @@ class CheckInRepository(
         )
         return RedeemResult.Success(balance - cost)
     }
+
+    suspend fun redeemTokensAndNotifyBackend(type: String, aiParser: AiExpenseParser): RedeemResult {
+        val localResult = redeemTokens(type)
+        if (localResult is RedeemResult.InsufficientTokens) return localResult
+
+        val backendResult = aiParser.redeemTokensForAi(type)
+        if (backendResult.isFailure) {
+            val cost = if (type == "analyze") 15 else 5
+            val now = System.currentTimeMillis()
+            tokenTransactionDao.insertTransaction(
+                TokenTransaction(
+                    type = "redeem_rollback",
+                    amount = cost,
+                    description = "rollback_$type",
+                    timestamp = now,
+                    updatedAt = now
+                )
+            )
+            return RedeemResult.InsufficientTokens(balance = 0, required = cost)
+        }
+
+        return localResult
+    }
 }
 
 // ── Result types ───────────────────────────────────────────────────────────

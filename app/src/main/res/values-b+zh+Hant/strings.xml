@@ -588,4 +588,15 @@
     <string name="achievement_budget_18_desc">連續 18 個月不超預算</string>
     <string name="achievement_budget_24">傳奇</string>
     <string name="achievement_budget_24_desc">連續 24 個月不超預算</string>
+    <!-- 代幣兌換 Dialog -->
+    <string name="token_redeem_parse_title">使用代幣兌換解析次數？</string>
+    <string name="token_redeem_analyze_title">使用代幣兌換分析次數？</string>
+    <string name="token_redeem_parse_desc">消耗 5 代幣兌換本次 AI 解析（當前餘額：%d）</string>
+    <string name="token_redeem_analyze_desc">消耗 15 代幣兌換本次 AI 分析（當前餘額：%d）</string>
+    <string name="token_redeem_confirm">兌換並繼續</string>
+    <string name="token_redeem_cancel">放棄</string>
+    <string name="token_insufficient_parse">代幣不足（需要 5，當前 %d）</string>
+    <string name="token_insufficient_analyze">代幣不足（需要 15，當前 %d）</string>
+    <string name="token_redeem_failed">兌換失敗，請檢查網路連線</string>
+    <string name="token_redeeming">正在兌換…</string>
 </resources>

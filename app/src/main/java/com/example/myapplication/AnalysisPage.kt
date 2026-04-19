@@ -29,8 +29,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.Category
 import com.example.myapplication.data.Expense
+import com.example.myapplication.ui.CheckInViewModel
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
@@ -62,12 +64,14 @@ fun AnalysisPage(
     isGuest: Boolean = false,
     onNavigateToLogin: (() -> Unit)? = null,
     onFirstAnalyzeGenerated: () -> Unit = {},
+    checkInViewModel: CheckInViewModel,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val tokenBalance by checkInViewModel.tokenBalance.collectAsState()
     val scope = rememberCoroutineScope()
     val thisMonthLabel = stringResource(R.string.home_this_month)
     val categoryOtherLabel = stringResource(R.string.category_other)
@@ -77,6 +81,8 @@ fun AnalysisPage(
     var isAnalyzing by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
     var showQuotaDialog by remember { mutableStateOf(false) }
+    var showTokenRedeemDialog by remember { mutableStateOf(false) }
+    var isRedeeming by remember { mutableStateOf(false) }
     var quotaDialogMessage by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScrollState = rememberScrollState()
@@ -186,9 +192,14 @@ fun AnalysisPage(
                 val isQuotaError = message.lowercase().contains("limit reached") ||
                     message.lowercase().contains("upgrade to pro")
                 if (isQuotaError) {
-                    showAiSheet = false
-                    quotaDialogMessage = message
-                    showQuotaDialog = true
+                    if (tokenBalance >= 15) {
+                        showAiSheet = false
+                        showTokenRedeemDialog = true
+                    } else {
+                        showAiSheet = false
+                        quotaDialogMessage = message
+                        showQuotaDialog = true
+                    }
                 } else {
                     aiAnalysis = aiAnalysisErrorLabel
                 }
@@ -650,6 +661,57 @@ fun AnalysisPage(
             }
         }
 
+        if (showTokenRedeemDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showTokenRedeemDialog = false
+                    isRedeeming = false
+                },
+                title = { Text(stringResource(R.string.token_redeem_analyze_title)) },
+                text = { Text(stringResource(R.string.token_redeem_analyze_desc, tokenBalance)) },
+                confirmButton = {
+                    TextButton(
+                        enabled = !isRedeeming,
+                        onClick = {
+                            isRedeeming = true
+                            showTokenRedeemDialog = false
+                            isRedeeming = false
+                            scope.launch {
+                                when (checkInViewModel.redeemTokensAndNotifyBackend("analyze")) {
+                                    is CheckInRepository.RedeemResult.Success -> {
+                                        runAiAnalysis()
+                                        showAiSheet = true
+                                    }
+
+                                    is CheckInRepository.RedeemResult.InsufficientTokens -> {
+                                        showTokenRedeemDialog = false
+                                        isRedeeming = false
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        if (isRedeeming) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(stringResource(R.string.token_redeem_confirm))
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showTokenRedeemDialog = false
+                        isRedeeming = false
+                    }) {
+                        Text(stringResource(R.string.token_redeem_cancel))
+                    }
+                }
+            )
+        }
+
         if (showQuotaDialog) {
             AlertDialog(
                 onDismissRequest = { showQuotaDialog = false },
@@ -676,6 +738,11 @@ fun AnalysisPage(
                         )
                         Text(
                             text = stringResource(R.string.ai_quota_dialog_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = stringResource(R.string.token_insufficient_analyze, tokenBalance),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

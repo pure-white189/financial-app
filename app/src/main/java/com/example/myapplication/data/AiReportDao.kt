@@ -14,8 +14,11 @@ interface AiReportDao {
     @Query("SELECT * FROM ai_reports WHERE yearMonth = :yearMonth AND isDeleted = 0 LIMIT 1")
     suspend fun getReportForMonth(yearMonth: String): AiReport?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertOrUpdate(report: AiReport)
+
+    @Query("SELECT * FROM ai_reports WHERE yearMonth = :yearMonth AND isDeleted = 0")
+    suspend fun getReportsForMonth(yearMonth: String): List<AiReport>
 
     @Query("SELECT * FROM ai_reports WHERE isDeleted = 0")
     suspend fun getAllReportsOnce(): List<AiReport>

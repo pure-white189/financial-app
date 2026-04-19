@@ -5,9 +5,10 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "ai_reports")
 data class AiReport(
-    @PrimaryKey val yearMonth: String,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val yearMonth: String,
     val content: String,
-    val generatedAt: Long = System.currentTimeMillis(),
+    val generatedAt: String,
     val firestoreId: String = "",
     val updatedAt: Long = System.currentTimeMillis(),
     val isDeleted: Int = 0

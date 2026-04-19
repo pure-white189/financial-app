@@ -323,18 +323,25 @@ class SyncRepository(
         var downloaded = 0
 
         val localReports = aiReportDao.getAllReportsOnce()
+        val knownFirestoreIds = localReports.mapNotNull { it.firestoreId.takeIf { fid -> fid.isNotBlank() } }.toMutableSet()
         for (report in localReports) {
-            val id = report.yearMonth
+            val id = report.firestoreId.ifBlank { UUID.randomUUID().toString() }
+            val localReport = if (report.firestoreId.isBlank()) {
+                report.copy(firestoreId = id, updatedAt = System.currentTimeMillis())
+            } else {
+                report
+            }
+            knownFirestoreIds.add(id)
             val ref = col.document(id)
             val snap = ref.get().await()
             if (!snap.exists()) {
-                ref.set(report.toFirestoreMap()).await()
-                aiReportDao.insertOrUpdate(report.copy(firestoreId = id))
+                ref.set(localReport.toFirestoreMap()).await()
+                aiReportDao.insertOrUpdate(localReport)
                 uploaded++
             } else {
                 val remoteUpdatedAt = (snap.data?.get("updatedAt") as? Number)?.toLong() ?: 0L
-                if (report.updatedAt >= remoteUpdatedAt) {
-                    ref.set(report.toFirestoreMap()).await()
+                if (localReport.updatedAt >= remoteUpdatedAt) {
+                    ref.set(localReport.toFirestoreMap()).await()
                     uploaded++
                 } else {
                     val remote = snap.data!!.toAiReport(id)
@@ -347,7 +354,7 @@ class SyncRepository(
         val remoteSnaps = col.get().await()
         for (snap in remoteSnaps.documents) {
             val id = snap.id
-            if (localReports.none { it.yearMonth == id }) {
+            if (!knownFirestoreIds.contains(id)) {
                 val remote = snap.data!!.toAiReport(id)
                 if (remote.isDeleted == 0) {
                     aiReportDao.insertOrUpdate(remote)

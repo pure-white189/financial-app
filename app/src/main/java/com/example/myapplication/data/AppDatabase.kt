@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class, CheckIn::class, Achievement::class, TokenTransaction::class, AiReport::class],
-    version = 12,          // v11 → v12：新增 ai_reports 表
+    version = 13,          // v12 → v13：ai_reports 改为自增主键
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -210,6 +210,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE ai_reports_new (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, yearMonth TEXT NOT NULL, content TEXT NOT NULL, generatedAt TEXT NOT NULL, firestoreId TEXT NOT NULL, updatedAt INTEGER NOT NULL, isDeleted INTEGER NOT NULL DEFAULT 0)")
+                db.execSQL("INSERT INTO ai_reports_new (yearMonth, content, generatedAt, firestoreId, updatedAt, isDeleted) SELECT yearMonth, content, generatedAt, firestoreId, updatedAt, isDeleted FROM ai_reports")
+                db.execSQL("DROP TABLE ai_reports")
+                db.execSQL("ALTER TABLE ai_reports_new RENAME TO ai_reports")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -218,7 +227,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_app_database"
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

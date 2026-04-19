@@ -408,14 +408,17 @@ class ExpenseViewModel(
     }
 
     suspend fun saveReport(yearMonth: String, content: String) {
-        val now = System.currentTimeMillis()
+        val id = java.util.UUID.randomUUID().toString()
+        val generatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
         aiReportDao.insertOrUpdate(
             AiReport(
+                id = 0,
                 yearMonth = yearMonth,
                 content = content,
-                generatedAt = now,
-                firestoreId = yearMonth,
-                updatedAt = now
+                generatedAt = generatedAt,
+                firestoreId = id,
+                updatedAt = System.currentTimeMillis(),
+                isDeleted = 0
             )
         )
     }

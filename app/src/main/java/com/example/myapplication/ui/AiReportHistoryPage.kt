@@ -49,7 +49,13 @@ fun AiReportHistoryPage(
     onBack: () -> Unit
 ) {
     val reports by viewModel.allReports.collectAsState()
-    var expandedMonth by remember { mutableStateOf<String?>(null) }
+    var expandedReportId by remember { mutableStateOf<Long?>(null) }
+    val grouped = remember(reports) {
+        reports
+            .groupBy { it.yearMonth }
+            .toList()
+            .sortedByDescending { it.first }
+    }
 
     Scaffold(
         topBar = {
@@ -84,15 +90,24 @@ fun AiReportHistoryPage(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(reports) { report ->
-                    AiReportHistoryItem(
-                        report = report,
-                        expanded = expandedMonth == report.yearMonth,
-                        onClick = {
-                            expandedMonth = if (expandedMonth == report.yearMonth) null
-                            else report.yearMonth
-                        }
-                    )
+                grouped.forEach { (yearMonth, monthReports) ->
+                    item {
+                        Text(
+                            text = yearMonth,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                        )
+                    }
+                    items(monthReports.sortedByDescending { it.generatedAt }) { report ->
+                        AiReportHistoryItem(
+                            report = report,
+                            expanded = expandedReportId == report.id,
+                            onClick = {
+                                expandedReportId = if (expandedReportId == report.id) null else report.id
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -105,8 +120,14 @@ private fun AiReportHistoryItem(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-    val generatedAtStr = dateFormat.format(Date(report.generatedAt))
+    val displayTime = try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val date = inputFormat.parse(report.generatedAt)
+        if (date != null) outputFormat.format(date) else report.generatedAt
+    } catch (_: Exception) {
+        report.generatedAt
+    }
 
     Card(
         modifier = Modifier
@@ -122,14 +143,9 @@ private fun AiReportHistoryItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = report.yearMonth,
+                    text = displayTime,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = generatedAtStr,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (expanded) {

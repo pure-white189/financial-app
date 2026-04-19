@@ -184,6 +184,7 @@ fun Map<String, Any>.toTokenTransaction(firestoreId: String): TokenTransaction =
 
 // ── AiReport ──────────────────────────────────────────────
 fun AiReport.toFirestoreMap(): Map<String, Any> = mapOf(
+    "yearMonth"   to yearMonth,
     "content"     to content,
     "generatedAt" to generatedAt,
     "updatedAt"   to updatedAt,
@@ -191,9 +192,11 @@ fun AiReport.toFirestoreMap(): Map<String, Any> = mapOf(
 )
 
 fun Map<String, Any>.toAiReport(firestoreId: String): AiReport = AiReport(
-    yearMonth   = firestoreId,
+    id          = 0,
+    yearMonth   = (this["yearMonth"] as? String) ?: "",
     content     = (this["content"] as? String) ?: "",
-    generatedAt = (this["generatedAt"] as? Number)?.toLong() ?: 0L,
+    generatedAt = (this["generatedAt"] as? String)
+        ?: ((this["generatedAt"] as? Number)?.toLong()?.toString() ?: ""),
     firestoreId = firestoreId,
     updatedAt   = (this["updatedAt"] as? Number)?.toLong() ?: 0L,
     isDeleted   = (this["isDeleted"] as? Number)?.toInt() ?: 0

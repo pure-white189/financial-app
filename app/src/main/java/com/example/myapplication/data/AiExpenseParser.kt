@@ -407,6 +407,30 @@ object AiExpenseParser {
             }
         }
 
+    suspend fun fetchExchangeRate(from: String, to: String): Double? {
+        android.util.Log.d("ExchangeRate", "fetchExchangeRate called: $from -> $to")
+        return withContext(Dispatchers.IO) {
+            try {
+                val encodedFrom = URLEncoder.encode(from, "UTF-8")
+                val encodedTo = URLEncoder.encode(to, "UTF-8")
+                val request = Request.Builder()
+                    .url("$BASE_URL/exchange-rate?from_currency=$encodedFrom&to_currency=$encodedTo")
+                    .get()
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val json = response.body?.string() ?: return@withContext null
+                    android.util.Log.d("ExchangeRate", "response: $json")
+                    val obj = JSONObject(json)
+                    if (obj.has("error")) null else obj.getDouble("rate")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ExchangeRate", "error: ${e::class.simpleName} ${e.message}")
+                null
+            }
+        }
+    }
+
     suspend fun fetchSubscriptionStatus(): Result<SubscriptionStatus> =
         withContext(Dispatchers.IO) {
             try {

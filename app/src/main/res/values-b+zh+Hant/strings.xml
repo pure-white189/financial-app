@@ -287,7 +287,7 @@
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_system">跟隨系統</string>
-    <string name="settings_currency">貨幣</string>
+    <string name="settings_currency">主貨幣（記賬與顯示）</string>
     <string name="settings_font_size">字體大小</string>
     <string name="font_small">小</string>
     <string name="font_medium">中</string>

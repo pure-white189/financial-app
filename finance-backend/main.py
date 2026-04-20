@@ -515,6 +515,36 @@ def get_stock_price(symbol: str):
         return {"error": str(e), "symbol": symbol}
 
 
+@app.get("/exchange-rate")
+def get_exchange_rate(from_currency: str, to_currency: str):
+    """
+    Fetch live exchange rate using yfinance.
+    Example: /exchange-rate?from_currency=CNY&to_currency=HKD
+    Returns: {"from": "CNY", "to": "HKD", "rate": 1.081, "timestamp": "..."}
+    """
+    try:
+        if from_currency == to_currency:
+            return {
+                "from": from_currency,
+                "to": to_currency,
+                "rate": 1.0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        symbol = f"{from_currency}{to_currency}=X"
+        ticker = yf.Ticker(symbol)
+        rate = ticker.fast_info.last_price
+        if rate is None:
+            raise ValueError("No rate available")
+        return {
+            "from": from_currency,
+            "to": to_currency,
+            "rate": round(rate, 6),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        return {"error": str(e), "from": from_currency, "to": to_currency}
+
+
 @app.get("/stock-prices")
 def get_stock_prices(symbols: str):
     symbol_list = [s.strip() for s in symbols.split(",")]

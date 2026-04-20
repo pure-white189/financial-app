@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -54,6 +56,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,12 +69,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.myapplication.data.Loan
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
 import com.example.myapplication.ui.theme.PurpleStart
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private const val LOAN_TYPE_IN = "借入"
 private const val LOAN_TYPE_OUT = "借出"
@@ -85,6 +90,7 @@ fun DebtPage(
     val context = LocalContext.current
     val loans by viewModel.loans.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val mainCurrencyCode by viewModel.mainCurrencyCode.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTargetLoan by remember { mutableStateOf<Loan?>(null) }
@@ -227,6 +233,7 @@ fun DebtPage(
                         LoanItemCard(
                             loan = loan,
                             currencySymbol = currencySymbol,
+                            mainCurrencyCode = mainCurrencyCode,
                             onMarkAsRepaid = { viewModel.markAsRepaid(loan) },
                             onDelete = { deleteTargetLoan = loan }
                         )
@@ -238,6 +245,8 @@ fun DebtPage(
 
     if (showAddDialog) {
         AddLoanDialog(
+            viewModel = viewModel,
+            mainCurrencyCode = mainCurrencyCode,
             currencySymbol = currencySymbol,
             onDismiss = { showAddDialog = false },
             onConfirm = { loan ->
@@ -281,6 +290,7 @@ fun DebtPage(
 private fun LoanItemCard(
     loan: Loan,
     currencySymbol: String,
+    mainCurrencyCode: String,
     onMarkAsRepaid: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -350,8 +360,15 @@ private fun LoanItemCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
+                    val displayAmountText = if (loan.originalCurrency != null &&
+                        loan.originalCurrency != mainCurrencyCode &&
+                        loan.originalAmount != null) {
+                        "$currencySymbol${String.format("%.2f", loan.amount)} (${getCurrencySymbol(loan.originalCurrency!!)}${String.format("%.2f", loan.originalAmount!!)})"
+                    } else {
+                        "$currencySymbol${String.format("%.2f", loan.amount)}"
+                    }
                     Text(
-                        text = String.format(Locale.getDefault(), "$currencySymbol %.2f", loan.amount),
+                        text = displayAmountText,
                         fontSize = 20.sp,
                         color = amountColor
                     )
@@ -399,14 +416,22 @@ private fun LoanItemCard(
 
 @Composable
 private fun AddLoanDialog(
+    viewModel: ExpenseViewModel,
+    mainCurrencyCode: String,
     currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Loan) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var type by remember { mutableStateOf(LOAN_TYPE_OUT) }
     var personName by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
+    var selectedCurrency by remember { mutableStateOf(mainCurrencyCode) }
+    var exchangeRate by remember { mutableStateOf<Double?>(null) }
+    var isLoadingRate by remember { mutableStateOf(false) }
+    var rateEditable by remember { mutableStateOf(false) }
+    var rateInputText by remember { mutableStateOf("") }
     var date by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var dueDate by remember { mutableStateOf<Long?>(null) }
     var note by remember { mutableStateOf("") }
@@ -456,6 +481,101 @@ private fun AddLoanDialog(
                     modifier = Modifier.fillMaxWidth(),
                     isError = showError
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("HKD", "CNY", "USD").forEach { code ->
+                        val isSelected = selectedCurrency == code
+                        TextButton(
+                            onClick = {
+                                selectedCurrency = code
+                                if (code == mainCurrencyCode) {
+                                    exchangeRate = null
+                                    rateEditable = false
+                                    rateInputText = ""
+                                    isLoadingRate = false
+                                } else {
+                                    isLoadingRate = true
+                                    rateEditable = false
+                                    scope.launch {
+                                        val rate = viewModel.fetchExchangeRate(code, mainCurrencyCode)
+                                        if (rate != null) {
+                                            exchangeRate = rate
+                                            rateInputText = rate.toString()
+                                            isLoadingRate = false
+                                        } else {
+                                            exchangeRate = null
+                                            rateEditable = true
+                                            rateInputText = ""
+                                            isLoadingRate = false
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                    shape = RoundedCornerShape(50)
+                                )
+                        ) {
+                            Text(code)
+                        }
+                    }
+                }
+
+                if (selectedCurrency != mainCurrencyCode) {
+                    if (isLoadingRate) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Fetching rate...", fontSize = 12.sp)
+                        }
+                    } else {
+                        val enteredAmount = amountText.toDoubleOrNull()
+                        val effectiveRate = rateInputText.toDoubleOrNull() ?: exchangeRate
+                        if (effectiveRate != null && enteredAmount != null) {
+                            val convertedAmount = enteredAmount * effectiveRate
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "1 $selectedCurrency = ",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = String.format("%.4f", effectiveRate),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { rateEditable = !rateEditable }
+                                )
+                                Text(
+                                    text = " $mainCurrencyCode  →  $currencySymbol${String.format("%.2f", convertedAmount)}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (rateEditable) {
+                            OutlinedTextField(
+                                value = rateInputText,
+                                onValueChange = { rateInputText = it },
+                                label = { Text("Exchange rate") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.width(120.dp)
+                            )
+                        }
+                    }
+                }
 
                 OutlinedButton(
                     onClick = {
@@ -514,14 +634,27 @@ private fun AddLoanDialog(
                         return@TextButton
                     }
 
+                    val isSameCurrency = selectedCurrency == mainCurrencyCode
+                    val rateValue = if (isSameCurrency) null else rateInputText.toDoubleOrNull()
+                    if (!isSameCurrency && rateValue == null) {
+                        rateEditable = true
+                        showError = true
+                        return@TextButton
+                    }
+
+                    val convertedAmount = if (isSameCurrency) amount else amount * (rateValue ?: 1.0)
+
                     onConfirm(
                         Loan(
                             type = type,
                             personName = personName.trim(),
-                            amount = amount,
+                            amount = convertedAmount,
                             date = date,
                             dueDate = dueDate,
-                            note = note.trim()
+                            note = note.trim(),
+                            originalAmount = if (isSameCurrency) null else amount,
+                            originalCurrency = if (isSameCurrency) null else selectedCurrency,
+                            exchangeRate = if (isSameCurrency) null else rateValue
                         )
                     )
                 }

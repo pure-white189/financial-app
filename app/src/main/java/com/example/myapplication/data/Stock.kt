@@ -12,6 +12,7 @@ data class Stock(
     val shares: Double = 0.0,
     val costPrice: Double = 0.0,
     val currentPrice: Double = 0.0,
+    val currency: String = "HKD",
     val lastUpdated: Long = 0L,
     val market: String = "HK",
     val createdAt: Long = System.currentTimeMillis(),

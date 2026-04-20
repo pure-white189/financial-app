@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Category::class, Expense::class, ExpenseTemplate::class, Loan::class, SavingGoal::class, Stock::class, MonthlyIncome::class, CheckIn::class, Achievement::class, TokenTransaction::class, AiReport::class],
-    version = 13,          // v12 → v13：ai_reports 改为自增主键
+    version = 15,          // v14 → v15：stocks 增加 currency 字段
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -219,6 +219,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE expenses ADD COLUMN originalAmount REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE expenses ADD COLUMN originalCurrency TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE expenses ADD COLUMN exchangeRate REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE loans ADD COLUMN originalAmount REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE loans ADD COLUMN originalCurrency TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE loans ADD COLUMN exchangeRate REAL DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stocks ADD COLUMN currency TEXT NOT NULL DEFAULT 'HKD'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -227,7 +244,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_app_database"
                 )
                     .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

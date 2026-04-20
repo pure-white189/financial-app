@@ -45,6 +45,7 @@ import com.example.myapplication.data.Expense
 import com.example.myapplication.data.MonthlyIncome
 import com.example.myapplication.data.SavingGoal
 import com.example.myapplication.data.Stock
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.ui.components.RecommendationCard
 import com.example.myapplication.utils.displayName
 import com.example.myapplication.ui.theme.ExpenseRed
@@ -76,6 +77,7 @@ fun HomePage(viewModel: ExpenseViewModel,
     val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val allIncome by viewModel.allIncome.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val mainCurrencyCode by viewModel.mainCurrencyCode.collectAsState()
     val recommendationsJson by viewModel.recommendationsJson.collectAsState()
     val todayRecommendation by viewModel.todayRecommendation.collectAsState()
     val insightDismissedDate by viewModel.insightDismissedDate.collectAsState()
@@ -553,6 +555,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                                 expense = expense,
                                 category = category,
                                 currencySymbol = currencySymbol,
+                                mainCurrencyCode = mainCurrencyCode,
                                 requireDeleteConfirm = requireDeleteConfirm,
                                 onDelete = {
                                     scope.launch {
@@ -833,6 +836,7 @@ fun ExpenseItem(
     expense: Expense,
     category: Category?,
     currencySymbol: String,
+    mainCurrencyCode: String,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     requireDeleteConfirm: Boolean
@@ -984,7 +988,13 @@ fun ExpenseItem(
                 }
 
                 Text(
-                    text = "$currencySymbol %.2f".format(expense.amount),
+                    text = if (expense.originalCurrency != null &&
+                        expense.originalCurrency != mainCurrencyCode &&
+                        expense.originalAmount != null) {
+                        "$currencySymbol${String.format("%.2f", expense.amount)} (${getCurrencySymbol(expense.originalCurrency!!)}${String.format("%.2f", expense.originalAmount!!)})"
+                    } else {
+                        "$currencySymbol${String.format("%.2f", expense.amount)}"
+                    },
                     fontSize = 18.sp,
                     style = MaterialTheme.typography.titleMedium,
                     color = ExpenseRed

@@ -41,6 +41,7 @@ import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.Expense
 import com.example.myapplication.data.ExpenseTemplate
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.ui.CheckInViewModel
 import com.example.myapplication.utils.displayName
 import com.example.myapplication.utils.displayNote
@@ -65,6 +66,7 @@ fun RecordPage(
 ) {
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val mainCurrencyCode by viewModel.mainCurrencyCode.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val aiLang = context.getString(R.string.ai_prompt_language)
     val aiResultFilledText = stringResource(R.string.ai_result_filled)
@@ -82,6 +84,11 @@ fun RecordPage(
 
     var amount by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    var selectedCurrency by remember { mutableStateOf(mainCurrencyCode) }
+    var exchangeRate by remember { mutableStateOf<Double?>(null) }
+    var isLoadingRate by remember { mutableStateOf(false) }
+    var rateEditable by remember { mutableStateOf(false) }
+    var rateInputText by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDateTimePicker by remember { mutableStateOf(false) }
@@ -103,6 +110,12 @@ fun RecordPage(
 
     val recentExpenses = remember(expenses) {
         expenses.take(5)
+    }
+
+    LaunchedEffect(mainCurrencyCode) {
+        if (selectedCurrency.isBlank()) {
+            selectedCurrency = mainCurrencyCode
+        }
     }
 
     // 使用 Box 包裹，让 Snackbar 可以正确显示
@@ -555,11 +568,110 @@ fun RecordPage(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (amount.isEmpty()) "$currencySymbol 0" else "$currencySymbol $amount",
+                        text = if (amount.isEmpty()) "${getCurrencySymbol(selectedCurrency)} 0" else "${getCurrencySymbol(selectedCurrency)} $amount",
                         fontSize = 40.sp,
                         fontWeight = FontWeight.Bold,
                         color = PurpleStart
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("HKD", "CNY", "USD").forEach { code ->
+                    val isSelected = selectedCurrency == code
+                    TextButton(
+                        onClick = {
+                            selectedCurrency = code
+                            if (code == mainCurrencyCode) {
+                                exchangeRate = null
+                                rateEditable = false
+                                rateInputText = ""
+                                isLoadingRate = false
+                            } else {
+                                isLoadingRate = true
+                                rateEditable = false
+                                scope.launch {
+                                    android.util.Log.d("ExchangeRate", "launching fetch: $code -> $mainCurrencyCode")
+                                    val rate = viewModel.fetchExchangeRate(code, mainCurrencyCode)
+                                    if (rate != null) {
+                                        exchangeRate = rate
+                                        rateInputText = rate.toString()
+                                        isLoadingRate = false
+                                    } else {
+                                        exchangeRate = null
+                                        rateEditable = true
+                                        rateInputText = ""
+                                        isLoadingRate = false
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                            )
+                    ) {
+                        Text(code)
+                    }
+                }
+            }
+
+            if (selectedCurrency != mainCurrencyCode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (isLoadingRate) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Fetching rate...", fontSize = 12.sp)
+                    }
+                } else {
+                    val enteredAmount = amount.toDoubleOrNull()
+                    val effectiveRate = rateInputText.toDoubleOrNull() ?: exchangeRate
+                    if (effectiveRate != null && enteredAmount != null) {
+                        val convertedAmount = enteredAmount * effectiveRate
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "1 $selectedCurrency = ",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = String.format("%.4f", effectiveRate),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { rateEditable = !rateEditable }
+                            )
+                            Text(
+                                text = " $mainCurrencyCode  →  $currencySymbol${String.format("%.2f", convertedAmount)}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (rateEditable) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = rateInputText,
+                            onValueChange = { rateInputText = it },
+                            label = { Text("Exchange rate") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.width(120.dp)
+                        )
+                    }
                 }
             }
 
@@ -715,27 +827,37 @@ fun RecordPage(
                         onClick = {
                             val amountValue = amount.toDoubleOrNull()
                             if (amountValue != null && amountValue > 0 && selectedCategory != null) {
-                                val expense = Expense(
-                                    amount = amountValue,
-                                    categoryId = selectedCategory!!.id,
-                                    date = selectedDate,
-                                    note = note
-                                )
-
-                                // 检查是否超过提醒阈值
-                                if (alertThreshold != null && amountValue >= alertThreshold) {
-                                    pendingExpense = expense
-                                    showAlertConfirm = true
+                                val isSameCurrency = selectedCurrency == mainCurrencyCode
+                                val rateValue = if (isSameCurrency) null else rateInputText.toDoubleOrNull()
+                                if (!isSameCurrency && rateValue == null) {
+                                    rateEditable = true
                                 } else {
-                                    // 直接添加
-                                    scope.launch {
-                                        viewModel.addExpense(expense)
-                                        onAchievementUnlocked("first_expense")
-                                        amount = ""
-                                        selectedCategory = null
-                                        note = ""
-                                        selectedDate = System.currentTimeMillis()
-                                        showSuccess = true
+                                    val convertedAmount = if (isSameCurrency) amountValue else amountValue * (rateValue ?: 1.0)
+                                    val expense = Expense(
+                                        amount = convertedAmount,
+                                        categoryId = selectedCategory!!.id,
+                                        date = selectedDate,
+                                        note = note,
+                                        originalAmount = if (isSameCurrency) null else amountValue,
+                                        originalCurrency = if (isSameCurrency) null else selectedCurrency,
+                                        exchangeRate = if (isSameCurrency) null else rateValue
+                                    )
+
+                                    // 检查是否超过提醒阈值
+                                    if (alertThreshold != null && convertedAmount >= alertThreshold) {
+                                        pendingExpense = expense
+                                        showAlertConfirm = true
+                                    } else {
+                                        // 直接添加
+                                        scope.launch {
+                                            viewModel.addExpense(expense)
+                                            onAchievementUnlocked("first_expense")
+                                            amount = ""
+                                            selectedCategory = null
+                                            note = ""
+                                            selectedDate = System.currentTimeMillis()
+                                            showSuccess = true
+                                        }
                                     }
                                 }
                             }
@@ -904,6 +1026,7 @@ fun RecordPage(
                             expense = expense,
                             category = category,
                             currencySymbol = currencySymbol,
+                            mainCurrencyCode = mainCurrencyCode,
                             onCopy = {
                                 amount = expense.amount.toString()
                                 selectedCategory = category
@@ -1382,6 +1505,7 @@ fun RecentExpenseItem(
     expense: Expense,
     category: Category?,
     currencySymbol: String,
+    mainCurrencyCode: String,
     onCopy: () -> Unit
 ) {
     Card(
@@ -1422,7 +1546,13 @@ fun RecentExpenseItem(
             }
 
             Text(
-                text = "$currencySymbol${expense.amount}",
+                text = if (expense.originalCurrency != null &&
+                    expense.originalCurrency != mainCurrencyCode &&
+                    expense.originalAmount != null) {
+                    "$currencySymbol${String.format("%.2f", expense.amount)} (${getCurrencySymbol(expense.originalCurrency)}${String.format("%.2f", expense.originalAmount!!)})"
+                } else {
+                    "$currencySymbol${String.format("%.2f", expense.amount)}"
+                },
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.error
             )

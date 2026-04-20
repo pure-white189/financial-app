@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.Stock
 import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.data.getCurrencySymbol
 import com.example.myapplication.ui.theme.ExpenseRed
 import com.example.myapplication.ui.theme.IncomeGreen
 import com.example.myapplication.ui.theme.PurpleEnd
@@ -92,7 +94,14 @@ fun StockPage(
 ) {
     val context = LocalContext.current
     val stocks by viewModel.stocks.collectAsState(initial = emptyList())
-    val totalStockValue by viewModel.totalStockValue.collectAsState()
+    val mainCurrencyCode by viewModel.mainCurrencyCode.collectAsState()
+    val exchangeRateCache by viewModel.exchangeRateCache.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshExchangeRateCacheForStocks(
+            stocks.map { it.copy(currency = viewModel.marketToCurrency(it.market)) }
+        )
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Stock?>(null) }
@@ -102,7 +111,17 @@ fun StockPage(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val totalProfit = stocks.sumOf { (it.currentPrice - it.costPrice) * it.shares }
+    val mainCurrencySymbol = getCurrencySymbol(mainCurrencyCode)
+    val totalStockValue = stocks.sumOf { stock ->
+        val stockCurrency = if (stock.currency.isBlank()) viewModel.marketToCurrency(stock.market) else stock.currency
+        val rate = if (stockCurrency == mainCurrencyCode) 1.0 else exchangeRateCache[stockCurrency] ?: 1.0
+        stock.currentPrice * stock.shares * rate
+    }
+    val totalProfit = stocks.sumOf { stock ->
+        val stockCurrency = if (stock.currency.isBlank()) viewModel.marketToCurrency(stock.market) else stock.currency
+        val rate = if (stockCurrency == mainCurrencyCode) 1.0 else exchangeRateCache[stockCurrency] ?: 1.0
+        (stock.currentPrice - stock.costPrice) * stock.shares * rate
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -138,11 +157,18 @@ fun StockPage(
                                             val symbol = symbols[index]
                                             priceMap[symbol]?.let { stockPrice ->
                                                 if (stockPrice.price > 0) {
-                                                    viewModel.updateStockPrice(stock, stockPrice.price)
+                                                    viewModel.updateStockPrice(
+                                                        stock,
+                                                        stockPrice.price,
+                                                        viewModel.marketToCurrency(stock.market)
+                                                    )
                                                     updatedCount++
                                                 }
                                             }
                                         }
+                                        viewModel.refreshExchangeRateCacheForStocks(
+                                            stocks.map { it.copy(currency = viewModel.marketToCurrency(it.market)) }
+                                        )
 
                                         if (updatedCount > 0) {
                                             lastRefreshTime = SimpleDateFormat(
@@ -209,7 +235,7 @@ fun StockPage(
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = stringResource(R.string.stock_total_value), fontSize = 13.sp)
                         Text(
-                            text = formatMoney("HK", totalStockValue),
+                            text = "$mainCurrencySymbol ${String.format(Locale.getDefault(), "%.2f", totalStockValue)}",
                             fontSize = 20.sp,
                             color = PurpleStart
                         )
@@ -224,7 +250,7 @@ fun StockPage(
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = stringResource(R.string.stock_total_profit), fontSize = 13.sp)
                         Text(
-                            text = formatSignedMoney("HK", totalProfit),
+                            text = formatSignedMoneyByCurrency(mainCurrencyCode, totalProfit),
                             fontSize = 20.sp,
                             color = if (totalProfit >= 0) IncomeGreen else ExpenseRed
                         )
@@ -281,6 +307,9 @@ fun StockPage(
                     items(stocks, key = { it.id }) { stock ->
                         StockItemCard(
                             stock = stock,
+                            mainCurrencyCode = mainCurrencyCode,
+                            mainCurrencySymbol = mainCurrencySymbol,
+                            exchangeRateCache = exchangeRateCache,
                             onDelete = { deleteTarget = stock },
                             onEdit = { editTarget = stock },
                             onRefreshPrice = { target ->
@@ -288,7 +317,14 @@ fun StockPage(
                                 val result = AiExpenseParser.fetchStockPrices(listOf(symbol))
                                 val stockPrice = result.getOrNull()?.get(symbol)
                                 if (stockPrice != null && stockPrice.price > 0) {
-                                    viewModel.updateStockPrice(target, stockPrice.price)
+                                    viewModel.updateStockPrice(
+                                        target,
+                                        stockPrice.price,
+                                        viewModel.marketToCurrency(target.market)
+                                    )
+                                    viewModel.refreshExchangeRateCacheForStocks(
+                                        stocks.map { it.copy(currency = viewModel.marketToCurrency(it.market)) }
+                                    )
                                     lastRefreshTime = SimpleDateFormat(
                                         "HH:mm",
                                         Locale.getDefault()
@@ -314,7 +350,8 @@ fun StockPage(
         AddStockDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { newStock ->
-                viewModel.addStock(newStock)
+                val stockWithCurrency = newStock.copy(currency = viewModel.marketToCurrency(newStock.market))
+                viewModel.addStock(stockWithCurrency)
                 onFirstStockAdded()
                 showAddDialog = false
 
@@ -341,7 +378,14 @@ fun StockPage(
                             result.onSuccess { priceMap ->
                                 priceMap[symbol]?.let { stockPrice ->
                                     if (stockPrice.price > 0) {
-                                        viewModel.updateStockPrice(targetStock, stockPrice.price)
+                                        viewModel.updateStockPrice(
+                                            targetStock,
+                                            stockPrice.price,
+                                            viewModel.marketToCurrency(targetStock.market)
+                                        )
+                                        viewModel.refreshExchangeRateCacheForStocks(
+                                            stocks.map { it.copy(currency = viewModel.marketToCurrency(it.market)) }
+                                        )
                                         lastRefreshTime = SimpleDateFormat(
                                             "HH:mm",
                                             Locale.getDefault()
@@ -394,6 +438,9 @@ fun StockPage(
 @Composable
 private fun StockItemCard(
     stock: Stock,
+    mainCurrencyCode: String,
+    mainCurrencySymbol: String,
+    exchangeRateCache: Map<String, Double>,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onRefreshPrice: suspend (Stock) -> Boolean,
@@ -403,6 +450,9 @@ private fun StockItemCard(
     val diffPercent = if (stock.costPrice > 0) (diffAmount / stock.costPrice * 100) else 0.0
     val pnl = diffAmount * stock.shares
     val value = stock.currentPrice * stock.shares
+    val stockCurrency = if (stock.currency.isBlank()) "HKD" else stock.currency
+    val rate = if (stockCurrency == mainCurrencyCode) 1.0 else exchangeRateCache[stockCurrency] ?: 1.0
+    val valueInMain = value * rate
     val upColor = if (diffAmount >= 0) StockGreen else StockRed
 
     val marketColor = when (stock.market) {
@@ -460,12 +510,12 @@ private fun StockItemCard(
                 Row(verticalAlignment = Alignment.Top) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = formatMoney(stock.market, stock.currentPrice),
+                            text = formatMoneyByCurrency(stockCurrency, stock.currentPrice),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "${formatSignedMoney(stock.market, diffAmount)} (${formatSignedPercent(diffPercent)})",
+                            text = "${formatSignedMoneyByCurrency(stockCurrency, diffAmount)} (${formatSignedPercent(diffPercent)})",
                             fontSize = 12.sp,
                             color = upColor
                         )
@@ -528,18 +578,26 @@ private fun StockItemCard(
                 text = stringResource(
                     R.string.stock_holding_summary,
                     formatDouble(stock.shares),
-                    formatMoney(stock.market, stock.costPrice),
-                    formatMoney(stock.market, value)
+                    formatMoneyByCurrency(stockCurrency, stock.costPrice),
+                    formatMoneyByCurrency(stockCurrency, value)
                 ),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
-                text = stringResource(R.string.stock_profit_loss_summary, formatSignedMoney(stock.market, pnl)),
+                text = stringResource(R.string.stock_profit_loss_summary, formatSignedMoneyByCurrency(stockCurrency, pnl)),
                 fontSize = 12.sp,
                 color = if (pnl >= 0) IncomeGreen else ExpenseRed
             )
+
+            if (stockCurrency != mainCurrencyCode) {
+                Text(
+                    text = "≈ $mainCurrencySymbol${String.format(Locale.getDefault(), "%.2f", valueInMain)}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -826,6 +884,15 @@ private fun formatSignedMoney(market: String, amount: Double): String {
     return "$sign${marketPrefix(market)} ${String.format("%.2f", amount)}"
 }
 
+private fun formatMoneyByCurrency(currencyCode: String, amount: Double): String {
+    return "${getCurrencySymbol(currencyCode)} ${String.format(Locale.getDefault(), "%.2f", amount)}"
+}
+
+private fun formatSignedMoneyByCurrency(currencyCode: String, amount: Double): String {
+    val sign = if (amount > 0) "+" else ""
+    return "$sign${getCurrencySymbol(currencyCode)} ${String.format(Locale.getDefault(), "%.2f", amount)}"
+}
+
 private fun formatSignedPercent(percent: Double): String {
     return String.format("%+.2f%%", percent)
 }
@@ -852,4 +919,3 @@ private fun toApiSymbol(symbol: String, market: String): String {
         else -> cleaned
     }
 }
-

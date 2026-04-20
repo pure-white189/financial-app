@@ -74,6 +74,20 @@ class ExpenseViewModel(
         .map { currency -> getCurrencySymbol(currency) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "HK$")
 
+    val mainCurrencyCode: StateFlow<String> = themePreferences.selectedCurrency
+        .map { symbol ->
+            when (symbol) {
+                "HK$", "HKD" -> "HKD"
+                "¥", "CNY" -> "CNY"
+                "US$", "USD" -> "USD"
+                else -> "HKD"
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "HKD")
+
+    private val exchangeRateCacheMutable = MutableStateFlow<Map<String, Double>>(emptyMap())
+    val exchangeRateCache: StateFlow<Map<String, Double>> = exchangeRateCacheMutable.asStateFlow()
+
     val parseUsedToday: StateFlow<Int> = AiExpenseParser.parseUsedToday
     val parseLimit: StateFlow<Int?> = AiExpenseParser.parseLimitFlow
     val aiPlan: StateFlow<String> = AiExpenseParser.planFlow
@@ -139,6 +153,34 @@ class ExpenseViewModel(
 
     suspend fun loadRecommendationsJson(context: Context) {
         recommendationsJson.value = aiExpenseParser.loadRecommendations(context)
+    }
+
+    suspend fun fetchExchangeRate(from: String, to: String): Double? {
+        return aiExpenseParser.fetchExchangeRate(from, to)
+    }
+
+    fun marketToCurrency(market: String): String = when (market.uppercase()) {
+        "HK" -> "HKD"
+        "US" -> "USD"
+        "SH", "SZ", "SS" -> "CNY"
+        else -> "HKD"
+    }
+
+    suspend fun refreshExchangeRateCacheForStocks(stockList: List<Stock>) {
+        val mainCode = mainCurrencyCode.first()
+        val distinctCurrencies = stockList
+            .map { stock -> if (stock.currency.isBlank()) marketToCurrency(stock.market) else stock.currency }
+            .distinct()
+            .filter { it != mainCode }
+
+        val newCache = mutableMapOf<String, Double>()
+        distinctCurrencies.forEach { currency ->
+            val rate = aiExpenseParser.fetchExchangeRate(currency, mainCode)
+            if (rate != null) {
+                newCache[currency] = rate
+            }
+        }
+        exchangeRateCacheMutable.value = newCache
     }
 
     suspend fun analyzeExpensesWithRecommendation(
@@ -363,11 +405,12 @@ class ExpenseViewModel(
         }
     }
 
-    fun updateStockPrice(stock: Stock, newPrice: Double) {
+    fun updateStockPrice(stock: Stock, newPrice: Double, currency: String = stock.currency) {
         viewModelScope.launch {
             repository.updateStock(
                 stock.copy(
                     currentPrice = newPrice,
+                    currency = currency,
                     lastUpdated = System.currentTimeMillis()
                 )
             )

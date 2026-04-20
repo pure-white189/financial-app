@@ -70,6 +70,7 @@ fun CheckInPage(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0),
                 title = { Text(stringResource(R.string.checkin_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

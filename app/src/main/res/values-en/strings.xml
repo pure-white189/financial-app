@@ -50,6 +50,10 @@
     <string name="home_budget_over_short">Over</string>
     <string name="home_daily_available">Daily Available</string>
     <string name="home_days_to_month_end">%1$d days until month end</string>
+    <string name="home_empty_budget_title">No Budget Set</string>
+    <string name="home_empty_budget_subtitle">Tap to set your\nmonthly budget</string>
+    <string name="home_empty_stocks_title">No Holdings</string>
+    <string name="home_empty_stocks_subtitle">Tap to add\nstock holdings</string>
     <string name="insight_title">💡 Today\'s Insight</string>
 
     <!-- ===== Record Page ===== -->
@@ -450,10 +454,18 @@
     <!-- ===== Onboarding ===== -->
     <string name="onboarding_step1_title">Start Tracking</string>
     <string name="onboarding_step1_desc">Tap the button below to quickly record your expenses</string>
-    <string name="onboarding_step2_title">Swipe to Manage</string>
-    <string name="onboarding_step2_desc">Swipe left to delete, right to edit your records</string>
-    <string name="onboarding_step3_title">AI Analysis</string>
-    <string name="onboarding_step3_desc">Go to Analysis to get your AI-generated monthly spending report</string>
+    <string name="onboarding_step2_title">Assets &amp; Budget</string>
+    <string name="onboarding_step2_desc">Swipe to view monthly budget, saving goals and stock holdings. Tap any card to navigate</string>
+    <string name="onboarding_step3_title">Swipe to Manage</string>
+    <string name="onboarding_step3_desc">Swipe left to delete, right to edit your records</string>
+    <string name="onboarding_step4_title">AI Smart Entry</string>
+    <string name="onboarding_step4_desc">Describe expenses naturally, e.g. "lunch cost $45". AI detects amount and category automatically</string>
+    <string name="onboarding_step5_title">Monthly Analysis</string>
+    <string name="onboarding_step5_desc">View spending trends and AI-generated monthly reports with personalized saving tips</string>
+    <string name="onboarding_step6_title">Settings &amp; Budget</string>
+    <string name="onboarding_step6_desc">Set monthly budget, switch currency, adjust language and font size to personalize your experience</string>
+    <string name="onboarding_step7_title">Account &amp; Achievements</string>
+    <string name="onboarding_step7_desc">Check daily check-ins, achievement badges and token balance. Activate Pro for unlimited AI</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_done">Get Started</string>
     <string name="onboarding_skip">Skip</string>

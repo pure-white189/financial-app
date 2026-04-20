@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,6 +111,7 @@ fun DebtPage(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0),
                 title = { Text(stringResource(R.string.debt_title)) }
             )
         },
@@ -360,18 +363,23 @@ private fun LoanItemCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    val displayAmountText = if (loan.originalCurrency != null &&
+                    val hasOriginalCurrency = loan.originalCurrency != null &&
                         loan.originalCurrency != mainCurrencyCode &&
-                        loan.originalAmount != null) {
-                        "$currencySymbol${String.format("%.2f", loan.amount)} (${getCurrencySymbol(loan.originalCurrency!!)}${String.format("%.2f", loan.originalAmount!!)})"
-                    } else {
-                        "$currencySymbol${String.format("%.2f", loan.amount)}"
-                    }
+                        loan.originalAmount != null
                     Text(
-                        text = displayAmountText,
-                        fontSize = 20.sp,
-                        color = amountColor
+                        text = "$currencySymbol${String.format("%.2f", loan.amount)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = amountColor,
+                        fontWeight = FontWeight.SemiBold
                     )
+                    if (hasOriginalCurrency) {
+                        Text(
+                            text = "(${getCurrencySymbol(loan.originalCurrency!!)}${String.format("%.2f", loan.originalAmount!!)})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
                     Text(
                         text = if (loan.isRepaid) stringResource(R.string.debt_repaid) else stringResource(R.string.debt_unrepaid),
                         fontSize = 12.sp,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,15 +61,81 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
+fun EmptyStateCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "→",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun HomePage(viewModel: ExpenseViewModel,
+             authViewModel: AuthViewModel,
              onNavigateToEdit: (Expense) -> Unit = {},
              onNavigateToRecord: () -> Unit = {},
+             onNavigateToAccount: () -> Unit = {},
              onNavigateToSettings: () -> Unit = {},
              onNavigateToIncome: () -> Unit = {},
              onNavigateToSaving: () -> Unit = {},
              onNavigateToStock: () -> Unit = {},
              onRequestShowTutorial: () -> Unit = {},
+             onScrollStateReady: (ScrollState) -> Unit = {},
              onFirstExpenseBoundsChanged: (Rect?) -> Unit = {},
+             onGalleryCardBoundsChanged: (Rect?) -> Unit = {},
+             onAiInputBoundsChanged: (Rect?) -> Unit = {},
+             onSettingsIconBoundsChanged: (Rect?) -> Unit = {},
+             onAvatarBoundsChanged: (Rect?) -> Unit = {},
              monthlyBudget: Double? = null,
              requireDeleteConfirm: Boolean = true,
              savingGoals: List<SavingGoal> = emptyList(),
@@ -84,11 +151,17 @@ fun HomePage(viewModel: ExpenseViewModel,
     val expenses by viewModel.expenses.collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    val homeScrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedFilter by remember { mutableStateOf(TimeFilter.ALL) }
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     var hasSeenSwipeHint by remember { mutableStateOf(prefs.getBoolean("has_seen_swipe_hint", false)) }
+    val authState by authViewModel.authState.collectAsState()
+    val currentUser = authViewModel.currentUser
+    val avatarInitial = (currentUser?.displayName?.firstOrNull()
+        ?: currentUser?.email?.firstOrNull()
+        ?: '?').toString().uppercase()
     val currentYearMonth = remember {
         val calendar = Calendar.getInstance()
         "%d-%02d".format(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
@@ -97,6 +170,10 @@ fun HomePage(viewModel: ExpenseViewModel,
         allIncome.firstOrNull { it.yearMonth == currentYearMonth }
     }
     val currentMonthBalance = currentMonthIncome?.amount?.minus(monthlyTotal)
+
+    LaunchedEffect(homeScrollState) {
+        onScrollStateReady(homeScrollState)
+    }
 
     // 根据筛选条件过滤消费记录
     val filteredExpenses = remember(expenses, selectedFilter) {
@@ -138,24 +215,45 @@ fun HomePage(viewModel: ExpenseViewModel,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(homeScrollState)
                 .padding(16.dp)
         ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.home_overview_title),
-                fontSize = 28.sp,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        TopAppBar(
+            windowInsets = WindowInsets(0),
+            title = {
+                Text(
+                    text = stringResource(R.string.home_overview_title),
+                    fontSize = 28.sp,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                IconButton(
+                    onClick = onNavigateToAccount,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .onGloballyPositioned { coordinates ->
+                            onAvatarBoundsChanged(coordinates.boundsInWindow())
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = avatarInitial,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            },
+            actions = {
                 FilledTonalIconButton(
                     onClick = onRequestShowTutorial,
                     modifier = Modifier.size(34.dp)
@@ -167,7 +265,12 @@ fun HomePage(viewModel: ExpenseViewModel,
                     )
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                IconButton(onClick = onNavigateToSettings) {
+                IconButton(
+                    onClick = onNavigateToSettings,
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        onSettingsIconBoundsChanged(coordinates.boundsInWindow())
+                    }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = stringResource(R.string.common_settings),
@@ -175,7 +278,7 @@ fun HomePage(viewModel: ExpenseViewModel,
                     )
                 }
             }
-        }
+        )
 
         val todayTotal = remember(expenses) {
             val todayStart = Calendar.getInstance().apply {
@@ -203,6 +306,9 @@ fun HomePage(viewModel: ExpenseViewModel,
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    onAiInputBoundsChanged(coordinates.boundsInWindow())
+                }
                 .clip(RoundedCornerShape(28.dp))
                 .background(
                     brush = Brush.linearGradient(
@@ -254,7 +360,11 @@ fun HomePage(viewModel: ExpenseViewModel,
             )
 
             LazyRow(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        onGalleryCardBoundsChanged(coordinates.boundsInWindow())
+                    },
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
@@ -270,14 +380,24 @@ fun HomePage(viewModel: ExpenseViewModel,
                             .height(176.dp)
                     )
                 }
-                if (hasBudget) {
-                    item {
+                item {
+                    if (hasBudget) {
                         BudgetProgressCard(
                             monthlyTotal = monthlyTotal,
                             monthlyBudget = monthlyBudget,
                             currencySymbol = currencySymbol,
                             modifier = Modifier
                                 .width(320.dp)
+                                .height(176.dp)
+                        )
+                    } else {
+                        EmptyStateCard(
+                            icon = Icons.Default.PieChart,
+                            title = stringResource(R.string.home_empty_budget_title),
+                            subtitle = stringResource(R.string.home_empty_budget_subtitle),
+                            onClick = onNavigateToSettings,
+                            modifier = Modifier
+                                .width(220.dp)
                                 .height(176.dp)
                         )
                     }
@@ -294,14 +414,24 @@ fun HomePage(viewModel: ExpenseViewModel,
                         )
                     }
                 }
-                if (hasStocks) {
-                    item {
+                item {
+                    if (hasStocks) {
                         StockOverviewCard(
                             stocks = stocks,
                             currencySymbol = currencySymbol,
                             onClick = onNavigateToStock,
                             modifier = Modifier
                                 .width(300.dp)
+                                .height(176.dp)
+                        )
+                    } else {
+                        EmptyStateCard(
+                            icon = Icons.Default.ShowChart,
+                            title = stringResource(R.string.home_empty_stocks_title),
+                            subtitle = stringResource(R.string.home_empty_stocks_subtitle),
+                            onClick = onNavigateToStock,
+                            modifier = Modifier
+                                .width(220.dp)
                                 .height(176.dp)
                         )
                     }
@@ -987,18 +1117,25 @@ fun ExpenseItem(
                     }
                 }
 
-                Text(
-                    text = if (expense.originalCurrency != null &&
-                        expense.originalCurrency != mainCurrencyCode &&
-                        expense.originalAmount != null) {
-                        "$currencySymbol${String.format("%.2f", expense.amount)} (${getCurrencySymbol(expense.originalCurrency!!)}${String.format("%.2f", expense.originalAmount!!)})"
-                    } else {
-                        "$currencySymbol${String.format("%.2f", expense.amount)}"
-                    },
-                    fontSize = 18.sp,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ExpenseRed
-                )
+                val hasOriginalCurrency = expense.originalCurrency != null &&
+                    expense.originalCurrency != mainCurrencyCode &&
+                    expense.originalAmount != null
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$currencySymbol${String.format("%.2f", expense.amount)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = ExpenseRed,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (hasOriginalCurrency) {
+                        Text(
+                            text = "(${getCurrencySymbol(expense.originalCurrency!!)}${String.format("%.2f", expense.originalAmount!!)})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
         }
     }

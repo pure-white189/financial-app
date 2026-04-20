@@ -78,25 +78,6 @@ fun SettingsPage(
             )
         }
 
-        SettingsSectionTitle(title = stringResource(R.string.settings_account))
-
-        SettingsCard {
-            SettingsItem(
-                icon = Icons.Default.Person,
-                title = stringResource(R.string.account_title),
-                subtitle = stringResource(R.string.settings_account),
-                iconTint = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    if (isGuest) {
-                        onNavigateToLogin()
-                    } else {
-                        onNavigateToAccount()
-                    }
-                }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 外观设置 =====
         SettingsSectionTitle(title = stringResource(R.string.settings_appearance))

@@ -118,6 +118,45 @@ fun RecordPage(
         }
     }
 
+    val onSave: () -> Unit = {
+        val amountValue = amount.toDoubleOrNull()
+        if (amountValue != null && amountValue > 0 && selectedCategory != null) {
+            val isSameCurrency = selectedCurrency == mainCurrencyCode
+            val rateValue = if (isSameCurrency) null else rateInputText.toDoubleOrNull()
+            if (!isSameCurrency && rateValue == null) {
+                rateEditable = true
+            } else {
+                val convertedAmount = if (isSameCurrency) amountValue else amountValue * (rateValue ?: 1.0)
+                val expense = Expense(
+                    amount = convertedAmount,
+                    categoryId = selectedCategory!!.id,
+                    date = selectedDate,
+                    note = note,
+                    originalAmount = if (isSameCurrency) null else amountValue,
+                    originalCurrency = if (isSameCurrency) null else selectedCurrency,
+                    exchangeRate = if (isSameCurrency) null else rateValue
+                )
+
+                // 检查是否超过提醒阈值
+                if (alertThreshold != null && convertedAmount >= alertThreshold) {
+                    pendingExpense = expense
+                    showAlertConfirm = true
+                } else {
+                    // 直接添加
+                    scope.launch {
+                        viewModel.addExpense(expense)
+                        onAchievementUnlocked("first_expense")
+                        amount = ""
+                        selectedCategory = null
+                        note = ""
+                        selectedDate = System.currentTimeMillis()
+                        showSuccess = true
+                    }
+                }
+            }
+        }
+    }
+
     // 使用 Box 包裹，让 Snackbar 可以正确显示
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -127,25 +166,25 @@ fun RecordPage(
                 .padding(16.dp)
         ) {
             // 标题栏
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
+            TopAppBar(
+                windowInsets = WindowInsets(0),
+                modifier = Modifier.padding(bottom = 16.dp),
+                title = {
                     Text(
                         text = stringResource(R.string.record_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
-                }
-
-                Row {
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
+                        )
+                    }
+                },
+                actions = {
                     IconButton(onClick = { showTemplatesSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Bookmark,
@@ -160,8 +199,20 @@ fun RecordPage(
                             contentDescription = stringResource(R.string.category_manage_title)
                         )
                     }
+
+                    TextButton(
+                        onClick = onSave,
+                        enabled = amount.isNotEmpty() && amount.toDoubleOrNull() != null &&
+                            amount.toDoubleOrNull()!! > 0
+                    ) {
+                        Text(
+                            text = stringResource(R.string.common_save),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
-            }
+            )
 
 
             // 快速模板 - 只显示置顶的
@@ -824,44 +875,7 @@ fun RecordPage(
                         )
                 ) {
                     Button(
-                        onClick = {
-                            val amountValue = amount.toDoubleOrNull()
-                            if (amountValue != null && amountValue > 0 && selectedCategory != null) {
-                                val isSameCurrency = selectedCurrency == mainCurrencyCode
-                                val rateValue = if (isSameCurrency) null else rateInputText.toDoubleOrNull()
-                                if (!isSameCurrency && rateValue == null) {
-                                    rateEditable = true
-                                } else {
-                                    val convertedAmount = if (isSameCurrency) amountValue else amountValue * (rateValue ?: 1.0)
-                                    val expense = Expense(
-                                        amount = convertedAmount,
-                                        categoryId = selectedCategory!!.id,
-                                        date = selectedDate,
-                                        note = note,
-                                        originalAmount = if (isSameCurrency) null else amountValue,
-                                        originalCurrency = if (isSameCurrency) null else selectedCurrency,
-                                        exchangeRate = if (isSameCurrency) null else rateValue
-                                    )
-
-                                    // 检查是否超过提醒阈值
-                                    if (alertThreshold != null && convertedAmount >= alertThreshold) {
-                                        pendingExpense = expense
-                                        showAlertConfirm = true
-                                    } else {
-                                        // 直接添加
-                                        scope.launch {
-                                            viewModel.addExpense(expense)
-                                            onAchievementUnlocked("first_expense")
-                                            amount = ""
-                                            selectedCategory = null
-                                            note = ""
-                                            selectedDate = System.currentTimeMillis()
-                                            showSuccess = true
-                                        }
-                                    }
-                                }
-                            }
-                        },
+                        onClick = onSave,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         enabled = amount.toDoubleOrNull() != null &&
@@ -1545,17 +1559,25 @@ fun RecentExpenseItem(
                 }
             }
 
-            Text(
-                text = if (expense.originalCurrency != null &&
-                    expense.originalCurrency != mainCurrencyCode &&
-                    expense.originalAmount != null) {
-                    "$currencySymbol${String.format("%.2f", expense.amount)} (${getCurrencySymbol(expense.originalCurrency)}${String.format("%.2f", expense.originalAmount!!)})"
-                } else {
-                    "$currencySymbol${String.format("%.2f", expense.amount)}"
-                },
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.error
-            )
+            val hasOriginalCurrency = expense.originalCurrency != null &&
+                expense.originalCurrency != mainCurrencyCode &&
+                expense.originalAmount != null
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "$currencySymbol${String.format("%.2f", expense.amount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (hasOriginalCurrency) {
+                    Text(
+                        text = "(${getCurrencySymbol(expense.originalCurrency)}${String.format("%.2f", expense.originalAmount!!)})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
     }
 }

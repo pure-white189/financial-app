@@ -41,6 +41,7 @@ fun CategoryManagementPage(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0),
                 title = { Text(stringResource(R.string.category_manage_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

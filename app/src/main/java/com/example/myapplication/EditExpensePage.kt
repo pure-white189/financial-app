@@ -51,6 +51,7 @@ fun EditExpensePage(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0),
                 title = { Text(stringResource(R.string.record_edit_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +62,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -291,6 +295,7 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             MainScreen(
                                 viewModel = viewModel,
+                                authViewModel = authViewModel,
                                 checkInViewModel = checkInViewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
@@ -323,6 +328,7 @@ class MainActivity : AppCompatActivity() {
                         Box(modifier = Modifier.fillMaxSize()) {
                             MainScreen(
                                 viewModel = viewModel,
+                                authViewModel = authViewModel,
                                 checkInViewModel = checkInViewModel,
                                 themePreferences = themePreferences,
                                 currentTheme = themeMode,
@@ -399,6 +405,7 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun MainScreen(
     viewModel: ExpenseViewModel,
+    authViewModel: AuthViewModel,
     themePreferences: ThemePreferences,
     currentTheme: ThemeMode,
     currentFontScale: String,
@@ -443,6 +450,19 @@ fun MainScreen(
     var fabRect by remember { mutableStateOf<Rect?>(null) }
     var firstExpenseRect by remember { mutableStateOf<Rect?>(null) }
     var analysisTabRect by remember { mutableStateOf<Rect?>(null) }
+    var galleryCardRect by remember { mutableStateOf<Rect?>(null) }
+    var aiInputRect by remember { mutableStateOf<Rect?>(null) }
+    var settingsIconRect by remember { mutableStateOf<Rect?>(null) }
+    var avatarRect by remember { mutableStateOf<Rect?>(null) }
+    var homeScrollState by remember { mutableStateOf<ScrollState?>(null) }
+
+    // Temporary debug logs for tutorial target rects.
+    LaunchedEffect(galleryCardRect, aiInputRect, settingsIconRect, avatarRect) {
+        android.util.Log.d("TutorialRect", "gallery=$galleryCardRect")
+        android.util.Log.d("TutorialRect", "aiInput=$aiInputRect")
+        android.util.Log.d("TutorialRect", "settings=$settingsIconRect")
+        android.util.Log.d("TutorialRect", "avatar=$avatarRect")
+    }
 
     LaunchedEffect(hasSeenOnboarding) {
         if (hasSeenOnboarding == false) currentTutorialStep = 1
@@ -585,16 +605,26 @@ fun MainScreen(
             NavHost(
                 navController = navController,
                 startDestination = BottomNavItem.Home.route,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(
+                    bottom = innerPadding.calculateBottomPadding()
+                )
             ) {
             composable(BottomNavItem.Home.route) {
                 HomePage(
                     viewModel = viewModel,
+                    authViewModel = authViewModel,
                     onNavigateToEdit = { expense ->
                         navController.navigate("edit_expense/${expense.id}")
                     },
                     onNavigateToRecord = {
                         navController.navigate("record")
+                    },
+                    onNavigateToAccount = {
+                        if (isGuest) {
+                            onNavigateToLogin()
+                        } else {
+                            onNavigateToAccount()
+                        }
                     },
                     onNavigateToSettings = {
                         navController.navigate("settings")
@@ -610,8 +640,21 @@ fun MainScreen(
                     onNavigateToStock = {
                         navController.navigate("stock")
                     },
-                    onRequestShowTutorial = { currentTutorialStep = 1 },
+                    onRequestShowTutorial = {
+                        scope.launch {
+                            // Scroll to top first so scroll-container targets have stable positions.
+                            homeScrollState?.scrollTo(0)
+                            // Wait for scroll + relayout before starting onboarding.
+                            delay(500)
+                            currentTutorialStep = 1
+                        }
+                    },
+                    onScrollStateReady = { homeScrollState = it },
                     onFirstExpenseBoundsChanged = { rect -> firstExpenseRect = rect },
+                    onGalleryCardBoundsChanged = { rect -> galleryCardRect = rect },
+                    onAiInputBoundsChanged = { rect -> aiInputRect = rect },
+                    onSettingsIconBoundsChanged = { rect -> settingsIconRect = rect },
+                    onAvatarBoundsChanged = { rect -> avatarRect = rect },
                     monthlyBudget = currentBudget,
                     requireDeleteConfirm = requireDeleteConfirm,
                     savingGoals = savingGoals.filter { !it.isCompleted },
@@ -784,6 +827,10 @@ fun MainScreen(
         }
 
         if (currentTutorialStep > 0) {
+            val configuration = LocalConfiguration.current
+            val density = LocalDensity.current
+            val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+            val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
             val stepInfo = when (currentTutorialStep) {
                 1 -> if (fabRect != null && fabRect!!.width > 0f) {
                     TutorialStepInfo(
@@ -793,19 +840,56 @@ fun MainScreen(
                         cornerRadius = 50.dp
                     )
                 } else null
-                2 -> if (firstExpenseRect != null && firstExpenseRect!!.width > 0f) {
+                2 -> TutorialStepInfo(
+                    rect = galleryCardRect?.takeIf {
+                        it.width > 0f && it.top > 0f && it.top < screenHeightPx * 0.8f
+                    } ?: Rect(
+                        left = 0f,
+                        top = screenHeightPx * 0.25f,
+                        right = screenWidthPx,
+                        bottom = screenHeightPx * 0.55f
+                    ),
+                    title = stringResource(R.string.onboarding_step2_title),
+                    description = stringResource(R.string.onboarding_step2_desc),
+                    cornerRadius = 20.dp
+                )
+                3 -> TutorialStepInfo(
+                    rect = null,
+                    title = stringResource(R.string.onboarding_step3_title),
+                    description = stringResource(R.string.onboarding_step3_desc),
+                    cornerRadius = 8.dp
+                )
+                4 -> aiInputRect
+                    ?.takeIf { it.width > 0f && it.top < 2000f }
+                    ?.let {
                     TutorialStepInfo(
-                        rect = firstExpenseRect,
-                        title = stringResource(R.string.onboarding_step2_title),
-                        description = stringResource(R.string.onboarding_step2_desc),
+                        rect = it,
+                        title = stringResource(R.string.onboarding_step4_title),
+                        description = stringResource(R.string.onboarding_step4_desc),
                         cornerRadius = 16.dp
                     )
-                } else null
-                3 -> if (analysisTabRect != null && analysisTabRect!!.width > 0f) {
+                }
+                5 -> if (analysisTabRect != null && analysisTabRect!!.width > 0f) {
                     TutorialStepInfo(
                         rect = analysisTabRect,
-                        title = stringResource(R.string.onboarding_step3_title),
-                        description = stringResource(R.string.onboarding_step3_desc),
+                        title = stringResource(R.string.onboarding_step5_title),
+                        description = stringResource(R.string.onboarding_step5_desc),
+                        cornerRadius = 50.dp
+                    )
+                } else null
+                6 -> if (settingsIconRect != null && settingsIconRect!!.width > 0f) {
+                    TutorialStepInfo(
+                        rect = settingsIconRect,
+                        title = stringResource(R.string.onboarding_step6_title),
+                        description = stringResource(R.string.onboarding_step6_desc),
+                        cornerRadius = 50.dp
+                    )
+                } else null
+                7 -> if (avatarRect != null && avatarRect!!.width > 0f) {
+                    TutorialStepInfo(
+                        rect = avatarRect,
+                        title = stringResource(R.string.onboarding_step7_title),
+                        description = stringResource(R.string.onboarding_step7_desc),
                         cornerRadius = 50.dp
                     )
                 } else null
@@ -818,15 +902,20 @@ fun MainScreen(
                     title = info.title,
                     description = info.description,
                     cornerRadius = info.cornerRadius,
-                    isLastStep = currentTutorialStep == 3,
+                    isLastStep = currentTutorialStep == 7,
                     onNext = {
                         when (currentTutorialStep) {
-                            1 -> currentTutorialStep = if (firstExpenseRect != null) 2 else 3
-                            2 -> currentTutorialStep = 3
-                            else -> {
+                            1 -> currentTutorialStep = if (galleryCardRect != null) 2 else 3
+                            2 -> currentTutorialStep = if (firstExpenseRect != null) 3 else 4
+                            3 -> currentTutorialStep = 4
+                            4 -> currentTutorialStep = 5
+                            5 -> currentTutorialStep = 6
+                            6 -> currentTutorialStep = 7
+                            7 -> {
                                 currentTutorialStep = 0
                                 scope.launch { themePreferences.setHasSeenOnboarding(true) }
                             }
+                            else -> Unit
                         }
                     },
                     onSkip = {

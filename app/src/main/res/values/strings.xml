@@ -51,6 +51,10 @@
     <string name="home_budget_over_short">超支</string>
     <string name="home_daily_available">每日可用</string>
     <string name="home_days_to_month_end">距月底还有 %1$d 天</string>
+    <string name="home_empty_budget_title">未设置预算</string>
+    <string name="home_empty_budget_subtitle">点击前往设置\n月度预算</string>
+    <string name="home_empty_stocks_title">暂无持仓</string>
+    <string name="home_empty_stocks_subtitle">点击添加\n股票持仓</string>
     <string name="insight_title">💡 今日洞察</string>
 
     <!-- ===== 记账 FAB / 记录页 ===== -->
@@ -451,10 +455,18 @@
     <!-- ===== 新手引导 ===== -->
     <string name="onboarding_step1_title">开始记账</string>
     <string name="onboarding_step1_desc">点击右下角按钮，快速记录每一笔消费</string>
-    <string name="onboarding_step2_title">滑动管理</string>
-    <string name="onboarding_step2_desc">左滑删除，右滑编辑，高效管理记录</string>
-    <string name="onboarding_step3_title">AI 分析</string>
-    <string name="onboarding_step3_desc">前往分析页，获取 AI 生成的月度消费报告</string>
+    <string name="onboarding_step2_title">资产与预算</string>
+    <string name="onboarding_step2_desc">横向滑动查看月度预算、储蓄目标和股票持仓，点击卡片快速进入对应功能</string>
+    <string name="onboarding_step3_title">滑动管理</string>
+    <string name="onboarding_step3_desc">左滑删除，右滑编辑，高效管理记录</string>
+    <string name="onboarding_step4_title">AI 智能记账</string>
+    <string name="onboarding_step4_desc">用自然语言描述消费，例如"午饭花了45块"，AI 自动识别金额和类别</string>
+    <string name="onboarding_step5_title">月度分析报告</string>
+    <string name="onboarding_step5_desc">查看消费趋势和 AI 生成的月度分析报告，获取个性化省钱建议</string>
+    <string name="onboarding_step6_title">设置与预算</string>
+    <string name="onboarding_step6_desc">设置月度预算、切换货币、调整语言和字体大小，个性化你的财务管家</string>
+    <string name="onboarding_step7_title">账户与成就</string>
+    <string name="onboarding_step7_desc">查看每日签到、成就徽章和代币余额，激活 Pro 解锁无限 AI 功能</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_done">开始使用</string>
     <string name="onboarding_skip">跳过</string>

@@ -42,6 +42,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
+    val currentUser get() = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+
     private val _resetEmailState = MutableStateFlow<String?>(null)
     val resetEmailState: StateFlow<String?> = _resetEmailState.asStateFlow()
 

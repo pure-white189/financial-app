@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -108,6 +109,7 @@ fun AuthPage(
         topBar = {
             if (onDismiss != null) {
                 TopAppBar(
+                    windowInsets = WindowInsets(0),
                     title = { Text("") },
                     actions = {
                         IconButton(onClick = onDismiss) {

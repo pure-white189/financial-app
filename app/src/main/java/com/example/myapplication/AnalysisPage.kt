@@ -62,6 +62,9 @@ fun AnalysisPage(
     viewModel: ExpenseViewModel,
     monthlyBudget: Double? = null,
     onNavigateToStock: () -> Unit = {},
+    onNavigateToSaving: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToCheckIn: () -> Unit = {},
     onNavigateToReportHistory: () -> Unit = {},
     expenses: List<Expense> = emptyList(),
     categories: List<Category> = emptyList(),
@@ -630,9 +633,10 @@ fun AnalysisPage(
                                     )
                                     context.startActivity(intent)
                                 },
-                                onInAppNavigate = { destination ->
-                                    // handle in next step
-                                }
+                                onNavigateToCheckIn = onNavigateToCheckIn,
+                                onNavigateToSavings = onNavigateToSaving,
+                                onNavigateToStocks = onNavigateToStock,
+                                onNavigateToSettings = onNavigateToSettings
                             )
                         }
 

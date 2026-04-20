@@ -233,8 +233,8 @@ class MainActivity : AppCompatActivity() {
                         LanguageSelectionPage(
                             onLanguageConfirmed = { language ->
                                 lifecycleScope.launch {
-                                    LanguageManager.saveLanguage(this@MainActivity, language)
                                     LanguageManager.markLanguageChosen(this@MainActivity)
+                                    LanguageManager.saveLanguage(this@MainActivity, language)
                                     // saveLanguage 内部会调用 AppCompatDelegate.setApplicationLocales()
                                     // 这会触发 Activity 重建，语言选择页自动消失
                                 }
@@ -256,7 +256,10 @@ class MainActivity : AppCompatActivity() {
                         if (showCheckInPage) {
                             CheckInPage(
                                 viewModel = checkInViewModel,
-                                onBack = { showCheckInPage = false }
+                                onBack = {
+                                    showCheckInPage = false
+                                    showAccountPage = true
+                                }
                             )
                         } else if (showAccountPage) {
                             AccountPage(
@@ -686,6 +689,15 @@ fun MainScreen(
                         onNavigateToStock = {
                             navController.navigate("stock")
                         },
+                        onNavigateToSaving = {
+                            navController.navigate(BottomNavItem.Saving.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate("settings")
+                        },
+                        onNavigateToCheckIn = onNavigateToAccount,
                         onNavigateToReportHistory = { navController.navigate("ai_report_history") },
                         expenses = expenses,
                         categories = categories,

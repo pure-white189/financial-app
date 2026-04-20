@@ -370,13 +370,39 @@ fun RecordPage(
                                                 }
 
                                                 selectedDate = cal.timeInMillis
-                                            }
+                                                }
 
-                                            onAchievementUnlocked("first_ai_parse")
+                                                // Backfill currency from AI parse result
+                                                val parsedCurrency = parsed.currency
+                                                if (parsedCurrency != null) {
+                                                    selectedCurrency = parsedCurrency
+                                                    if (parsedCurrency != mainCurrencyCode) {
+                                                        isLoadingRate = true
+                                                        rateEditable = false
+                                                        rateInputText = ""
+                                                        scope.launch {
+                                                            val rate = viewModel.fetchExchangeRate(parsedCurrency, mainCurrencyCode)
+                                                            if (rate != null) {
+                                                                exchangeRate = rate
+                                                                rateInputText = rate.toString()
+                                                            } else {
+                                                                rateEditable = true
+                                                            }
+                                                            isLoadingRate = false
+                                                        }
+                                                    } else {
+                                                        exchangeRate = null
+                                                        rateEditable = false
+                                                        rateInputText = ""
+                                                        isLoadingRate = false
+                                                    }
+                                                }
 
-                                            aiSuccess = aiResultFilledText
-                                            aiInput = ""
-                                            delay(4000)
+                                                onAchievementUnlocked("first_ai_parse")
+
+                                                aiSuccess = aiResultFilledText
+                                                aiInput = ""
+                                                delay(4000)
                                             aiSuccess = null
                                         }
                                         result.onFailure { error ->
@@ -490,6 +516,32 @@ fun RecordPage(
                                             }
 
                                             selectedDate = cal.timeInMillis
+                                        }
+
+                                        // Backfill currency from AI parse result
+                                        val parsedCurrency = parsed.currency
+                                        if (parsedCurrency != null) {
+                                            selectedCurrency = parsedCurrency
+                                            if (parsedCurrency != mainCurrencyCode) {
+                                                isLoadingRate = true
+                                                rateEditable = false
+                                                rateInputText = ""
+                                                scope.launch {
+                                                    val rate = viewModel.fetchExchangeRate(parsedCurrency, mainCurrencyCode)
+                                                    if (rate != null) {
+                                                        exchangeRate = rate
+                                                        rateInputText = rate.toString()
+                                                    } else {
+                                                        rateEditable = true
+                                                    }
+                                                    isLoadingRate = false
+                                                }
+                                            } else {
+                                                exchangeRate = null
+                                                rateEditable = false
+                                                rateInputText = ""
+                                                isLoadingRate = false
+                                            }
                                         }
 
                                         onAchievementUnlocked("first_ai_parse")
@@ -1236,6 +1288,32 @@ fun RecordPage(
 
                                         if (parsed.note.isNotEmpty()) {
                                             note = parsed.note
+                                        }
+
+                                        // Backfill currency from AI parse result
+                                        val parsedCurrency = parsed.currency
+                                        if (parsedCurrency != null) {
+                                            selectedCurrency = parsedCurrency
+                                            if (parsedCurrency != mainCurrencyCode) {
+                                                isLoadingRate = true
+                                                rateEditable = false
+                                                rateInputText = ""
+                                                scope.launch {
+                                                    val rate = viewModel.fetchExchangeRate(parsedCurrency, mainCurrencyCode)
+                                                    if (rate != null) {
+                                                        exchangeRate = rate
+                                                        rateInputText = rate.toString()
+                                                    } else {
+                                                        rateEditable = true
+                                                    }
+                                                    isLoadingRate = false
+                                                }
+                                            } else {
+                                                exchangeRate = null
+                                                rateEditable = false
+                                                rateInputText = ""
+                                                isLoadingRate = false
+                                            }
                                         }
 
                                         onAchievementUnlocked("first_ai_parse")

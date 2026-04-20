@@ -493,14 +493,10 @@ fun HomePage(viewModel: ExpenseViewModel,
                             )
                             context.startActivity(intent)
                         },
-                        onInAppNavigate = { destination ->
-                            when (destination) {
-                                "saving_goals" -> onNavigateToSaving()
-                                "stocks" -> onNavigateToStock()
-                                "settings" -> onNavigateToSettings()
-                                "check_in" -> Unit
-                            }
-                        }
+                        onNavigateToCheckIn = onNavigateToAccount,
+                        onNavigateToSavings = onNavigateToSaving,
+                        onNavigateToStocks = onNavigateToStock,
+                        onNavigateToSettings = onNavigateToSettings
                     )
                 }
                 Spacer(Modifier.height(16.dp))

@@ -29,7 +29,10 @@ fun RecommendationCard(
     stat: String,
     lang: String,
     onMapsSearch: (String) -> Unit,
-    onInAppNavigate: (String) -> Unit
+    onNavigateToCheckIn: () -> Unit,
+    onNavigateToSavings: () -> Unit,
+    onNavigateToStocks: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val item = remember(recommendationsJson, trigger) {
         try {
@@ -96,7 +99,14 @@ fun RecommendationCard(
                 onClick = {
                     when (ctaType) {
                         "maps_search" -> onMapsSearch(ctaQuery)
-                        "in_app" -> onInAppNavigate(ctaDestination)
+                        "in_app" -> {
+                            when (ctaDestination) {
+                                "check_in" -> onNavigateToCheckIn()
+                                "saving_goals", "savings" -> onNavigateToSavings()
+                                "stocks", "stock" -> onNavigateToStocks()
+                                "settings" -> onNavigateToSettings()
+                            }
+                        }
                         "article" -> showArticle = !showArticle
                     }
                 },

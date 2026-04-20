@@ -531,7 +531,7 @@
     <string name="export_preview_count_value">%1$d 条</string>
     <string name="export_preview_range">时间范围</string>
     <string name="export_preview_format">文件格式</string>
-    <string name="export_loading">正在导出...</string>
+    <string name="export_loading">正在导出…</string>
     <string name="export_button">导出到文件</string>
     <string name="export_empty">当前时间范围内没有消费记录</string>
     <string name="export_success_title">导出成功</string>

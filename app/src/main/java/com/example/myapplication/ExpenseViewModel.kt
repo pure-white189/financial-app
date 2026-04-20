@@ -523,9 +523,6 @@ class ExpenseViewModel(
             repository.clearAllSavingGoals()
             repository.clearAllStocks()
             repository.clearAllMonthlyIncome()
-            repository.clearAllCheckIns()
-            repository.clearAllAchievements()
-            repository.clearAllTokenTransactions()
             repository.clearAllAiReports()
             themePreferences.clearAllPreferences()
         }

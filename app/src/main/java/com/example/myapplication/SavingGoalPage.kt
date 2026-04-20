@@ -202,7 +202,8 @@ fun SavingGoalPage(
                             recommendationsJson = recommendationsJson,
                             onDeposit = { depositTarget = goal },
                             onEdit = { editTarget = goal },
-                            onDelete = { deleteTarget = goal }
+                            onDelete = { deleteTarget = goal },
+                            onRequestAddGoal = { showAddDialog = true }
                         )
                     }
                 }
@@ -277,7 +278,8 @@ private fun SavingGoalItemCard(
     recommendationsJson: String?,
     onDeposit: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRequestAddGoal: () -> Unit
 ) {
     val context = LocalContext.current
     val progress = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
@@ -343,9 +345,10 @@ private fun SavingGoalItemCard(
                                 )
                                 context.startActivity(intent)
                             },
-                            onInAppNavigate = { destination ->
-                                // saving goals page — no further navigation needed
-                            }
+                            onNavigateToCheckIn = {},
+                            onNavigateToSavings = onRequestAddGoal,
+                            onNavigateToStocks = {},
+                            onNavigateToSettings = {}
                         )
                     }
                 }

@@ -530,7 +530,7 @@
     <string name="export_preview_count_value">%1$d 條</string>
     <string name="export_preview_range">時間範圍</string>
     <string name="export_preview_format">檔案格式</string>
-    <string name="export_loading">正在匯出...</string>
+    <string name="export_loading">正在匯出…</string>
     <string name="export_button">匯出到檔案</string>
     <string name="export_empty">目前時間範圍內沒有消費記錄</string>
     <string name="export_success_title">匯出成功</string>

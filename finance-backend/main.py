@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 import firebase_admin
 import yfinance as yf
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth, credentials
 from openai import OpenAI
 from subscription import (
@@ -29,7 +30,11 @@ firebase_admin.initialize_app(cred)
 # 初始化订阅数据库
 init_db()
 
-app = FastAPI()
+app = FastAPI(
+    title="SmartSpend API",
+    description="Personal Finance Assistant Backend — SmartSpend v2.1.1",
+    version="2.1.1",
+)
 
 client = OpenAI(
     api_key=os.getenv("DASHSCOPE_API_KEY"),
@@ -38,6 +43,9 @@ client = OpenAI(
 
 # Admin key，用于保护 /admin/* 接口，放在 .env 里
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+
+# Swagger UI Bearer token 支持（点击 Authorize 后所有受保护接口自动带 header）
+security = HTTPBearer(auto_error=False)
 
 # ─── 限速配置 ───────────────────────────────────────────────
 FREE_PARSE_DAILY = 10
@@ -63,8 +71,9 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 "Extract expense info from this sentence and return JSON.\n"
                 'Sentence: "{text}"\n'
                 "Today's date is {today}. Use this as the reference for relative date expressions like 'yesterday', 'this morning', 'last Monday'.\n"
-                'Format: {{"amount": number, "category": "category_key", "note": "note", "date": "YYYY-MM-DD or null", "time": "HH:MM or null"}}\n'
+                'Format: {{"amount": number, "category": "category_key", "note": "note", "date": "YYYY-MM-DD or null", "time": "HH:MM or null", "currency": "HKD/CNY/USD/null"}}\n'
                 "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "currency: detect from the sentence. Return 'HKD' for HKD/港币/港元/HK$, 'CNY' for CNY/人民币/RMB/¥/rmb, 'USD' for USD/美元/美金/US$/dollar/dollars. If currency is not mentioned, return null.\n"
                 "For date/time: extract only if explicitly mentioned in the sentence (e.g. 'yesterday', 'this morning', '3pm'). If not mentioned, return null.\n"
                 "Return JSON only, no other content."
             ),
@@ -92,8 +101,9 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 "從這句話中提取記帳資訊，返回JSON格式。\n"
                 '句子："{text}"\n'
                 "今天的日期是{today}。請以此為基準推算「昨天」「今天早上」「上週」等相對時間。\n"
-                '返回格式：{{"amount": 金額數字, "category": "category_key", "note": "備註", "date": "YYYY-MM-DD或null", "time": "HH:MM或null"}}\n'
+                '返回格式：{{"amount": 金額數字, "category": "category_key", "note": "備註", "date": "YYYY-MM-DD或null", "time": "HH:MM或null", "currency": "HKD/CNY/USD/null"}}\n'
                 "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                'currency：從句子中識別貨幣。HKD/港幣/港元/HK$返回"HKD"，CNY/人民幣/RMB/¥返回"CNY"，USD/美元/美金/US$/dollar返回"USD"，未提及返回null。\n'
                 "date和time：只在句子中明確提到時間時才提取（如「昨天」「今天早上」「下午3點」）。未提及則返回null。\n"
                 "只返回JSON，不要任何其他內容。"
             ),
@@ -121,8 +131,9 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 "从这句话中提取记账信息，返回JSON格式。\n"
                 '句子："{text}"\n'
                 "今天的日期是{today}。请以此为基准推算「昨天」「今天早上」「上周」等相对时间。\n"
-                '返回格式：{{"amount": 金额数字, "category": "category_key", "note": "备注", "date": "YYYY-MM-DD或null", "time": "HH:MM或null"}}\n'
+                '返回格式：{{"amount": 金额数字, "category": "category_key", "note": "备注", "date": "YYYY-MM-DD或null", "time": "HH:MM或null", "currency": "HKD/CNY/USD/null"}}\n'
                 "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                'currency：从句子中识别货币。HKD/港币/港元/HK$返回"HKD"，CNY/人民币/RMB/¥返回"CNY"，USD/美元/美金/US$/dollar返回"USD"，未提及返回null。\n'
                 'date和time：只在句子中明确提到时间时才提取（如"昨天"、"今天早上"、"下午3点"）。未提及则返回null。\n'
                 "只返回JSON，不要任何其他内容。"
             ),
@@ -244,12 +255,16 @@ def hello():
 
 
 @app.post("/redeem-code")
-def redeem_code_endpoint(data: dict, authorization: str | None = Header(default=None)):
+def redeem_code_endpoint(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
     """
     兑换激活码。
     Body: {"code": "SMART-XXXX-XXXX-XXXX"}
     返回: {"plan": "pro", "expires_at": "2025-07-..."}
     """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required")
@@ -267,8 +282,10 @@ def redeem_code_endpoint(data: dict, authorization: str | None = Header(default=
 
 @app.post("/redeem-tokens")
 def redeem_tokens_endpoint(
-    data: dict, authorization: str | None = Header(default=None)
+    data: dict,
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
 ):
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required")
@@ -282,11 +299,14 @@ def redeem_tokens_endpoint(
 
 
 @app.get("/subscription-status")
-def subscription_status(authorization: str | None = Header(default=None)):
+def subscription_status(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
     """
     查询当前用户订阅状态。
     返回: {"plan": "free"|"pro", "expires_at": "ISO8601 或 null"}
     """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required")
@@ -295,7 +315,10 @@ def subscription_status(authorization: str | None = Header(default=None)):
 
 
 @app.get("/usage-status")
-def usage_status(authorization: str | None = Header(default=None)):
+def usage_status(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required")
@@ -390,8 +413,11 @@ def admin_reset_usage(data: dict, x_admin_key: str | None = Header(default=None)
 
 @app.get("/parse-expense")
 def parse_expense(
-    text: str, lang: str = "zh", authorization: str | None = Header(default=None)
+    text: str,
+    lang: str = "zh",
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
 ):
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required to use AI features")
@@ -408,25 +434,44 @@ def parse_expense(
     today_str = _date.today().strftime("%Y-%m-%d")
     prompt = lc["parse_instruction"].format(text=text, today=today_str)
 
-    response = client.chat.completions.create(
-        model="glm-5",
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        response = client.chat.completions.create(
+            model="glm-5",
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"AI service unavailable: {str(e)}")
+
     result = response.choices[0].message.content
     if not result or not result.strip():
-        return {"amount": 0, "category": "其他", "note": text}
+        raise HTTPException(
+            status_code=502, detail="AI returned an empty response, please try again"
+        )
+
     result = result.strip()
     if result.startswith("```"):
         result = result.split("```")[1]
         if result.startswith("json"):
             result = result[4:]
-    parsed = json.loads(result.strip())
-    commit_parse()  # AI 成功返回后才计数
+
+    try:
+        parsed = json.loads(result.strip())
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="AI returned an unrecognized format, please try again",
+        )
+
+    commit_parse()  # 只有完整成功才计数
     return parsed
 
 
 @app.post("/analyze-expenses")
-def analyze_expenses(data: dict, authorization: str | None = Header(default=None)):
+def analyze_expenses(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
     user = verify_token(authorization)
     if user["uid"] is None:
         raise HTTPException(status_code=401, detail="Login required to use AI features")

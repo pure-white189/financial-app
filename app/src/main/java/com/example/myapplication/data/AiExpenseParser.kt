@@ -56,7 +56,8 @@ object AiExpenseParser {
         val category: String,
         val note: String,
         val date: String?,
-        val time: String?
+        val time: String?,
+        val currency: String?
     )
 
     data class ExpenseSummary(
@@ -178,7 +179,10 @@ object AiExpenseParser {
                         category = json.optString("category", ""),
                         note = json.optString("note", ""),
                         date = json.optString("date", "").takeIf { it.isNotEmpty() && it != "null" },
-                        time = json.optString("time", "").takeIf { it.isNotEmpty() && it != "null" }
+                        time = json.optString("time", "").takeIf { it.isNotEmpty() && it != "null" },
+                        currency = json.optString("currency", "").takeIf {
+                            it.isNotEmpty() && it != "null" && it in listOf("HKD", "CNY", "USD")
+                        }
                     )
                     Result.success(result).also {
                         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())

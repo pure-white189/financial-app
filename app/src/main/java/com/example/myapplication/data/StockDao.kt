@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StockDao {
+    @Query("DELETE FROM stocks")
+    suspend fun clearAllStocks()
 
     @Query("SELECT * FROM stocks WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllStocks(): Flow<List<Stock>>

@@ -9,12 +9,17 @@ class FinanceApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy {
         ExpenseRepository(
-            database.categoryDao(),
-            database.expenseDao(),
-            database.expenseTemplateDao(),
-            database.loanDao(),
-            database.savingGoalDao(),
-            database.stockDao()
+            categoryDao = database.categoryDao(),
+            expenseDao = database.expenseDao(),
+            expenseTemplateDao = database.expenseTemplateDao(),
+            loanDao = database.loanDao(),
+            savingGoalDao = database.savingGoalDao(),
+            stockDao = database.stockDao(),
+            monthlyIncomeDao = database.monthlyIncomeDao(),
+            checkInDao = database.checkInDao(),
+            achievementDao = database.achievementDao(),
+            tokenTransactionDao = database.tokenTransactionDao(),
+            aiReportDao = database.aiReportDao()
         )
     }
     val syncRepository by lazy {

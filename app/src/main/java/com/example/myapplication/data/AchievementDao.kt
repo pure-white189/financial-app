@@ -25,5 +25,7 @@ interface AchievementDao {
 
     @Update
     suspend fun updateAchievement(achievement: Achievement)
-}
 
+    @Query("DELETE FROM achievements")
+    suspend fun clearAllAchievements()
+}

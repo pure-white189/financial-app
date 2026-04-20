@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SavingGoalDao {
+    @Query("DELETE FROM saving_goals")
+    suspend fun clearAllSavingGoals()
 
     @Query("SELECT * FROM saving_goals WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllGoals(): Flow<List<SavingGoal>>

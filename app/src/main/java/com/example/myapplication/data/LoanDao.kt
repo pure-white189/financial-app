@@ -35,6 +35,9 @@ interface LoanDao {
     @Query("DELETE FROM loans WHERE isDeleted = 1")
     suspend fun purgeDeleted()
 
+    @Query("DELETE FROM loans")
+    suspend fun clearAllLoans()
+
     @Query("UPDATE loans SET firestoreId = :fid WHERE id = :localId")
     suspend fun updateFirestoreId(localId: Int, fid: String)
 }

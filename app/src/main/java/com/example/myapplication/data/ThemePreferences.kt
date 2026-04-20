@@ -177,6 +177,20 @@ class ThemePreferences(private val context: Context) {
             preferences[THEME_MODE_KEY] = mode.name
         }
     }
+    suspend fun clearAllPreferences() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(MONTHLY_BUDGET_KEY)
+            prefs.remove(EXPENSE_ALERT_THRESHOLD_KEY)
+            prefs.remove(USER_PLAN_KEY)
+            prefs.remove(PLAN_EXPIRES_AT_KEY)
+            prefs.remove(RECOMMENDATIONS_CACHE_KEY)
+            prefs.remove(RECOMMENDATIONS_VERSION_KEY)
+            prefs.remove(INSIGHT_DISMISSED_DATE_KEY)
+            // 保留：THEME_MODE_KEY, CURRENCY_KEY, FONT_SCALE_KEY
+            // 保留：HAS_SEEN_ONBOARDING_KEY, has_chosen_language
+            // 保留：AUTO_SYNC_ENABLED_KEY, SHOW_PERSISTENT_NOTIFICATION_KEY
+        }
+    }
 }
 
 fun getCurrencySymbol(currency: String): String = when (currency) {

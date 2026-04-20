@@ -8,7 +8,12 @@ class ExpenseRepository(
     private val expenseTemplateDao: ExpenseTemplateDao,
     private val loanDao: LoanDao,
     private val savingGoalDao: SavingGoalDao,
-    private val stockDao: StockDao
+    private val stockDao: StockDao,
+    private val monthlyIncomeDao: MonthlyIncomeDao,
+    private val checkInDao: CheckInDao,
+    private val achievementDao: AchievementDao,
+    private val tokenTransactionDao: TokenTransactionDao,
+    private val aiReportDao: AiReportDao
 ) {
     // 类别相关
     fun getAllCategories(): Flow<List<Category>> = categoryDao.getAllCategories()
@@ -80,4 +85,13 @@ class ExpenseRepository(
     suspend fun clearCustomCategories() {
         categoryDao.clearCustomCategories()
     }
+
+    suspend fun clearAllLoans() = loanDao.clearAllLoans()
+    suspend fun clearAllSavingGoals() = savingGoalDao.clearAllSavingGoals()
+    suspend fun clearAllStocks() = stockDao.clearAllStocks()
+    suspend fun clearAllMonthlyIncome() = monthlyIncomeDao.clearAllMonthlyIncome()
+    suspend fun clearAllCheckIns() = checkInDao.clearAllCheckIns()
+    suspend fun clearAllAchievements() = achievementDao.clearAllAchievements()
+    suspend fun clearAllTokenTransactions() = tokenTransactionDao.clearAllTokenTransactions()
+    suspend fun clearAllAiReports() = aiReportDao.clearAllAiReports()
 }

@@ -28,5 +28,7 @@ interface TokenTransactionDao {
 
     @Query("SELECT * FROM token_transactions WHERE isDeleted = 0 ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getRecentTransactions(limit: Int): List<TokenTransaction>
-}
 
+    @Query("DELETE FROM token_transactions")
+    suspend fun clearAllTokenTransactions()
+}

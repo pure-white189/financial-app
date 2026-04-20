@@ -513,6 +513,15 @@ class ExpenseViewModel(
             repository.clearAllExpenses()
             repository.clearAllTemplates()
             repository.clearCustomCategories()
+            repository.clearAllLoans()
+            repository.clearAllSavingGoals()
+            repository.clearAllStocks()
+            repository.clearAllMonthlyIncome()
+            repository.clearAllCheckIns()
+            repository.clearAllAchievements()
+            repository.clearAllTokenTransactions()
+            repository.clearAllAiReports()
+            themePreferences.clearAllPreferences()
         }
     }
 

@@ -25,5 +25,7 @@ interface MonthlyIncomeDao {
 
     @Query("SELECT * FROM monthly_income WHERE updatedAt > :since")
     suspend fun getModifiedSince(since: Long): List<MonthlyIncome>
-}
 
+    @Query("DELETE FROM monthly_income")
+    suspend fun clearAllMonthlyIncome()
+}

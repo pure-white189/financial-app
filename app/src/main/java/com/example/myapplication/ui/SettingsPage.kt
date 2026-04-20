@@ -54,11 +54,13 @@ fun SettingsPage(
     val context = LocalContext.current
     val themePreferences = remember(context) { ThemePreferences(context) }
     val selectedCurrency by themePreferences.selectedCurrency.collectAsState(initial = "HKD")
+    val currencySymbol = getCurrencySymbol(selectedCurrency)
     val currencyScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -122,7 +124,7 @@ fun SettingsPage(
             SettingsItem(
                 icon = Icons.Default.AccountBalance,
                 title = stringResource(R.string.settings_monthly_budget),
-                subtitle = if (currentBudget != null) "¥${"%.2f".format(currentBudget)}" else stringResource(R.string.settings_not_set),
+                subtitle = if (currentBudget != null) "$currencySymbol${"%.2f".format(currentBudget)}" else stringResource(R.string.settings_not_set),
                 iconTint = MaterialTheme.colorScheme.secondary,
                 onClick = { showBudgetDialog = true }
             )
@@ -133,7 +135,7 @@ fun SettingsPage(
                 icon = Icons.Default.NotificationsActive,
                 title = stringResource(R.string.settings_alert_threshold),
                 subtitle = if (currentAlertThreshold != null)
-                    stringResource(R.string.settings_alert_threshold_value, "¥${"%.0f".format(currentAlertThreshold)}")
+                    stringResource(R.string.settings_alert_threshold_value, "$currencySymbol${"%.0f".format(currentAlertThreshold)}")
                 else
                     stringResource(R.string.settings_not_set),
                 iconTint = MaterialTheme.colorScheme.tertiary,
@@ -236,6 +238,7 @@ fun SettingsPage(
         if (showAlertDialog) {
             ExpenseAlertDialog(
                 currentThreshold = currentAlertThreshold,
+                currencySymbol = currencySymbol,
                 onDismiss = { showAlertDialog = false },
                 onConfirm = { newThreshold ->
                     onAlertThresholdChange(newThreshold)
@@ -250,6 +253,7 @@ fun SettingsPage(
         if (showBudgetDialog) {
             BudgetSettingDialog(
                 currentBudget = currentBudget,
+                currencySymbol = currencySymbol,
                 onDismiss = { showBudgetDialog = false },
                 onConfirm = { newBudget ->
                     onBudgetChange(newBudget)
@@ -526,6 +530,7 @@ fun ThemeSettingItem(
 @Composable
 fun BudgetSettingDialog(
     currentBudget: Double?,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Double?) -> Unit
 ) {
@@ -553,7 +558,7 @@ fun BudgetSettingDialog(
                     },
                     label = { Text(stringResource(R.string.settings_monthly_budget)) },
                     placeholder = { Text(stringResource(R.string.settings_budget_placeholder)) },
-                    leadingIcon = { Text("¥", fontSize = 20.sp) },
+                    leadingIcon = { Text(currencySymbol, fontSize = 20.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     isError = showError,
@@ -870,6 +875,7 @@ fun DataStatItem(
 @Composable
 fun ExpenseAlertDialog(
     currentThreshold: Double?,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Double?) -> Unit
 ) {
@@ -904,7 +910,7 @@ fun ExpenseAlertDialog(
                     },
                     label = { Text(stringResource(R.string.settings_alert_amount_label)) },
                     placeholder = { Text(stringResource(R.string.settings_alert_placeholder)) },
-                    leadingIcon = { Text("¥", fontSize = 20.sp) },
+                    leadingIcon = { Text(currencySymbol, fontSize = 20.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     isError = showError,
@@ -919,7 +925,7 @@ fun ExpenseAlertDialog(
                 // 快捷选项
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(100, 200, 500, 1000).forEach { amount ->
                         FilterChip(
@@ -928,7 +934,12 @@ fun ExpenseAlertDialog(
                                 thresholdText = amount.toString()
                                 showError = false
                             },
-                            label = { Text("¥$amount") },
+                            label = {
+                                Text(
+                                    amount.toString(),
+                                    fontSize = 12.sp
+                                )
+                            },
                             modifier = Modifier.weight(1f)
                         )
                     }

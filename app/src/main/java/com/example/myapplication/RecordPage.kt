@@ -161,6 +161,7 @@ fun RecordPage(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
+                .statusBarsPadding()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())  // 添加滚动
                 .padding(16.dp)

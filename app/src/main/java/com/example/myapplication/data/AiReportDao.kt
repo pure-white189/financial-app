@@ -28,5 +28,7 @@ interface AiReportDao {
 
     @Query("UPDATE ai_reports SET isDeleted = 1, updatedAt = :now WHERE yearMonth = :yearMonth")
     suspend fun softDelete(yearMonth: String, now: Long = System.currentTimeMillis())
-}
 
+    @Query("DELETE FROM ai_reports")
+    suspend fun clearAllAiReports()
+}

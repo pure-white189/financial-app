@@ -372,6 +372,10 @@
     <string name="account_plan_pro_expires">Pro · 到期時間: %s</string>
     <string name="account_storage">儲存空間</string>
     <string name="account_storage_usage">已使用 0 MB / 100 MB</string>
+    <string name="account_storage_expenses">%1$d 條消費記錄</string>
+    <string name="account_storage_loans">%1$d 條借貸</string>
+    <string name="account_storage_goals">%1$d 個儲蓄目標</string>
+    <string name="account_storage_more">%1$d 支股票持倉  ·  及簽到、成就、AI報告等更多數據</string>
     <string name="account_storage_limit_desc">免費版上限：100 MB</string>
     <string name="account_ai_usage_title">AI 用量</string>
     <string name="account_ai_usage_load_failed">暫時無法獲取用量數據</string>
@@ -515,14 +519,32 @@
     <string name="notification_quick_record">快速記帳</string>
 
     <!-- ===== CSV 匯出 ===== -->
-    <string name="export_title">匯出資料</string>
+    <string name="export_title">匯出數據</string>
+    <string name="export_description">匯出數據為 CSV 格式，可用 Excel 或其他表格軟件打開</string>
+    <string name="export_time_range">選擇時間範圍</string>
+    <string name="export_range_week">本週</string>
+    <string name="export_range_month">本月</string>
+    <string name="export_range_all">全部</string>
+    <string name="export_preview_title">匯出預覽</string>
+    <string name="export_preview_count">預計匯出記錄數</string>
+    <string name="export_preview_count_value">%1$d 條</string>
+    <string name="export_preview_range">時間範圍</string>
+    <string name="export_preview_format">檔案格式</string>
+    <string name="export_loading">正在匯出...</string>
+    <string name="export_button">匯出到檔案</string>
+    <string name="export_empty">目前時間範圍內沒有消費記錄</string>
+    <string name="export_success_title">匯出成功</string>
+    <string name="export_success_desc">檔案已儲存到選擇的位置</string>
+    <string name="export_share_title">分享匯出檔案</string>
     <string name="export_date_range">日期範圍</string>
     <string name="export_this_month">本月</string>
     <string name="export_last_month">上月</string>
     <string name="export_custom">自訂</string>
     <string name="export_confirm">匯出 CSV</string>
     <string name="export_success">匯出成功</string>
-    <string name="export_failed">匯出失敗</string>
+    <string name="export_failed">匯出失敗：</string>
+    <string name="export_share_failed">分享失敗：</string>
+    <string name="common_share">分享</string>
     <string name="export_csv_header_date">日期</string>
     <string name="export_csv_header_amount">金額</string>
     <string name="export_csv_header_category">類別</string>
@@ -537,6 +559,8 @@
     <string name="income_edit_hint">輸入本月收入金額</string>
     <string name="income_edit_note_hint">備註（可選）</string>
     <string name="income_history_title">歷史收支</string>
+    <string name="income_delete_title">刪除收入記錄</string>
+    <string name="income_delete_confirm">確定刪除 %1$s 的收入記錄？此操作無法撤銷。</string>
     <string name="income_transfer_to_goal">轉入儲蓄目標</string>
     <string name="income_transfer_dialog_title">選擇儲蓄目標</string>
     <string name="income_transfer_success">已成功存入 %1$s</string>

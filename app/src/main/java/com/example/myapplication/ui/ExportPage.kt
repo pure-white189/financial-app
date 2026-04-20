@@ -18,12 +18,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import com.example.myapplication.ExpenseViewModel
 import com.example.myapplication.utils.CsvExportHelper
+import com.example.myapplication.R
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -32,10 +34,17 @@ import java.util.*
 /**
  * 导出时间范围
  */
-enum class ExportTimeRange(val label: String) {
-    THIS_WEEK("本周"),
-    THIS_MONTH("本月"),
-    ALL("全部")
+enum class ExportTimeRange {
+    THIS_WEEK,
+    THIS_MONTH,
+    ALL
+}
+
+@Composable
+fun ExportTimeRange.displayName(): String = when (this) {
+    ExportTimeRange.THIS_WEEK -> stringResource(R.string.export_range_week)
+    ExportTimeRange.THIS_MONTH -> stringResource(R.string.export_range_month)
+    ExportTimeRange.ALL -> stringResource(R.string.export_range_all)
 }
 
 // 获取所有时间范围选项
@@ -101,7 +110,7 @@ fun ExportPage(
                 } else {
                     Toast.makeText(
                         context,
-                        "导出失败：" + result.exceptionOrNull()?.message,
+                        context.getString(R.string.export_failed) + result.exceptionOrNull()?.message,
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -110,13 +119,14 @@ fun ExportPage(
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0),
-                title = { Text("导出数据") },
+                title = { Text(stringResource(R.string.export_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 }
             )
@@ -151,7 +161,7 @@ fun ExportPage(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "导出数据为 CSV 格式，可用 Excel 或其他表格软件打开",
+                            text = stringResource(R.string.export_description),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -163,7 +173,7 @@ fun ExportPage(
 
             // 时间范围选择
             Text(
-                text = "选择时间范围",
+                text = stringResource(R.string.export_time_range),
                 fontSize = 16.sp,
                 style = MaterialTheme.typography.titleMedium
             )
@@ -178,7 +188,7 @@ fun ExportPage(
                     FilterChip(
                         selected = selectedTimeRange == range,
                         onClick = { selectedTimeRange = range },
-                        label = { Text(range.label) },
+                        label = { Text(range.displayName()) },
                         leadingIcon = if (selectedTimeRange == range) {
                             {
                                 Icon(
@@ -197,7 +207,7 @@ fun ExportPage(
 
             // 导出预览
             Text(
-                text = "导出预览",
+                text = stringResource(R.string.export_preview_title),
                 fontSize = 16.sp,
                 style = MaterialTheme.typography.titleMedium
             )
@@ -217,15 +227,15 @@ fun ExportPage(
                 ) {
                     PreviewRow(
                         icon = Icons.Default.Receipt,
-                        label = "预计导出记录数",
-                        value = "$previewCount 条"
+                        label = stringResource(R.string.export_preview_count),
+                        value = stringResource(R.string.export_preview_count_value, previewCount)
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     PreviewRow(
                         icon = Icons.Default.DateRange,
-                        label = "时间范围",
+                        label = stringResource(R.string.export_preview_range),
                         value = dateRangeText
                     )
 
@@ -233,7 +243,7 @@ fun ExportPage(
 
                     PreviewRow(
                         icon = Icons.Default.InsertDriveFile,
-                        label = "文件格式",
+                        label = stringResource(R.string.export_preview_format),
                         value = "CSV (UTF-8)"
                     )
                 }
@@ -259,7 +269,7 @@ fun ExportPage(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("正在导出...")
+                    Text(stringResource(R.string.export_loading))
                 } else {
                     Icon(
                         imageVector = Icons.Default.FileDownload,
@@ -267,7 +277,7 @@ fun ExportPage(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("导出到文件", fontSize = 18.sp)
+                    Text(stringResource(R.string.export_button), fontSize = 18.sp)
                 }
             }
 
@@ -287,7 +297,7 @@ fun ExportPage(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "当前时间范围内没有消费记录",
+                        text = stringResource(R.string.export_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
@@ -383,13 +393,13 @@ fun ExportSuccessDialog(
         },
         title = {
             Text(
-                text = "导出成功",
+                text = stringResource(R.string.export_success_title),
                 style = MaterialTheme.typography.titleLarge
             )
         },
         text = {
             Text(
-                text = "文件已保存到选择的位置",
+                text = stringResource(R.string.export_success_desc),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -410,7 +420,7 @@ fun ExportSuccessDialog(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("分享")
+                    Text(stringResource(R.string.common_share))
                 }
 
                 // 完成按钮
@@ -418,7 +428,7 @@ fun ExportSuccessDialog(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("完成")
+                    Text(stringResource(R.string.common_done))
                 }
             }
         }
@@ -482,11 +492,11 @@ fun shareFile(context: Context, uri: Uri) {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(shareIntent, "分享导出文件"))
+        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.export_share_title)))
     } catch (e: Exception) {
         Toast.makeText(
             context,
-            "分享失败：" + e.message,
+            context.getString(R.string.export_share_failed) + e.message,
             Toast.LENGTH_SHORT
         ).show()
     }

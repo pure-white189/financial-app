@@ -372,7 +372,11 @@
     <string name="account_plan_pro_expires">Pro · Expires date: %s</string>
     <string name="account_storage">Storage</string>
     <string name="account_storage_usage">0 MB / 100 MB used</string>
-    <string name="account_storage_limit_desc">Free tier limit: 100 MB</string>
+    <string name="account_storage_expenses">%1$d expenses</string>
+    <string name="account_storage_loans">%1$d loans</string>
+    <string name="account_storage_goals">%1$d saving goals</string>
+    <string name="account_storage_more">%1$d stock holdings  ·  plus check-ins, achievements, AI reports &amp; more</string>
+    <string name="account_storage_limit_desc">Free plan limit: 100 MB</string>
     <string name="account_ai_usage_title">AI Usage</string>
     <string name="account_ai_usage_load_failed">Unable to load usage data</string>
     <string name="account_ai_usage_parse_label">Natural language input (daily)</string>
@@ -516,13 +520,31 @@
 
     <!-- ===== CSV Export ===== -->
     <string name="export_title">Export Data</string>
+    <string name="export_description">Export data as CSV format, compatible with Excel and other spreadsheet apps</string>
+    <string name="export_time_range">Select Time Range</string>
+    <string name="export_range_week">This Week</string>
+    <string name="export_range_month">This Month</string>
+    <string name="export_range_all">All Time</string>
+    <string name="export_preview_title">Export Preview</string>
+    <string name="export_preview_count">Records to export</string>
+    <string name="export_preview_count_value">%1$d records</string>
+    <string name="export_preview_range">Time Range</string>
+    <string name="export_preview_format">File Format</string>
+    <string name="export_loading">Exporting...</string>
+    <string name="export_button">Export to File</string>
+    <string name="export_empty">No expense records in selected time range</string>
+    <string name="export_success_title">Export Successful</string>
+    <string name="export_success_desc">File saved to selected location</string>
+    <string name="export_share_title">Share Export File</string>
     <string name="export_date_range">Date Range</string>
     <string name="export_this_month">This Month</string>
     <string name="export_last_month">Last Month</string>
     <string name="export_custom">Custom</string>
     <string name="export_confirm">Export CSV</string>
     <string name="export_success">Export successful</string>
-    <string name="export_failed">Export failed</string>
+    <string name="export_failed">Export failed: </string>
+    <string name="export_share_failed">Share failed: </string>
+    <string name="common_share">Share</string>
     <string name="export_csv_header_date">Date</string>
     <string name="export_csv_header_amount">Amount</string>
     <string name="export_csv_header_category">Category</string>
@@ -537,6 +559,8 @@
     <string name="income_edit_hint">Enter monthly income</string>
     <string name="income_edit_note_hint">Note (optional)</string>
     <string name="income_history_title">History</string>
+    <string name="income_delete_title">Delete Income Record</string>
+    <string name="income_delete_confirm">Delete income record for %1$s? This cannot be undone.</string>
     <string name="income_transfer_to_goal">Transfer to Goal</string>
     <string name="income_transfer_dialog_title">Choose Saving Goal</string>
     <string name="income_transfer_success">Saved %1$s successfully</string>

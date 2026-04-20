@@ -69,6 +69,8 @@ import com.example.myapplication.AuthState
 import com.example.myapplication.AuthViewModel
 import com.example.myapplication.R
 import com.example.myapplication.data.AiExpenseParser
+import com.example.myapplication.ExpenseViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.CheckInViewModel
 import kotlinx.coroutines.launch
 
@@ -105,6 +107,11 @@ fun AccountPage(
     var redeemMessageIsSuccess by remember { mutableStateOf(false) }
     var usageStatus by remember { mutableStateOf<com.example.myapplication.data.AiExpenseParser.UsageStatus?>(null) }
     var isLoadingUsage by remember { mutableStateOf(false) }
+    val expenseViewModel: ExpenseViewModel = viewModel()
+    val expenses by expenseViewModel.expenses.collectAsState(initial = emptyList())
+    val loans by expenseViewModel.loans.collectAsState(initial = emptyList())
+    val savingGoals by expenseViewModel.savingGoals.collectAsState(initial = emptyList())
+    val stocks by expenseViewModel.stocks.collectAsState(initial = emptyList())
 
     val userPlan by authViewModel.userPlan.collectAsStateWithLifecycle()
     val tokenBalance by checkInViewModel.tokenBalance.collectAsStateWithLifecycle()
@@ -338,16 +345,14 @@ fun AccountPage(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    LinearProgressIndicator(
-                        progress = { 0f },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                     Text(
-                        text = stringResource(R.string.account_storage_usage),
+                        text = "${stringResource(R.string.account_storage_expenses, expenses.size)}  ·  " +
+                            "${stringResource(R.string.account_storage_loans, loans.size)}  ·  " +
+                            stringResource(R.string.account_storage_goals, savingGoals.size),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = stringResource(R.string.account_storage_limit_desc),
+                        text = stringResource(R.string.account_storage_more, stocks.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -794,4 +799,3 @@ fun AccountPage(
 private fun AuthViewModel.deleteAccount() {
     // Placeholder until delete-account behavior is implemented in AuthViewModel.
 }
-

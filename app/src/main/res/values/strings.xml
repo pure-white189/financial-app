@@ -373,6 +373,10 @@
     <string name="account_plan_pro_expires">Pro · 到期时间: %s</string>
     <string name="account_storage">存储空间</string>
     <string name="account_storage_usage">已使用 0 MB / 100 MB</string>
+    <string name="account_storage_expenses">%1$d 条消费记录</string>
+    <string name="account_storage_loans">%1$d 条借贷</string>
+    <string name="account_storage_goals">%1$d 个储蓄目标</string>
+    <string name="account_storage_more">%1$d 支股票持仓  ·  及签到、成就、AI报告等更多数据</string>
     <string name="account_storage_limit_desc">免费版上限：100 MB</string>
     <string name="account_ai_usage_title">AI 用量</string>
     <string name="account_ai_usage_load_failed">暂时无法获取用量数据</string>
@@ -517,13 +521,31 @@
 
     <!-- ===== CSV 导出 ===== -->
     <string name="export_title">导出数据</string>
+    <string name="export_description">导出数据为 CSV 格式，可用 Excel 或其他表格软件打开</string>
+    <string name="export_time_range">选择时间范围</string>
+    <string name="export_range_week">本周</string>
+    <string name="export_range_month">本月</string>
+    <string name="export_range_all">全部</string>
+    <string name="export_preview_title">导出预览</string>
+    <string name="export_preview_count">预计导出记录数</string>
+    <string name="export_preview_count_value">%1$d 条</string>
+    <string name="export_preview_range">时间范围</string>
+    <string name="export_preview_format">文件格式</string>
+    <string name="export_loading">正在导出...</string>
+    <string name="export_button">导出到文件</string>
+    <string name="export_empty">当前时间范围内没有消费记录</string>
+    <string name="export_success_title">导出成功</string>
+    <string name="export_success_desc">文件已保存到选择的位置</string>
+    <string name="export_share_title">分享导出文件</string>
     <string name="export_date_range">日期范围</string>
     <string name="export_this_month">本月</string>
     <string name="export_last_month">上月</string>
     <string name="export_custom">自定义</string>
     <string name="export_confirm">导出 CSV</string>
     <string name="export_success">导出成功</string>
-    <string name="export_failed">导出失败</string>
+    <string name="export_failed">导出失败：</string>
+    <string name="export_share_failed">分享失败：</string>
+    <string name="common_share">分享</string>
     <string name="export_csv_header_date">日期</string>
     <string name="export_csv_header_amount">金额</string>
     <string name="export_csv_header_category">类别</string>
@@ -538,6 +560,8 @@
     <string name="income_edit_hint">输入本月收入金额</string>
     <string name="income_edit_note_hint">备注（可选）</string>
     <string name="income_history_title">历史收支</string>
+    <string name="income_delete_title">删除收入记录</string>
+    <string name="income_delete_confirm">确定删除 %1$s 的收入记录？此操作无法撤销。</string>
     <string name="income_transfer_to_goal">转入储蓄目标</string>
     <string name="income_transfer_dialog_title">选择储蓄目标</string>
     <string name="income_transfer_success">已成功存入 %1$s</string>

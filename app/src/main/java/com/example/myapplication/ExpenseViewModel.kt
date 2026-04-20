@@ -450,6 +450,12 @@ class ExpenseViewModel(
         }
     }
 
+    fun deleteIncome(yearMonth: String) {
+        viewModelScope.launch {
+            monthlyIncomeDao.softDelete(yearMonth, System.currentTimeMillis())
+        }
+    }
+
     suspend fun saveReport(yearMonth: String, content: String) {
         val id = java.util.UUID.randomUUID().toString()
         val generatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())

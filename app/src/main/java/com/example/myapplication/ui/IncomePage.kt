@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -77,6 +80,7 @@ fun IncomePage(
     val currentYearMonth = remember { viewModel.getCurrentYearMonth() }
 
     var showEditDialog by remember { mutableStateOf(false) }
+    var incomeToDelete by remember { mutableStateOf<MonthlyIncome?>(null) }
     var amountInput by remember { mutableStateOf("") }
     var noteInput by remember { mutableStateOf("") }
 
@@ -98,6 +102,7 @@ fun IncomePage(
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0),
@@ -203,11 +208,28 @@ fun IncomePage(
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = income.yearMonth,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = income.yearMonth,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    IconButton(
+                                        onClick = { incomeToDelete = income },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.common_delete),
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = formatAmount(currencySymbol, income.amount),
@@ -285,6 +307,32 @@ fun IncomePage(
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    incomeToDelete?.let { income ->
+        AlertDialog(
+            onDismissRequest = { incomeToDelete = null },
+            title = { Text(stringResource(R.string.income_delete_title)) },
+            text = { Text(stringResource(R.string.income_delete_confirm, income.yearMonth)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteIncome(income.yearMonth)
+                        incomeToDelete = null
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { incomeToDelete = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }

@@ -68,6 +68,7 @@ fun CheckInPage(
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0),

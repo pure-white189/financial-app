@@ -16,9 +16,12 @@ from subscription import (
     add_token_quota,
     consume_token_quota,
     get_subscription_detail,
+    get_usage_count,
     get_user_plan,
+    increment_usage,
     init_db,
     redeem_code,
+    set_usage_count,
 )
 
 load_dotenv()
@@ -53,8 +56,6 @@ FREE_ANALYZE_MONTHLY = 2
 PARSE_PER_MINUTE = 10
 MAX_PROMPT_LENGTH = 200
 
-parse_counts = defaultdict(lambda: {"date": "", "count": 0})
-analyze_counts = defaultdict(lambda: {"month": "", "count": 0})
 minute_counts = defaultdict(lambda: {"minute": "", "count": 0})
 
 
@@ -193,11 +194,8 @@ def check_rate_limit_parse(uid: str, role: str):
     if role == "pro":
         return lambda: None  # Pro 无需计数
 
-    p = parse_counts[uid]
-    if p["date"] != today:
-        p["date"] = today
-        p["count"] = 0
-    if p["count"] >= FREE_PARSE_DAILY:
+    current_count = get_usage_count(uid, "parse", today)
+    if current_count >= FREE_PARSE_DAILY:
         if consume_token_quota(uid, "parse"):
             return lambda: None
         raise HTTPException(
@@ -206,10 +204,7 @@ def check_rate_limit_parse(uid: str, role: str):
         )
 
     def commit():
-        if p["date"] != today:
-            p["date"] = today
-            p["count"] = 0
-        p["count"] += 1
+        increment_usage(uid, "parse", today)
 
     return commit
 
@@ -222,11 +217,8 @@ def check_rate_limit_analyze(uid: str, role: str):
     if role == "pro":
         return lambda: None  # Pro 无需计数
 
-    a = analyze_counts[uid]
-    if a["month"] != month:
-        a["month"] = month
-        a["count"] = 0
-    if a["count"] >= FREE_ANALYZE_MONTHLY:
+    current_count = get_usage_count(uid, "analyze", month)
+    if current_count >= FREE_ANALYZE_MONTHLY:
         if consume_token_quota(uid, "analyze"):
             return lambda: None
         raise HTTPException(
@@ -235,10 +227,7 @@ def check_rate_limit_analyze(uid: str, role: str):
         )
 
     def commit():
-        if a["month"] != month:
-            a["month"] = month
-            a["count"] = 0
-        a["count"] += 1
+        increment_usage(uid, "analyze", month)
 
     return commit
 
@@ -330,11 +319,8 @@ def usage_status(
     today = now.strftime("%Y-%m-%d")
     month = now.strftime("%Y-%m")
 
-    p = parse_counts[uid]
-    parse_used = p["count"] if p["date"] == today else 0
-
-    a = analyze_counts[uid]
-    analyze_used = a["count"] if a["month"] == month else 0
+    parse_used = get_usage_count(uid, "parse", today)
+    analyze_used = get_usage_count(uid, "analyze", month)
 
     return {
         "plan": plan,
@@ -396,15 +382,15 @@ def admin_reset_usage(data: dict, x_admin_key: str | None = Header(default=None)
     month = now.strftime("%Y-%m")
 
     if "parse_count" in data:
-        parse_counts[uid] = {"date": today, "count": int(data["parse_count"])}
+        set_usage_count(uid, "parse", today, int(data["parse_count"]))
 
     if "analyze_count" in data:
-        analyze_counts[uid] = {"month": month, "count": int(data["analyze_count"])}
+        set_usage_count(uid, "analyze", month, int(data["analyze_count"]))
 
     return {
         "uid": uid,
-        "parse": parse_counts[uid],
-        "analyze": analyze_counts[uid],
+        "parse": {"period": today, "count": get_usage_count(uid, "parse", today)},
+        "analyze": {"period": month, "count": get_usage_count(uid, "analyze", month)},
     }
 
 

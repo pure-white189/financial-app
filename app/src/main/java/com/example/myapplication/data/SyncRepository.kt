@@ -7,7 +7,9 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class SyncRepository(
+    private val categoryDao: CategoryDao,
     private val expenseDao: ExpenseDao,
+    private val templateDao: ExpenseTemplateDao,
     private val loanDao: LoanDao,
     private val savingGoalDao: SavingGoalDao,
     private val stockDao: StockDao,
@@ -38,13 +40,17 @@ class SyncRepository(
             val achievements = syncAchievements()
             val tokens       = syncTokenTransactions()
             val reports      = syncAiReports()
+            val categories   = syncCustomCategories()
+            val templates    = syncExpenseTemplates()
             SyncResult.Success(
                 uploaded = expenses.first + loans.first + goals.first +
                         stocks.first + income.first + checkIns.first +
-                        achievements.first + tokens.first + reports.first,
+                        achievements.first + tokens.first + reports.first +
+                        categories.first + templates.first,
                 downloaded = expenses.second + loans.second + goals.second +
                         stocks.second + income.second + checkIns.second +
-                        achievements.second + tokens.second + reports.second
+                        achievements.second + tokens.second + reports.second +
+                        categories.second + templates.second
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -363,6 +369,99 @@ class SyncRepository(
             }
         }
         return Pair(uploaded, downloaded)
+    }
+
+    private suspend fun syncCustomCategories(): Pair<Int, Int> {
+        val col = userCol("categories")
+        val localCustom = categoryDao.getAllCustomCategoriesOnce()
+
+        // Upload local custom categories to Firestore
+        localCustom.forEach { category ->
+            val fid = category.firestoreId.ifEmpty { "cat_${category.id}" }
+            col.document(fid).set(category.toFirestoreMap(), SetOptions.merge()).await()
+            if (category.firestoreId.isEmpty()) {
+                categoryDao.upsert(category.copy(firestoreId = fid))
+            }
+        }
+
+        // Download and merge from Firestore
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data ?: return@forEach
+            val cloudCategory = data.toCategory(doc.id)
+            if (cloudCategory.isDefault) return@forEach  // skip default categories
+
+            // Find local match by firestoreId
+            val local = localCustom.find { it.firestoreId == doc.id }
+            when {
+                local == null -> {
+                    if (!cloudCategory.isDeleted) {
+                        categoryDao.upsert(cloudCategory)
+                        downloaded++
+                    }
+                }
+                cloudCategory.updatedAt > local.updatedAt -> {
+                    categoryDao.upsert(cloudCategory.copy(id = local.id))
+                    downloaded++
+                }
+            }
+        }
+        return Pair(localCustom.size, downloaded)
+    }
+
+    private suspend fun syncExpenseTemplates(): Pair<Int, Int> {
+        val col = userCol("expense_templates")
+        val localAll = templateDao.getAllTemplatesIncludingDeleted()
+
+        // Upload local templates — backfill categoryKey from categoryDao if empty
+        localAll.forEach { template ->
+            val fid = template.firestoreId.ifEmpty { "tpl_${template.id}" }
+            val withKey = if (template.categoryKey.isEmpty()) {
+                val cat = categoryDao.getCategoryById(template.categoryId)
+                template.copy(
+                    firestoreId = fid,
+                    categoryKey = cat?.categoryKey ?: cat?.name ?: ""
+                )
+            } else {
+                template.copy(firestoreId = fid)
+            }
+            col.document(fid).set(withKey.toFirestoreMap(), SetOptions.merge()).await()
+            if (template.firestoreId.isEmpty()) {
+                templateDao.upsert(withKey)
+            }
+        }
+
+        // Download and merge from Firestore
+        val cloudDocs = col.get().await()
+        var downloaded = 0
+        cloudDocs.forEach { doc ->
+            val data = doc.data ?: return@forEach
+            val cloudKey = data["categoryKey"] as? String ?: ""
+
+            // Resolve categoryId from categoryKey
+            val resolvedCategoryId = if (cloudKey.isNotEmpty()) {
+                categoryDao.getDefaultCategoryByKey(cloudKey)?.id
+                    ?: categoryDao.getCustomCategoryByName(cloudKey)?.id
+                    ?: 0
+            } else 0
+
+            val cloudTemplate = data.toExpenseTemplate(doc.id, resolvedCategoryId)
+            val local = localAll.find { it.firestoreId == doc.id }
+            when {
+                local == null -> {
+                    if (!cloudTemplate.isDeleted) {
+                        templateDao.upsert(cloudTemplate)
+                        downloaded++
+                    }
+                }
+                cloudTemplate.updatedAt > local.updatedAt -> {
+                    templateDao.upsert(cloudTemplate.copy(id = local.id))
+                    downloaded++
+                }
+            }
+        }
+        return Pair(localAll.size, downloaded)
     }
 }
 

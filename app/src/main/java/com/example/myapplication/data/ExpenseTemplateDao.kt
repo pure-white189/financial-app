@@ -11,6 +11,21 @@ interface ExpenseTemplateDao {
     @Insert
     suspend fun insertTemplate(template: ExpenseTemplate)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(template: ExpenseTemplate)
+
+    @Query("SELECT * FROM expense_templates WHERE isDeleted = 0")
+    suspend fun getAllTemplatesOnce(): List<ExpenseTemplate>
+
+    @Query("SELECT * FROM expense_templates")
+    suspend fun getAllTemplatesIncludingDeleted(): List<ExpenseTemplate>
+
+    @Query("UPDATE expense_templates SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun softDelete(id: Int, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM expense_templates WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: Long): List<ExpenseTemplate>
+
     @Delete
     suspend fun deleteTemplate(template: ExpenseTemplate)
 

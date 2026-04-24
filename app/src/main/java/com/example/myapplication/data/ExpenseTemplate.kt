@@ -7,10 +7,14 @@ import androidx.room.PrimaryKey
 data class ExpenseTemplate(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val name: String,              // 模板名称，如 "每日交通"
-    val amount: Double,            // 金额
-    val categoryId: Int,           // 类别 ID
-    val note: String = "",         // 备注
+    val name: String,
+    val amount: Double,
+    val categoryId: Int,
+    val note: String = "",
     val isPinned: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val firestoreId: String = "",
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false,
+    val categoryKey: String = ""
 )

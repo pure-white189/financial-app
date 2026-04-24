@@ -216,3 +216,54 @@ fun Map<String, Any>.toAiReport(firestoreId: String): AiReport = AiReport(
     isDeleted   = (this["isDeleted"] as? Number)?.toInt() ?: 0
 )
 
+// ─── Category ────────────────────────────────────────────────
+
+fun Category.toFirestoreMap(): Map<String, Any?> = mapOf(
+    "name" to name,
+    "categoryKey" to categoryKey,
+    "iconPath" to iconPath,
+    "iconName" to iconName,
+    "color" to color,
+    "isDefault" to isDefault,
+    "updatedAt" to updatedAt,
+    "isDeleted" to isDeleted
+)
+
+fun Map<String, Any?>.toCategory(firestoreId: String): Category = Category(
+    firestoreId = firestoreId,
+    name = this["name"] as? String ?: "",
+    categoryKey = this["categoryKey"] as? String ?: "",
+    iconPath = this["iconPath"] as? String,
+    iconName = this["iconName"] as? String,
+    color = this["color"] as? String ?: "#FF5722",
+    isDefault = this["isDefault"] as? Boolean ?: false,
+    updatedAt = this["updatedAt"] as? Long ?: 0L,
+    isDeleted = this["isDeleted"] as? Boolean ?: false
+)
+
+// ─── ExpenseTemplate ─────────────────────────────────────────
+
+fun ExpenseTemplate.toFirestoreMap(): Map<String, Any?> = mapOf(
+    "name" to name,
+    "amount" to amount,
+    "categoryKey" to categoryKey,
+    "note" to note,
+    "isPinned" to isPinned,
+    "createdAt" to createdAt,
+    "updatedAt" to updatedAt,
+    "isDeleted" to isDeleted
+)
+
+fun Map<String, Any?>.toExpenseTemplate(firestoreId: String, categoryId: Int): ExpenseTemplate = ExpenseTemplate(
+    firestoreId = firestoreId,
+    name = this["name"] as? String ?: "",
+    amount = (this["amount"] as? Number)?.toDouble() ?: 0.0,
+    categoryId = categoryId,
+    categoryKey = this["categoryKey"] as? String ?: "",
+    note = this["note"] as? String ?: "",
+    isPinned = this["isPinned"] as? Boolean ?: false,
+    createdAt = (this["createdAt"] as? Long) ?: System.currentTimeMillis(),
+    updatedAt = (this["updatedAt"] as? Long) ?: 0L,
+    isDeleted = this["isDeleted"] as? Boolean ?: false
+)
+

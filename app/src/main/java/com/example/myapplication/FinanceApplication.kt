@@ -24,7 +24,9 @@ class FinanceApplication : Application() {
     }
     val syncRepository by lazy {
         SyncRepository(
+            database.categoryDao(),
             database.expenseDao(),
+            database.expenseTemplateDao(),
             database.loanDao(),
             database.savingGoalDao(),
             database.stockDao(),

@@ -98,6 +98,22 @@ class MainActivity : AppCompatActivity() {
         LanguageManager.restoreLanguageOnStartup(this)
         super.onCreate(savedInstanceState)
 
+        // Treat launch extras as one-shot actions; avoid replay after Activity recreation.
+        val launchNavigationRoute = if (savedInstanceState == null) {
+            intent?.getStringExtra("navigate_to")
+        } else {
+            null
+        }
+        val launchQuickTemplateId = if (savedInstanceState == null) {
+            intent?.getIntExtra("quick_template_id", -1)?.takeIf { it > 0 }
+        } else {
+            null
+        }
+        if (savedInstanceState == null) {
+            intent?.removeExtra("navigate_to")
+            intent?.removeExtra("quick_template_id")
+        }
+
         // 创建通知渠道
         NotificationHelper.createNotificationChannels(this)
         // 请求通知权限
@@ -186,9 +202,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // 自动同步：登录状态下且开关开启时，启动时触发一次
-            LaunchedEffect(authState, autoSyncEnabled) {
-                if (authState is AuthState.Authenticated && autoSyncEnabled) {
+            // 自动同步：登录状态变化为已登录时触发一次
+            LaunchedEffect(authState) {
+                if (authState is AuthState.Authenticated) {
                     syncViewModel.onFirstSyncCompleted = {
                         checkInViewModel.unlockAchievement("first_sync")
                     }
@@ -318,8 +334,8 @@ class MainActivity : AppCompatActivity() {
                                 currentAlertThreshold = expenseAlertThreshold,
                                 showPersistentNotification = showPersistentNotification,
                                 context = this@MainActivity,
-                                navigationRoute = intent?.getStringExtra("navigate_to"),
-                                quickTemplateId = intent?.getIntExtra("quick_template_id", -1),
+                                navigationRoute = launchNavigationRoute,
+                                quickTemplateId = launchQuickTemplateId,
                                 isGuest = false,
                                 onNavigateToAccount = { showAccountPage = true },
                                 onNavigateToLogin = {}
@@ -351,8 +367,8 @@ class MainActivity : AppCompatActivity() {
                                 currentAlertThreshold = expenseAlertThreshold,
                                 showPersistentNotification = showPersistentNotification,
                                 context = this@MainActivity,
-                                navigationRoute = intent?.getStringExtra("navigate_to"),
-                                quickTemplateId = intent?.getIntExtra("quick_template_id", -1),
+                                navigationRoute = launchNavigationRoute,
+                                quickTemplateId = launchQuickTemplateId,
                                 isGuest = true,
                                 onNavigateToAccount = {},
                                 onNavigateToLogin = { showAuthModal = true }

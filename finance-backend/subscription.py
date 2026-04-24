@@ -48,6 +48,15 @@ def init_db():
                 granted_at    TEXT NOT NULL,
                 expires_at    TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS usage_limits (
+                uid          TEXT NOT NULL,
+                type         TEXT NOT NULL,
+                period       TEXT NOT NULL,
+                count        INTEGER NOT NULL DEFAULT 0,
+                updated_at   TEXT NOT NULL,
+                PRIMARY KEY (uid, type)
+            );
         """)
 
 
@@ -251,3 +260,62 @@ def get_subscription_detail(uid: str) -> dict:
 
 def _now_str() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ─── 限速计数持久化 ───────────────────────────────────────────
+
+def get_usage_count(uid: str, usage_type: str, period: str) -> int:
+    """获取用户当前周期的使用计数，周期不匹配则视为0。"""
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT count, period FROM usage_limits WHERE uid = ? AND type = ?",
+            (uid, usage_type)
+        ).fetchone()
+        if row is None or row["period"] != period:
+            return 0
+        return row["count"]
+
+
+def increment_usage(uid: str, usage_type: str, period: str):
+    """将用户当前周期的使用计数加1，周期变化时自动重置。"""
+    now_str = _now_str()
+    with _conn() as conn:
+        existing = conn.execute(
+            "SELECT count, period FROM usage_limits WHERE uid = ? AND type = ?",
+            (uid, usage_type)
+        ).fetchone()
+        if existing is None or existing["period"] != period:
+            conn.execute(
+                """
+                INSERT INTO usage_limits (uid, type, period, count, updated_at)
+                VALUES (?, ?, ?, 1, ?)
+                ON CONFLICT(uid, type) DO UPDATE SET
+                    period = excluded.period,
+                    count = 1,
+                    updated_at = excluded.updated_at
+                """,
+                (uid, usage_type, period, now_str)
+            )
+        else:
+            conn.execute(
+                "UPDATE usage_limits SET count = count + 1, updated_at = ? WHERE uid = ? AND type = ?",
+                (now_str, uid, usage_type)
+            )
+
+
+def set_usage_count(uid: str, usage_type: str, period: str, count: int):
+    """强制设置用户计数，供管理员接口使用。"""
+    now_str = _now_str()
+    with _conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO usage_limits (uid, type, period, count, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(uid, type) DO UPDATE SET
+                period = excluded.period,
+                count = excluded.count,
+                updated_at = excluded.updated_at
+            """,
+            (uid, usage_type, period, count, now_str)
+        )
+

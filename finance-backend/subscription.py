@@ -352,6 +352,26 @@ def get_token_balance(uid: str) -> int:
         return row["balance"] if row else 0
 
 
+def init_user_if_needed(uid: str):
+    """新用户首次登录时初始化后端记录，已存在则跳过。"""
+    now_str = _now_str()
+    with _conn() as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO token_balances (uid, balance, updated_at)
+            VALUES (?, 0, ?)
+            """,
+            (uid, now_str)
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO user_subscriptions (uid, plan, expires_at, updated_at)
+            VALUES (?, 'free', NULL, ?)
+            """,
+            (uid, now_str)
+        )
+
+
 def add_tokens(uid: str, amount: int) -> int:
     """增加代币，返回新余额。"""
     now_str = _now_str()

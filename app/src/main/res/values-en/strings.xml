@@ -575,6 +575,8 @@
     <string name="checkin_done">Checked In Today</string>
     <string name="check_in_today">Check In Today</string>
     <string name="check_in_done">Checked in today</string>
+    <string name="check_in_already">Already checked in today</string>
+    <string name="network_error_check_in">Network error. Please check your connection and try again.</string>
     <string name="checkin_streak">%d-day streak</string>
     <string name="checkin_tokens_earned">+%d tokens</string>
     <string name="checkin_streak_bonus">%d-day milestone! Bonus +%d tokens</string>

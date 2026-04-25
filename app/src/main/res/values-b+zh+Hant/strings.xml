@@ -575,6 +575,8 @@
     <string name="checkin_done">今日已簽到</string>
     <string name="check_in_today">今日簽到</string>
     <string name="check_in_done">今日已簽到</string>
+    <string name="check_in_already">今日已簽到</string>
+    <string name="network_error_check_in">網路連線失敗，請檢查網路後重試</string>
     <string name="checkin_streak">連續簽到 %d 天</string>
     <string name="checkin_tokens_earned">+%d 代幣</string>
     <string name="checkin_streak_bonus">連續 %d 天里程碑！額外 +%d 代幣</string>

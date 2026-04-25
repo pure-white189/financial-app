@@ -66,6 +66,10 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
     private val _checkInMessage = MutableStateFlow<String?>(null)
     val checkInMessage: StateFlow<String?> = _checkInMessage.asStateFlow()
 
+    fun clearCheckInMessage() {
+        _checkInMessage.value = null
+    }
+
     init {
         viewModelScope.launch {
             kotlinx.coroutines.delay(2000)
@@ -87,10 +91,16 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
     fun loadCheckInStatus() {
         viewModelScope.launch {
             val result = checkInRepository.aiExpenseParser.fetchCheckInStatus()
-            if (result is CheckInStatusResult.Success) {
-                _alreadyCheckedInToday.value = result.alreadyCheckedIn
-                _currentStreak.value = result.streak
-                _tokenBalance.value = result.balance
+            when (result) {
+                is CheckInStatusResult.Success -> {
+                    _alreadyCheckedInToday.value = result.alreadyCheckedIn
+                    _currentStreak.value = result.streak
+                    _tokenBalance.value = result.balance
+                }
+
+                is CheckInStatusResult.NetworkError -> {
+                    _checkInMessage.value = "network_error"
+                }
             }
         }
     }

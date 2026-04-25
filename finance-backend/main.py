@@ -22,6 +22,7 @@ from subscription import (
     get_user_plan,
     increment_usage,
     init_db,
+    init_user_if_needed,
     process_achievement,
     process_check_in,
     redeem_code,
@@ -173,6 +174,7 @@ def verify_token(authorization: str | None) -> dict:
     try:
         decoded = auth.verify_id_token(token)
         uid = decoded["uid"]
+        init_user_if_needed(uid)  # 新用户首次请求时自动初始化
         role = get_user_plan(uid)  # 从订阅数据库查，而不是 custom claims
         return {"uid": uid, "role": role}
     except Exception:

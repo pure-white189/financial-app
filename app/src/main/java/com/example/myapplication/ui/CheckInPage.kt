@@ -44,9 +44,12 @@ fun CheckInPage(
     val allAchievements by viewModel.allAchievements.collectAsState()
     val allTransactions by viewModel.allTransactions.collectAsState()
     val checkInResult by viewModel.checkInResult.collectAsState()
+    val checkInMessage by viewModel.checkInMessage.collectAsState()
 
     // Snackbar for check-in result
     val snackbarHostState = remember { SnackbarHostState() }
+    val networkErrorText = stringResource(R.string.network_error_check_in)
+    val alreadyCheckedInText = stringResource(R.string.check_in_already)
 
     // Token history collapsed by default
     var historyExpanded by remember { mutableStateOf(false) }
@@ -56,7 +59,7 @@ fun CheckInPage(
     val tokensEarnedMsg = stringResource(R.string.checkin_tokens_earned)
     LaunchedEffect(checkInResult) {
         val result = checkInResult ?: return@LaunchedEffect
-        if (result is CheckInResult.Success) {
+        if (result is CheckInResult.Success && !result.alreadyCheckedIn) {
             val tokensEarned = result.baseTokens + result.bonusTokens
             val hasStreakBonus = result.bonusTokens > 0
             val msg = if (hasStreakBonus) {
@@ -67,6 +70,15 @@ fun CheckInPage(
             snackbarHostState.showSnackbar(msg)
         }
         viewModel.consumeCheckInResult()
+    }
+
+    LaunchedEffect(checkInMessage) {
+        when (checkInMessage) {
+            "network_error" -> snackbarHostState.showSnackbar(networkErrorText)
+            "already_checked_in" -> snackbarHostState.showSnackbar(alreadyCheckedInText)
+            else -> Unit
+        }
+        if (checkInMessage != null) viewModel.clearCheckInMessage()
     }
 
     Scaffold(

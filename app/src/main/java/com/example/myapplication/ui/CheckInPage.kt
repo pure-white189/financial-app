@@ -39,8 +39,8 @@ fun CheckInPage(
     onBack: () -> Unit
 ) {
     val tokenBalance by viewModel.tokenBalance.collectAsState()
+    val alreadyCheckedInToday by viewModel.alreadyCheckedInToday.collectAsState()
     val currentStreak by viewModel.currentStreak.collectAsState()
-    val hasCheckedInToday by viewModel.hasCheckedInToday.collectAsState()
     val allAchievements by viewModel.allAchievements.collectAsState()
     val allTransactions by viewModel.allTransactions.collectAsState()
     val checkInResult by viewModel.checkInResult.collectAsState()
@@ -57,10 +57,12 @@ fun CheckInPage(
     LaunchedEffect(checkInResult) {
         val result = checkInResult ?: return@LaunchedEffect
         if (result is CheckInResult.Success) {
-            val msg = if (result.streakAchievementId != null) {
-                streakBonusMsg.format(result.currentStreak, result.tokensEarned)
+            val tokensEarned = result.baseTokens + result.bonusTokens
+            val hasStreakBonus = result.bonusTokens > 0
+            val msg = if (hasStreakBonus) {
+                streakBonusMsg.format(result.streak, tokensEarned)
             } else {
-                tokensEarnedMsg.format(result.tokensEarned)
+                tokensEarnedMsg.format(tokensEarned)
             }
             snackbarHostState.showSnackbar(msg)
         }
@@ -95,8 +97,8 @@ fun CheckInPage(
                 CheckInCard(
                     streak = currentStreak,
                     tokenBalance = tokenBalance,
-                    hasCheckedInToday = hasCheckedInToday,
-                    onCheckIn = { viewModel.performCheckIn() }
+                    alreadyCheckedInToday = alreadyCheckedInToday,
+                    onCheckIn = { viewModel.checkIn() }
                 )
             }
 
@@ -159,7 +161,7 @@ fun CheckInPage(
 private fun CheckInCard(
     streak: Int,
     tokenBalance: Int,
-    hasCheckedInToday: Boolean,
+    alreadyCheckedInToday: Boolean,
     onCheckIn: () -> Unit
 ) {
     Card(
@@ -197,21 +199,23 @@ private fun CheckInCard(
 
             // Check-in button
             Button(
-                onClick = onCheckIn,
-                enabled = !hasCheckedInToday,
+                onClick = { if (!alreadyCheckedInToday) onCheckIn() },
+                enabled = !alreadyCheckedInToday,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
-                    if (hasCheckedInToday) Icons.Filled.CheckCircle else Icons.Filled.Star,
+                    if (alreadyCheckedInToday) Icons.Filled.CheckCircle else Icons.Filled.Star,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(
-                        if (hasCheckedInToday) R.string.checkin_done else R.string.checkin_button
-                    ),
+                    if (alreadyCheckedInToday) {
+                        stringResource(R.string.check_in_done)
+                    } else {
+                        stringResource(R.string.check_in_today)
+                    },
                     fontWeight = FontWeight.Bold
                 )
             }

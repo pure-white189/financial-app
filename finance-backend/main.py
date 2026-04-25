@@ -15,11 +15,15 @@ from subscription import (
     RedeemError,
     add_token_quota,
     consume_token_quota,
+    deduct_tokens,
     get_subscription_detail,
+    get_token_balance,
     get_usage_count,
     get_user_plan,
     increment_usage,
     init_db,
+    process_achievement,
+    process_check_in,
     redeem_code,
     set_usage_count,
 )
@@ -267,24 +271,6 @@ def redeem_code_endpoint(
         return result
     except RedeemError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.post("/redeem-tokens")
-def redeem_tokens_endpoint(
-    data: dict,
-    credentials: HTTPAuthorizationCredentials | None = Security(security),
-):
-    authorization = f"Bearer {credentials.credentials}" if credentials else None
-    user = verify_token(authorization)
-    if user["uid"] is None:
-        raise HTTPException(status_code=401, detail="Login required")
-
-    quota_type = str(data.get("type", "")).strip().lower()
-    if quota_type not in {"parse", "analyze"}:
-        raise HTTPException(status_code=400, detail="type must be 'parse' or 'analyze'")
-
-    add_token_quota(user["uid"], quota_type)
-    return {"success": True}
 
 
 @app.get("/subscription-status")
@@ -595,6 +581,132 @@ def get_stock_prices(symbols: str):
 
 
 # ─── 个性化推荐接口 ─────────────────────────────────────────────────
+
+
+# ─── 代币与签到接口 ────────────────────────────────────────────
+
+
+@app.get("/token-balance")
+def token_balance(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    """获取当前用户代币余额。"""
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+    balance = get_token_balance(user["uid"])
+    return {"balance": balance}
+
+
+@app.get("/check-in-status")
+def check_in_status(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    """
+    获取当前用户签到状态：今日是否已签到、当前连续天数、代币余额。
+    App 打开签到页时调用。
+    """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    uid = user["uid"]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    from subscription import get_token_balance
+    with __import__('subscription')._conn() as conn:
+        row = conn.execute(
+            "SELECT streak FROM check_in_records WHERE uid = ? AND date = ?",
+            (uid, today)
+        ).fetchone()
+        already_checked_in = row is not None
+        streak_today = row["streak"] if row else None
+
+        if streak_today is None:
+            last_row = conn.execute(
+                "SELECT streak FROM check_in_records WHERE uid = ? ORDER BY date DESC LIMIT 1",
+                (uid,)
+            ).fetchone()
+            current_streak = last_row["streak"] if last_row else 0
+        else:
+            current_streak = streak_today
+
+    balance = get_token_balance(uid)
+    return {
+        "already_checked_in": already_checked_in,
+        "streak": current_streak,
+        "balance": balance,
+    }
+
+
+@app.post("/check-in")
+def check_in(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    """
+    每日签到。后端验证今日是否已签到，发放代币，返回签到结果。
+    返回: {already_checked_in, streak, base_tokens, bonus_tokens, new_balance}
+    """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+    return process_check_in(user["uid"])
+
+
+@app.post("/unlock-achievement")
+def unlock_achievement(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    """
+    解锁成就并发放代币。后端防止重复解锁。
+    Body: {"achievement_id": "first_expense"}
+    返回: {already_unlocked, achievement_id, tokens_earned, new_balance}
+    """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    achievement_id = str(data.get("achievement_id", "")).strip()
+    if not achievement_id:
+        raise HTTPException(status_code=400, detail="achievement_id is required")
+
+    return process_achievement(user["uid"], achievement_id)
+
+
+@app.post("/redeem-tokens")
+def redeem_tokens_endpoint(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+):
+    """
+    代币兑换 AI 额度。后端验证余额是否充足再扣减。
+    Body: {"type": "parse"|"analyze"}
+    返回: {success, tokens_spent, new_balance}
+    """
+    authorization = f"Bearer {credentials.credentials}" if credentials else None
+    user = verify_token(authorization)
+    if user["uid"] is None:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    quota_type = str(data.get("type", "")).strip().lower()
+    if quota_type not in {"parse", "analyze"}:
+        raise HTTPException(status_code=400, detail="type must be 'parse' or 'analyze'")
+
+    cost = 5 if quota_type == "parse" else 15
+    success, new_balance = deduct_tokens(user["uid"], cost)
+    if not success:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient tokens. Need {cost}, have {new_balance}.",
+        )
+
+    add_token_quota(user["uid"], quota_type)
+    return {"success": True, "tokens_spent": cost, "new_balance": new_balance}
 
 
 @app.get("/recommendations")

@@ -1256,9 +1256,9 @@ fun RecordPage(
                         showTokenRedeemDialog = false
                         isRedeeming = false
                         scope.launch {
-                            when (checkInViewModel.redeemTokensAndNotifyBackend("parse")) {
+                            when (val redeemResult = checkInViewModel.redeemTokensAndNotifyBackend("parse")) {
                                 is CheckInRepository.RedeemResult.Success -> {
-                                    snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(tokenBalance))
+                                    snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(redeemResult.newBalance))
                                     val retryInput = pendingAiInput
                                     if (retryInput.isBlank()) {
                                         return@launch
@@ -1352,7 +1352,7 @@ fun RecordPage(
                                     isAiLoading = false
                                 }
 
-                                is CheckInRepository.RedeemResult.InsufficientTokens -> {
+                                CheckInRepository.RedeemResult.Failure -> {
                                     aiError = tokenRedeemFailedText
                                 }
                             }

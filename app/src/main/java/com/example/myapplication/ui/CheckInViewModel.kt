@@ -4,10 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.AchievementRepository
+import com.example.myapplication.data.AchievementResult
 import com.example.myapplication.data.AiExpenseParser
 import com.example.myapplication.data.AppDatabase
 import com.example.myapplication.data.CheckInRepository
 import com.example.myapplication.data.CheckInResult
+import com.example.myapplication.data.CheckInStatusResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +19,13 @@ import kotlinx.coroutines.launch
 
 class CheckInViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val aiExpenseParser = AiExpenseParser
     private val db = AppDatabase.getDatabase(application)
     private val checkInRepository = CheckInRepository(
         db.checkInDao(),
-        db.tokenTransactionDao()
+        db.tokenTransactionDao(),
+        db.achievementDao(),
+        aiExpenseParser
     )
     val achievementRepository = AchievementRepository(
         db.achievementDao(),
@@ -29,8 +34,8 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
 
     // ── Exposed state ──────────────────────────────────────────────────────
 
-    val tokenBalance: StateFlow<Int> = checkInRepository.getTokenBalance()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    private val _tokenBalance = MutableStateFlow(0)
+    val tokenBalance: StateFlow<Int> = _tokenBalance.asStateFlow()
 
     val allTransactions = checkInRepository.getAllTransactions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -41,11 +46,14 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
     val allCheckIns = checkInRepository.getAllCheckIns()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _alreadyCheckedInToday = MutableStateFlow(false)
+    val alreadyCheckedInToday: StateFlow<Boolean> = _alreadyCheckedInToday.asStateFlow()
+
     private val _currentStreak = MutableStateFlow(0)
     val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
 
-    private val _hasCheckedInToday = MutableStateFlow(false)
-    val hasCheckedInToday: StateFlow<Boolean> = _hasCheckedInToday.asStateFlow()
+    // Backward-compatible alias for older UI code.
+    val hasCheckedInToday: StateFlow<Boolean> = alreadyCheckedInToday
 
     // Result of latest check-in attempt (consumed by UI)
     private val _checkInResult = MutableStateFlow<CheckInResult?>(null)
@@ -55,8 +63,16 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
     private val _newAchievements = MutableStateFlow<List<String>>(emptyList())
     val newAchievements: StateFlow<List<String>> = _newAchievements.asStateFlow()
 
+    private val _checkInMessage = MutableStateFlow<String?>(null)
+    val checkInMessage: StateFlow<String?> = _checkInMessage.asStateFlow()
+
     init {
-        refreshStreak()
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(2000)
+            loadCheckInStatus()
+        }
+        loadAchievements()
+        checkBudgetAchievements()
     }
 
     // ── Actions ────────────────────────────────────────────────────────────
@@ -64,30 +80,84 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
     fun refreshStreak() {
         viewModelScope.launch {
             _currentStreak.value = checkInRepository.getCurrentStreak()
-            _hasCheckedInToday.value = checkInRepository.hasCheckedInToday()
+            _alreadyCheckedInToday.value = checkInRepository.hasCheckedInToday()
         }
     }
 
-    fun performCheckIn() {
+    fun loadCheckInStatus() {
+        viewModelScope.launch {
+            val result = checkInRepository.aiExpenseParser.fetchCheckInStatus()
+            if (result is CheckInStatusResult.Success) {
+                _alreadyCheckedInToday.value = result.alreadyCheckedIn
+                _currentStreak.value = result.streak
+                _tokenBalance.value = result.balance
+            }
+        }
+    }
+
+    fun refreshStatus() {
+        viewModelScope.launch {
+            loadCheckInStatus()
+        }
+    }
+
+    fun refreshTokenBalance() {
+        viewModelScope.launch {
+            _tokenBalance.value = checkInRepository.getTokenBalance()
+        }
+    }
+
+    fun checkIn() {
         viewModelScope.launch {
             val result = checkInRepository.checkIn()
             _checkInResult.value = result
 
-            if (result is CheckInResult.Success) {
-                _currentStreak.value = result.currentStreak
-                _hasCheckedInToday.value = true
-
-                // Unlock streak achievement if milestone reached
-                result.streakAchievementId?.let { id ->
-                    val unlocked = achievementRepository.unlockBehaviorAchievement(id)
-                    if (unlocked) {
-                        _newAchievements.value = _newAchievements.value + id
+            when (result) {
+                is CheckInResult.Success -> {
+                    _currentStreak.value = result.streak
+                    _alreadyCheckedInToday.value = result.alreadyCheckedIn || result.baseTokens > 0 || result.bonusTokens > 0
+                    if (result.alreadyCheckedIn) {
+                        _checkInMessage.value = "already_checked_in"
+                    } else {
+                        _tokenBalance.value = result.newBalance
+                        _alreadyCheckedInToday.value = true
+                        _currentStreak.value = result.streak
+                        _checkInMessage.value = if (result.bonusTokens > 0) {
+                            "streak_bonus:${result.streak}:${result.baseTokens + result.bonusTokens}"
+                        } else {
+                            "success:${result.baseTokens}"
+                        }
                     }
+
+                    val streakAchievementId = when (result.streak) {
+                        7 -> "streak_7"
+                        30 -> "streak_30"
+                        90 -> "streak_90"
+                        365 -> "streak_365"
+                        730 -> "streak_730"
+                        else -> null
+                    }
+
+                    streakAchievementId?.let { id ->
+                        val unlocked = achievementRepository.unlockBehaviorAchievement(id)
+                        if (unlocked) {
+                            _newAchievements.value = _newAchievements.value + id
+                        }
+                    }
+                }
+
+                is CheckInResult.NetworkError -> {
+                    _checkInMessage.value = "network_error"
                 }
             }
         }
     }
 
+
+    // Backward-compatible entry point for existing UI call sites.
+    fun performCheckIn() {
+        checkIn()
+    }
     fun consumeCheckInResult() {
         _checkInResult.value = null
     }
@@ -102,11 +172,22 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
      */
     fun unlockAchievement(achievementId: String) {
         viewModelScope.launch {
-            val unlocked = achievementRepository.unlockBehaviorAchievement(achievementId)
-            if (unlocked) {
+            val result = checkInRepository.unlockAchievement(achievementId)
+            if (result is AchievementResult.Success && !result.alreadyUnlocked) {
                 _newAchievements.value = _newAchievements.value + achievementId
+                if (result.tokensEarned > 0) {
+                    _tokenBalance.value = result.newBalance
+                }
             }
         }
+    }
+
+    private fun loadAchievements() {
+        // Achievement list is already driven by Flow/stateIn initialization.
+    }
+
+    private fun checkBudgetAchievements() {
+        // Budget check with real monthly data is still handled by checkBudgetAchievementsOnStartup().
     }
 
     /**
@@ -133,15 +214,22 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
      * Redeem tokens for AI features. Returns remaining balance or -1 if insufficient.
      */
     suspend fun redeemTokens(type: String): Int {
-        val result = checkInRepository.redeemTokens(type)
-        return when (result) {
-            is CheckInRepository.RedeemResult.Success -> result.remaining
-            is CheckInRepository.RedeemResult.InsufficientTokens -> -1
+        return when (val result = checkInRepository.redeemTokensAndNotifyBackend(type, aiExpenseParser)) {
+            is CheckInRepository.RedeemResult.Success -> {
+                _tokenBalance.value = result.newBalance
+                result.newBalance
+            }
+
+            CheckInRepository.RedeemResult.Failure -> -1
         }
     }
 
     suspend fun redeemTokensAndNotifyBackend(type: String): CheckInRepository.RedeemResult {
-        return checkInRepository.redeemTokensAndNotifyBackend(type, AiExpenseParser)
+        val result = checkInRepository.redeemTokensAndNotifyBackend(type, aiExpenseParser)
+        if (result is CheckInRepository.RedeemResult.Success) {
+            _tokenBalance.value = result.newBalance
+        }
+        return result
     }
 }
 

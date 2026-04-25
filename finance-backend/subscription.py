@@ -49,6 +49,28 @@ def init_db():
                 expires_at    TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS token_balances (
+                uid         TEXT PRIMARY KEY,
+                balance     INTEGER NOT NULL DEFAULT 0,
+                updated_at  TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS check_in_records (
+                uid         TEXT NOT NULL,
+                date        TEXT NOT NULL,
+                streak      INTEGER NOT NULL DEFAULT 1,
+                bonus       INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT NOT NULL,
+                PRIMARY KEY (uid, date)
+            );
+
+            CREATE TABLE IF NOT EXISTS achievements (
+                uid             TEXT NOT NULL,
+                achievement_id  TEXT NOT NULL,
+                unlocked_at     TEXT NOT NULL,
+                PRIMARY KEY (uid, achievement_id)
+            );
+
             CREATE TABLE IF NOT EXISTS usage_limits (
                 uid          TEXT NOT NULL,
                 type         TEXT NOT NULL,
@@ -318,4 +340,178 @@ def set_usage_count(uid: str, usage_type: str, period: str, count: int):
             """,
             (uid, usage_type, period, count, now_str)
         )
+
+
+# ─── 代币余额管理 ─────────────────────────────────────────────
+
+def get_token_balance(uid: str) -> int:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT balance FROM token_balances WHERE uid = ?", (uid,)
+        ).fetchone()
+        return row["balance"] if row else 0
+
+
+def add_tokens(uid: str, amount: int) -> int:
+    """增加代币，返回新余额。"""
+    now_str = _now_str()
+    with _conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO token_balances (uid, balance, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(uid) DO UPDATE SET
+                balance = balance + excluded.balance,
+                updated_at = excluded.updated_at
+            """,
+            (uid, amount, now_str)
+        )
+        row = conn.execute(
+            "SELECT balance FROM token_balances WHERE uid = ?", (uid,)
+        ).fetchone()
+        return row["balance"]
+
+
+def deduct_tokens(uid: str, amount: int) -> tuple[bool, int]:
+    """扣减代币，余额不足返回 (False, current_balance)，成功返回 (True, new_balance)。"""
+    now_str = _now_str()
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT balance FROM token_balances WHERE uid = ?", (uid,)
+        ).fetchone()
+        current = row["balance"] if row else 0
+        if current < amount:
+            return False, current
+        conn.execute(
+            "UPDATE token_balances SET balance = balance - ?, updated_at = ? WHERE uid = ?",
+            (amount, now_str, uid)
+        )
+        return True, current - amount
+
+
+# ─── 签到逻辑 ─────────────────────────────────────────────────
+
+STREAK_MILESTONES = {7: 5, 30: 15, 90: 30, 365: 100, 730: 200}
+
+
+def process_check_in(uid: str) -> dict:
+    """
+    处理签到。已签到返回 already_checked_in=True。
+    成功返回 {already_checked_in, streak, base_tokens, bonus_tokens, new_balance}。
+    """
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    from datetime import timedelta
+    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    now_str = now.isoformat()
+
+    with _conn() as conn:
+        # 今天已签到
+        existing = conn.execute(
+            "SELECT streak FROM check_in_records WHERE uid = ? AND date = ?",
+            (uid, today)
+        ).fetchone()
+        if existing:
+            balance = get_token_balance(uid)
+            return {
+                "already_checked_in": True,
+                "streak": existing["streak"],
+                "base_tokens": 0,
+                "bonus_tokens": 0,
+                "new_balance": balance
+            }
+
+        # 计算连续天数
+        yesterday_row = conn.execute(
+            "SELECT streak FROM check_in_records WHERE uid = ? AND date = ?",
+            (uid, yesterday)
+        ).fetchone()
+        streak = (yesterday_row["streak"] + 1) if yesterday_row else 1
+
+        # 计算奖励
+        base_tokens = 1
+        bonus_tokens = STREAK_MILESTONES.get(streak, 0)
+        total = base_tokens + bonus_tokens
+
+        # 写签到记录
+        conn.execute(
+            "INSERT INTO check_in_records (uid, date, streak, bonus, created_at) VALUES (?, ?, ?, ?, ?)",
+            (uid, today, streak, bonus_tokens, now_str)
+        )
+
+    # 发放代币（在 _conn() 外调用避免嵌套连接）
+    new_balance = add_tokens(uid, total)
+
+    return {
+        "already_checked_in": False,
+        "streak": streak,
+        "base_tokens": base_tokens,
+        "bonus_tokens": bonus_tokens,
+        "new_balance": new_balance
+    }
+
+
+# ─── 成就逻辑 ─────────────────────────────────────────────────
+
+ACHIEVEMENT_REWARDS = {
+    "first_expense": 5,
+    "first_budget": 5,
+    "first_saving_goal": 5,
+    "first_loan": 5,
+    "first_sync": 5,
+    "first_ai_parse": 5,
+    "first_ai_analyze": 10,
+    "first_stock": 5,
+    "first_income": 5,
+    "streak_7": 10,
+    "streak_30": 20,
+    "streak_90": 30,
+    "streak_365": 100,
+    "streak_730": 200,
+    "budget_1m": 10,
+    "budget_3m": 20,
+    "budget_6m": 40,
+    "budget_9m": 60,
+    "budget_12m": 80,
+    "budget_18m": 120,
+    "budget_24m": 200,
+}
+
+
+def process_achievement(uid: str, achievement_id: str) -> dict:
+    """
+    解锁成就并发放代币。已解锁返回 already_unlocked=True。
+    成功返回 {already_unlocked, achievement_id, tokens_earned, new_balance}。
+    """
+    now_str = _now_str()
+    reward = ACHIEVEMENT_REWARDS.get(achievement_id, 0)
+
+    with _conn() as conn:
+        existing = conn.execute(
+            "SELECT 1 FROM achievements WHERE uid = ? AND achievement_id = ?",
+            (uid, achievement_id)
+        ).fetchone()
+        if existing:
+            balance = get_token_balance(uid)
+            return {
+                "already_unlocked": True,
+                "achievement_id": achievement_id,
+                "tokens_earned": 0,
+                "new_balance": balance
+            }
+
+        conn.execute(
+            "INSERT INTO achievements (uid, achievement_id, unlocked_at) VALUES (?, ?, ?)",
+            (uid, achievement_id, now_str)
+        )
+
+    new_balance = add_tokens(uid, reward) if reward > 0 else get_token_balance(uid)
+
+    return {
+        "already_unlocked": False,
+        "achievement_id": achievement_id,
+        "tokens_earned": reward,
+        "new_balance": new_balance
+    }
+
 

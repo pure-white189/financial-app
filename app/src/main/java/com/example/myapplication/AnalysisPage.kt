@@ -738,14 +738,14 @@ fun AnalysisPage(
                             showTokenRedeemDialog = false
                             isRedeeming = false
                             scope.launch {
-                                when (checkInViewModel.redeemTokensAndNotifyBackend("analyze")) {
+                                when (val redeemResult = checkInViewModel.redeemTokensAndNotifyBackend("analyze")) {
                                     is CheckInRepository.RedeemResult.Success -> {
-                                        snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(tokenBalance))
+                                        snackbarHostState.showSnackbar(tokenRedeemSuccessText.format(redeemResult.newBalance))
                                         runAiAnalysis()
                                         showAiSheet = true
                                     }
 
-                                    is CheckInRepository.RedeemResult.InsufficientTokens -> {
+                                    CheckInRepository.RedeemResult.Failure -> {
                                         showTokenRedeemDialog = false
                                         isRedeeming = false
                                     }

@@ -574,6 +574,8 @@
     <string name="checkin_title">签到与成就</string>
     <string name="checkin_button">今日签到</string>
     <string name="checkin_done">今日已签到</string>
+    <string name="check_in_today">今日签到</string>
+    <string name="check_in_done">今日已签到</string>
     <string name="checkin_streak">连续签到 %d 天</string>
     <string name="checkin_tokens_earned">+%d 代币</string>
     <string name="checkin_streak_bonus">连续 %d 天里程碑！额外 +%d 代币</string>

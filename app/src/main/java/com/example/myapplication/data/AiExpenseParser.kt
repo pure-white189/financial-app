@@ -90,6 +90,7 @@ object AiExpenseParser {
         val recommendationStat: String?
     )
 
+
     private fun requireIdToken(): Result<String> {
         val user = FirebaseAuth.getInstance().currentUser
             ?: return Result.failure(Exception("Please log in to use AI features"))
@@ -493,7 +494,7 @@ object AiExpenseParser {
             }
         }
 
-    suspend fun redeemTokensForAi(type: String): Result<Unit> =
+    suspend fun redeemTokensForAi(type: String): Result<Int> =
         withContext(Dispatchers.IO) {
             try {
                 val token = requireIdToken().getOrElse { return@withContext Result.failure(it) }
@@ -513,7 +514,10 @@ object AiExpenseParser {
                         } else if (type == "analyze") {
                             localAnalyzeUsedThisMonth = (localAnalyzeLimit ?: 2) - 1
                         }
-                        return@withContext Result.success(Unit)
+                        val newBalance = try {
+                            JSONObject(body ?: "").optInt("new_balance", 0)
+                        } catch (_: Exception) { 0 }
+                        return@withContext Result.success(newBalance)
                     }
                     val message = parseServerErrorMessage(body, "Redemption failed")
                     Result.failure(Exception(message))
@@ -600,6 +604,115 @@ object AiExpenseParser {
             freshJson
         } catch (_: Exception) {
             cachedJson
+        }
+    }
+
+    suspend fun fetchTokenBalance(): Int = withContext(Dispatchers.IO) {
+        try {
+            val token = requireIdToken().getOrElse { return@withContext 0 }
+            val request = Request.Builder()
+                .url("$BASE_URL/token-balance")
+                .addHeader("Authorization", "Bearer $token")
+                .get()
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext 0
+                val body = response.body?.string() ?: return@withContext 0
+                val json = JSONObject(body)
+                json.optInt("balance", 0)
+            }
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    suspend fun performCheckIn(): CheckInResult = withContext(Dispatchers.IO) {
+        val token = requireIdToken().getOrElse {
+            return@withContext CheckInResult.NetworkError("Not logged in")
+        }
+        try {
+            val request = Request.Builder()
+                .url("$BASE_URL/check-in")
+                .addHeader("Authorization", "Bearer $token")
+                .post(ByteArray(0).toRequestBody(null))
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                    ?: return@withContext CheckInResult.NetworkError("Empty response")
+                if (!response.isSuccessful) {
+                    return@withContext CheckInResult.NetworkError("Server error ${response.code}")
+                }
+                val json = JSONObject(body)
+                CheckInResult.Success(
+                    alreadyCheckedIn = json.optBoolean("already_checked_in", false),
+                    streak = json.optInt("streak", 1),
+                    baseTokens = json.optInt("base_tokens", 0),
+                    bonusTokens = json.optInt("bonus_tokens", 0),
+                    newBalance = json.optInt("new_balance", 0)
+                )
+            }
+        } catch (e: Exception) {
+            CheckInResult.NetworkError(e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun performUnlockAchievement(achievementId: String): AchievementResult =
+        withContext(Dispatchers.IO) {
+            val token = requireIdToken().getOrElse {
+                return@withContext AchievementResult.NetworkError("Not logged in")
+            }
+            try {
+                val bodyJson = JSONObject().put("achievement_id", achievementId).toString()
+                val request = Request.Builder()
+                    .url("$BASE_URL/unlock-achievement")
+                    .addHeader("Authorization", "Bearer $token")
+                    .addHeader("Content-Type", "application/json")
+                    .post(bodyJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                        ?: return@withContext AchievementResult.NetworkError("Empty response")
+                    if (!response.isSuccessful) {
+                        return@withContext AchievementResult.NetworkError("Server error ${response.code}")
+                    }
+                    val json = JSONObject(body)
+                    AchievementResult.Success(
+                        alreadyUnlocked = json.optBoolean("already_unlocked", false),
+                        achievementId = json.optString("achievement_id", achievementId),
+                        tokensEarned = json.optInt("tokens_earned", 0),
+                        newBalance = json.optInt("new_balance", 0)
+                    )
+                }
+            } catch (e: Exception) {
+                AchievementResult.NetworkError(e.message ?: "Unknown error")
+            }
+        }
+
+    suspend fun fetchCheckInStatus(): CheckInStatusResult = withContext(Dispatchers.IO) {
+        val token = requireIdToken().getOrElse {
+            return@withContext CheckInStatusResult.NetworkError("Not logged in")
+        }
+        try {
+            val request = Request.Builder()
+                .url("$BASE_URL/check-in-status")
+                .addHeader("Authorization", "Bearer $token")
+                .get()
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                    ?: return@withContext CheckInStatusResult.NetworkError("Empty response")
+                if (!response.isSuccessful) {
+                    return@withContext CheckInStatusResult.NetworkError("Server error ${response.code}")
+                }
+                val json = JSONObject(body)
+                CheckInStatusResult.Success(
+                    alreadyCheckedIn = json.optBoolean("already_checked_in", false),
+                    streak = json.optInt("streak", 0),
+                    balance = json.optInt("balance", 0)
+                )
+            }
+        } catch (e: Exception) {
+            CheckInStatusResult.NetworkError(e.message ?: "Unknown error")
         }
     }
 }

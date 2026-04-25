@@ -8,7 +8,9 @@ import java.util.Locale
 
 class CheckInRepository(
     private val checkInDao: CheckInDao,
-    private val tokenTransactionDao: TokenTransactionDao
+    private val tokenTransactionDao: TokenTransactionDao,
+    private val achievementDao: AchievementDao,
+    val aiExpenseParser: AiExpenseParser
 ) {
 
     companion object {
@@ -57,7 +59,6 @@ class CheckInRepository(
     // ── Flows ──────────────────────────────────────────────────────────────
 
     fun getAllCheckIns(): Flow<List<CheckIn>> = checkInDao.getAllCheckIns()
-    fun getTokenBalance(): Flow<Int> = tokenTransactionDao.getTokenBalance()
     fun getAllTransactions(): Flow<List<TokenTransaction>> = tokenTransactionDao.getAllTransactions()
 
     // ── Check-in ───────────────────────────────────────────────────────────
@@ -67,58 +68,44 @@ class CheckInRepository(
      * Returns CheckInResult describing what happened.
      */
     suspend fun checkIn(): CheckInResult {
-        val today = todayString()
+        val result = aiExpenseParser.performCheckIn()
+        if (result is CheckInResult.Success && !result.alreadyCheckedIn) {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val now = System.currentTimeMillis()
 
-        // Already checked in today
-        if (checkInDao.getCheckInByDate(today) != null) {
-            return CheckInResult.AlreadyDone
-        }
-
-        // Calculate current streak (how many consecutive days before today)
-        val streak = calculateStreakBefore(today) + 1  // +1 for today
-
-        // Base reward
-        var tokensEarned = 1
-        val bonusReason = STREAK_BONUSES[streak]
-        if (bonusReason != null) tokensEarned += bonusReason
-
-        val now = System.currentTimeMillis()
-
-        // Save check-in record
-        checkInDao.insertCheckIn(
-            CheckIn(
+            // Cache locally for display and Firestore sync.
+            val checkIn = CheckIn(
                 date = today,
-                tokensEarned = tokensEarned,
+                tokensEarned = result.baseTokens + result.bonusTokens,
                 updatedAt = now
             )
-        )
+            checkInDao.insertCheckIn(checkIn)
 
-        // Save token transaction
-        tokenTransactionDao.insertTransaction(
-            TokenTransaction(
-                type = "checkin",
-                amount = tokensEarned,
-                description = "checkin_$today",
-                timestamp = now,
-                updatedAt = now
-            )
-        )
-
-        // Check if streak milestone achievement should unlock
-        val streakAchievementId = when (streak) {
-            7 -> "streak_7"
-            30 -> "streak_30"
-            90 -> "streak_90"
-            365 -> "streak_365"
-            730 -> "streak_730"
-            else -> null
+            // Update local token transaction log for history display.
+            if (result.baseTokens > 0) {
+                tokenTransactionDao.insertTransaction(
+                    TokenTransaction(
+                        type = "checkin",
+                        amount = result.baseTokens,
+                        description = "daily_check_in",
+                        timestamp = now,
+                        updatedAt = now
+                    )
+                )
+            }
+            if (result.bonusTokens > 0) {
+                tokenTransactionDao.insertTransaction(
+                    TokenTransaction(
+                        type = "checkin",
+                        amount = result.bonusTokens,
+                        description = "streak_bonus_${result.streak}",
+                        timestamp = now,
+                        updatedAt = now
+                    )
+                )
+            }
         }
-
-        return CheckInResult.Success(
-            tokensEarned = tokensEarned,
-            currentStreak = streak,
-            streakAchievementId = streakAchievementId
-        )
+        return result
     }
 
     /**
@@ -168,98 +155,55 @@ class CheckInRepository(
      * Awards tokens automatically.
      * Returns true if newly unlocked.
      */
-    suspend fun unlockAchievement(achievementDao: AchievementDao, achievementId: String): Boolean {
-        val existing = achievementDao.getAchievementById(achievementId)
-        if (existing != null && existing.unlockedAt > 0L) return false   // already unlocked
+    suspend fun unlockAchievement(achievementId: String): AchievementResult {
+        val result = aiExpenseParser.performUnlockAchievement(achievementId)
+        if (result is AchievementResult.Success && !result.alreadyUnlocked) {
+            val now = System.currentTimeMillis()
 
-        val tokens = ACHIEVEMENT_TOKENS[achievementId] ?: 0
-        val now = System.currentTimeMillis()
-
-        achievementDao.insertAchievement(
-            Achievement(
-                achievementId = achievementId,
-                unlockedAt = now,
-                tokensAwarded = tokens,
-                updatedAt = now
-            )
-        )
-
-        if (tokens > 0) {
-            tokenTransactionDao.insertTransaction(
-                TokenTransaction(
-                    type = "achievement",
-                    amount = tokens,
-                    description = achievementId,
-                    timestamp = now,
+            // Cache locally.
+            achievementDao.insertAchievement(
+                Achievement(
+                    achievementId = achievementId,
+                    unlockedAt = now,
+                    tokensAwarded = result.tokensEarned,
                     updatedAt = now
                 )
             )
-        }
 
-        return true
+            if (result.tokensEarned > 0) {
+                tokenTransactionDao.insertTransaction(
+                    TokenTransaction(
+                        type = "achievement",
+                        amount = result.tokensEarned,
+                        description = "achievement_$achievementId",
+                        timestamp = now,
+                        updatedAt = now
+                    )
+                )
+            }
+        }
+        return result
+    }
+
+    suspend fun getTokenBalance(): Int {
+        return aiExpenseParser.fetchTokenBalance()
     }
 
     // ── Token redemption ───────────────────────────────────────────────────
 
     sealed class RedeemResult {
-        data class Success(val remaining: Int) : RedeemResult()
-        data class InsufficientTokens(val balance: Int, val required: Int) : RedeemResult()
-    }
-
-    /**
-     * Spend tokens for AI features.
-     * type: "parse" costs 5, "analyze" costs 15
-     */
-    suspend fun redeemTokens(type: String): RedeemResult {
-        val cost = if (type == "analyze") 15 else 5
-        val balance = tokenTransactionDao.getTokenBalanceOnce()
-        if (balance < cost) return RedeemResult.InsufficientTokens(balance, cost)
-
-        val now = System.currentTimeMillis()
-        tokenTransactionDao.insertTransaction(
-            TokenTransaction(
-                type = "redeem",
-                amount = -cost,
-                description = "redeem_$type",
-                timestamp = now,
-                updatedAt = now
-            )
-        )
-        return RedeemResult.Success(balance - cost)
+        data class Success(val newBalance: Int) : RedeemResult()
+        object Failure : RedeemResult()
     }
 
     suspend fun redeemTokensAndNotifyBackend(type: String, aiParser: AiExpenseParser): RedeemResult {
-        val localResult = redeemTokens(type)
-        if (localResult is RedeemResult.InsufficientTokens) return localResult
-
-        val backendResult = aiParser.redeemTokensForAi(type)
-        if (backendResult.isFailure) {
-            val cost = if (type == "analyze") 15 else 5
-            val now = System.currentTimeMillis()
-            tokenTransactionDao.insertTransaction(
-                TokenTransaction(
-                    type = "redeem_rollback",
-                    amount = cost,
-                    description = "rollback_$type",
-                    timestamp = now,
-                    updatedAt = now
-                )
-            )
-            return RedeemResult.InsufficientTokens(balance = 0, required = cost)
+        val result = aiParser.redeemTokensForAi(type)
+        return if (result.isSuccess) {
+            val newBalance = result.getOrDefault(0)
+            RedeemResult.Success(newBalance)
+        } else {
+            RedeemResult.Failure
         }
-
-        return localResult
     }
-}
-
-// ── Result types ───────────────────────────────────────────────────────────
-
-sealed class CheckInResult {
-    object AlreadyDone : CheckInResult()
-    data class Success(
-        val tokensEarned: Int,
-        val currentStreak: Int,
-        val streakAchievementId: String?   // non-null if milestone reached
-    ) : CheckInResult()
 }
 

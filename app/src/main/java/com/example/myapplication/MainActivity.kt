@@ -209,6 +209,9 @@ class MainActivity : AppCompatActivity() {
                         checkInViewModel.unlockAchievement("first_sync")
                     }
                     syncViewModel.syncNow()
+                    // Delay to ensure Firebase token is ready before fetching backend status
+                    kotlinx.coroutines.delay(1500)
+                    checkInViewModel.refreshStatus()
                 }
             }
 

@@ -68,8 +68,10 @@ class AchievementRepository(
         val newlyUnlocked = mutableListOf<String>()
         for ((achievementId, required) in BUDGET_MILESTONES) {
             if (consecutive >= required) {
-                val unlocked = checkInRepository.unlockAchievement(achievementDao, achievementId)
-                if (unlocked) newlyUnlocked.add(achievementId)
+                val result = checkInRepository.unlockAchievement(achievementId)
+                if (result is AchievementResult.Success && !result.alreadyUnlocked) {
+                    newlyUnlocked.add(achievementId)
+                }
             }
         }
         return newlyUnlocked
@@ -79,7 +81,8 @@ class AchievementRepository(
      * Unlock a behavior achievement. Returns true if newly unlocked.
      */
     suspend fun unlockBehaviorAchievement(achievementId: String): Boolean {
-        return checkInRepository.unlockAchievement(achievementDao, achievementId)
+        val result = checkInRepository.unlockAchievement(achievementId)
+        return result is AchievementResult.Success && !result.alreadyUnlocked
     }
 
     /**

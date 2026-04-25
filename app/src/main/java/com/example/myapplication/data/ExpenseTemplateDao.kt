@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExpenseTemplateDao {
-    @Query("SELECT * FROM expense_templates ORDER BY createdAt DESC")
+    @Query("SELECT * FROM expense_templates WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllTemplates(): Flow<List<ExpenseTemplate>>
 
     @Insert
@@ -28,6 +28,8 @@ interface ExpenseTemplateDao {
 
     @Delete
     suspend fun deleteTemplate(template: ExpenseTemplate)
+
+    suspend fun delete(template: ExpenseTemplate) = deleteTemplate(template)
 
     @Query("DELETE FROM expense_templates")
     suspend fun clearAllTemplates()

@@ -79,12 +79,16 @@ class SyncRepository(
             val cloudExpense = doc.toExpense()
             val local = expenseDao.getByFirestoreId(doc.id)
             when {
-                local == null -> {
+                local == null && !cloudExpense.isDeleted -> {
                     expenseDao.insertExpense(cloudExpense)
                     downloaded++
                 }
-                cloudExpense.updatedAt > local.updatedAt -> {
-                    expenseDao.updateExpense(cloudExpense.copy(id = local.id))
+                local != null && cloudExpense.updatedAt > local.updatedAt -> {
+                    if (cloudExpense.isDeleted) {
+                        expenseDao.deleteExpense(local)
+                    } else {
+                        expenseDao.updateExpense(cloudExpense.copy(id = local.id))
+                    }
                     downloaded++
                 }
             }
@@ -115,9 +119,16 @@ class SyncRepository(
             val cloudLoan = doc.toLoan()
             val local = loanDao.getByFirestoreId(doc.id)
             when {
-                local == null -> { loanDao.insertLoan(cloudLoan); downloaded++ }
-                cloudLoan.updatedAt > local.updatedAt -> {
-                    loanDao.updateLoan(cloudLoan.copy(id = local.id)); downloaded++
+                local == null && !cloudLoan.isDeleted -> {
+                    loanDao.insertLoan(cloudLoan); downloaded++
+                }
+                local != null && cloudLoan.updatedAt > local.updatedAt -> {
+                    if (cloudLoan.isDeleted) {
+                        loanDao.deleteLoan(local)
+                    } else {
+                        loanDao.updateLoan(cloudLoan.copy(id = local.id))
+                    }
+                    downloaded++
                 }
             }
         }
@@ -145,9 +156,16 @@ class SyncRepository(
             val cloudGoal = doc.toSavingGoal()
             val local = savingGoalDao.getByFirestoreId(doc.id)
             when {
-                local == null -> { savingGoalDao.insertGoal(cloudGoal); downloaded++ }
-                cloudGoal.updatedAt > local.updatedAt -> {
-                    savingGoalDao.updateGoal(cloudGoal.copy(id = local.id)); downloaded++
+                local == null && !cloudGoal.isDeleted -> {
+                    savingGoalDao.insertGoal(cloudGoal); downloaded++
+                }
+                local != null && cloudGoal.updatedAt > local.updatedAt -> {
+                    if (cloudGoal.isDeleted) {
+                        savingGoalDao.deleteGoal(local)
+                    } else {
+                        savingGoalDao.updateGoal(cloudGoal.copy(id = local.id))
+                    }
+                    downloaded++
                 }
             }
         }
@@ -175,9 +193,16 @@ class SyncRepository(
             val cloudStock = doc.toStock()
             val local = stockDao.getByFirestoreId(doc.id)
             when {
-                local == null -> { stockDao.insertStock(cloudStock); downloaded++ }
-                cloudStock.updatedAt > local.updatedAt -> {
-                    stockDao.updateStock(cloudStock.copy(id = local.id)); downloaded++
+                local == null && !cloudStock.isDeleted -> {
+                    stockDao.insertStock(cloudStock); downloaded++
+                }
+                local != null && cloudStock.updatedAt > local.updatedAt -> {
+                    if (cloudStock.isDeleted) {
+                        stockDao.deleteStock(local)
+                    } else {
+                        stockDao.updateStock(cloudStock.copy(id = local.id))
+                    }
+                    downloaded++
                 }
             }
         }
@@ -206,12 +231,16 @@ class SyncRepository(
             val cloudIncome = data.toMonthlyIncome(doc.id)
             val local = monthlyIncomeDao.getIncomeForMonth(cloudIncome.yearMonth)
             when {
-                local == null -> {
+                local == null && !cloudIncome.isDeleted -> {
                     monthlyIncomeDao.insertOrUpdate(cloudIncome)
                     downloaded++
                 }
-                cloudIncome.updatedAt > local.updatedAt -> {
-                    monthlyIncomeDao.insertOrUpdate(cloudIncome)
+                local != null && cloudIncome.updatedAt > local.updatedAt -> {
+                    if (cloudIncome.isDeleted) {
+                        monthlyIncomeDao.softDelete(cloudIncome.yearMonth)
+                    } else {
+                        monthlyIncomeDao.insertOrUpdate(cloudIncome)
+                    }
                     downloaded++
                 }
             }
@@ -240,12 +269,16 @@ class SyncRepository(
             val cloudCheckIn = data.toCheckIn(doc.id)
             val local = checkInDao.getCheckInByDate(cloudCheckIn.date)
             when {
-                local == null -> {
+                local == null && cloudCheckIn.isDeleted == 0 -> {
                     checkInDao.insertCheckIn(cloudCheckIn)
                     downloaded++
                 }
-                cloudCheckIn.updatedAt > local.updatedAt -> {
-                    checkInDao.insertCheckIn(cloudCheckIn)
+                local != null && cloudCheckIn.updatedAt > local.updatedAt -> {
+                    if (cloudCheckIn.isDeleted != 0) {
+                        checkInDao.deleteCheckIn(local)
+                    } else {
+                        checkInDao.insertCheckIn(cloudCheckIn)
+                    }
                     downloaded++
                 }
             }
@@ -274,12 +307,16 @@ class SyncRepository(
             val cloudAchievement = data.toAchievement(doc.id)
             val local = achievementDao.getAchievementById(cloudAchievement.achievementId)
             when {
-                local == null -> {
+                local == null && cloudAchievement.isDeleted == 0 -> {
                     achievementDao.insertAchievement(cloudAchievement)
                     downloaded++
                 }
-                cloudAchievement.updatedAt > local.updatedAt -> {
-                    achievementDao.insertAchievement(cloudAchievement)
+                local != null && cloudAchievement.updatedAt > local.updatedAt -> {
+                    if (cloudAchievement.isDeleted != 0) {
+                        achievementDao.deleteAchievement(local)
+                    } else {
+                        achievementDao.insertAchievement(cloudAchievement)
+                    }
                     downloaded++
                 }
             }
@@ -308,12 +345,16 @@ class SyncRepository(
             val cloudTx = data.toTokenTransaction(doc.id)
             val local = tokenTransactionDao.getByFirestoreId(doc.id)
             when {
-                local == null -> {
+                local == null && cloudTx.isDeleted == 0 -> {
                     tokenTransactionDao.insertTransaction(cloudTx)
                     downloaded++
                 }
-                cloudTx.updatedAt > local.updatedAt -> {
-                    tokenTransactionDao.insertTransaction(cloudTx)
+                local != null && cloudTx.updatedAt > local.updatedAt -> {
+                    if (cloudTx.isDeleted != 0) {
+                        tokenTransactionDao.deleteTransaction(local)
+                    } else {
+                        tokenTransactionDao.insertTransaction(cloudTx)
+                    }
                     downloaded++
                 }
             }
@@ -375,7 +416,7 @@ class SyncRepository(
         val col = userCol("categories")
         val localCustom = categoryDao.getAllCustomCategoriesOnce()
 
-        // Upload local custom categories to Firestore
+        // Upload local custom categories to Firestore and backfill firestoreId
         localCustom.forEach { category ->
             val fid = category.firestoreId.ifEmpty { "cat_${category.id}" }
             col.document(fid).set(category.toFirestoreMap(), SetOptions.merge()).await()
@@ -384,25 +425,29 @@ class SyncRepository(
             }
         }
 
+        // Re-fetch after firestoreId backfill so download matching is accurate
+        val localAfterUpload = categoryDao.getAllCustomCategoriesOnce()
+
         // Download and merge from Firestore
         val cloudDocs = col.get().await()
         var downloaded = 0
         cloudDocs.forEach { doc ->
             val data = doc.data ?: return@forEach
             val cloudCategory = data.toCategory(doc.id)
-            if (cloudCategory.isDefault) return@forEach  // skip default categories
+            if (cloudCategory.isDefault) return@forEach
 
-            // Find local match by firestoreId
-            val local = localCustom.find { it.firestoreId == doc.id }
+            val local = localAfterUpload.find { it.firestoreId == doc.id }
             when {
-                local == null -> {
-                    if (!cloudCategory.isDeleted) {
-                        categoryDao.upsert(cloudCategory)
-                        downloaded++
-                    }
+                local == null && !cloudCategory.isDeleted -> {
+                    categoryDao.upsert(cloudCategory)
+                    downloaded++
                 }
-                cloudCategory.updatedAt > local.updatedAt -> {
-                    categoryDao.upsert(cloudCategory.copy(id = local.id))
+                local != null && cloudCategory.updatedAt > local.updatedAt -> {
+                    if (cloudCategory.isDeleted) {
+                        categoryDao.delete(local)
+                    } else {
+                        categoryDao.upsert(cloudCategory.copy(id = local.id))
+                    }
                     downloaded++
                 }
             }
@@ -414,7 +459,7 @@ class SyncRepository(
         val col = userCol("expense_templates")
         val localAll = templateDao.getAllTemplatesIncludingDeleted()
 
-        // Upload local templates — backfill categoryKey from categoryDao if empty
+        // Upload and backfill firestoreId + categoryKey
         localAll.forEach { template ->
             val fid = template.firestoreId.ifEmpty { "tpl_${template.id}" }
             val withKey = if (template.categoryKey.isEmpty()) {
@@ -432,14 +477,15 @@ class SyncRepository(
             }
         }
 
+        // Re-fetch after firestoreId backfill
+        val localAfterUpload = templateDao.getAllTemplatesIncludingDeleted()
+
         // Download and merge from Firestore
         val cloudDocs = col.get().await()
         var downloaded = 0
         cloudDocs.forEach { doc ->
             val data = doc.data ?: return@forEach
             val cloudKey = data["categoryKey"] as? String ?: ""
-
-            // Resolve categoryId from categoryKey
             val resolvedCategoryId = if (cloudKey.isNotEmpty()) {
                 categoryDao.getDefaultCategoryByKey(cloudKey)?.id
                     ?: categoryDao.getCustomCategoryByName(cloudKey)?.id
@@ -447,16 +493,18 @@ class SyncRepository(
             } else 0
 
             val cloudTemplate = data.toExpenseTemplate(doc.id, resolvedCategoryId)
-            val local = localAll.find { it.firestoreId == doc.id }
+            val local = localAfterUpload.find { it.firestoreId == doc.id }
             when {
-                local == null -> {
-                    if (!cloudTemplate.isDeleted) {
-                        templateDao.upsert(cloudTemplate)
-                        downloaded++
-                    }
+                local == null && !cloudTemplate.isDeleted -> {
+                    templateDao.upsert(cloudTemplate)
+                    downloaded++
                 }
-                cloudTemplate.updatedAt > local.updatedAt -> {
-                    templateDao.upsert(cloudTemplate.copy(id = local.id))
+                local != null && cloudTemplate.updatedAt > local.updatedAt -> {
+                    if (cloudTemplate.isDeleted) {
+                        templateDao.delete(local)
+                    } else {
+                        templateDao.upsert(cloudTemplate.copy(id = local.id))
+                    }
                     downloaded++
                 }
             }

@@ -20,7 +20,8 @@ class ExpenseRepository(
     suspend fun getCategoryById(id: Int): Category? = categoryDao.getCategoryById(id)
     suspend fun insertCategory(category: Category) = categoryDao.insertCategory(category)
     suspend fun updateExpense(expense: Expense) = expenseDao.updateExpense(expense)
-    suspend fun deleteCategory(category: Category) = categoryDao.deleteCategory(category)
+    suspend fun deleteCategory(category: Category) =
+        categoryDao.softDelete(category.id, System.currentTimeMillis())
 
     fun getAllExpenses(): Flow<List<Expense>> = expenseDao.getAllExpenses()
     fun getExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>> =
@@ -37,7 +38,8 @@ class ExpenseRepository(
 
     fun getAllTemplates(): Flow<List<ExpenseTemplate>> = expenseTemplateDao.getAllTemplates()
     suspend fun insertTemplate(template: ExpenseTemplate) = expenseTemplateDao.insertTemplate(template)
-    suspend fun deleteTemplate(template: ExpenseTemplate) = expenseTemplateDao.deleteTemplate(template)
+    suspend fun deleteTemplate(template: ExpenseTemplate) =
+        expenseTemplateDao.softDelete(template.id, System.currentTimeMillis())
     suspend fun updateTemplate(template: ExpenseTemplate) = expenseTemplateDao.updateTemplate(template)
 
     fun getAllLoans(): Flow<List<Loan>> = loanDao.getAllLoans()

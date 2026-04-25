@@ -26,6 +26,9 @@ interface TokenTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TokenTransaction)
 
+    @Delete
+    suspend fun deleteTransaction(transaction: TokenTransaction)
+
     @Query("SELECT * FROM token_transactions WHERE isDeleted = 0 ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getRecentTransactions(limit: Int): List<TokenTransaction>
 

@@ -26,6 +26,9 @@ interface CheckInDao {
     @Update
     suspend fun updateCheckIn(checkIn: CheckIn)
 
+    @Delete
+    suspend fun deleteCheckIn(checkIn: CheckIn)
+
     @Query("SELECT * FROM check_ins WHERE isDeleted = 0 ORDER BY date DESC LIMIT :limit")
     suspend fun getRecentCheckIns(limit: Int): List<CheckIn>
 

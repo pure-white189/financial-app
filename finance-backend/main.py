@@ -78,7 +78,7 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 'Sentence: "{text}"\n'
                 "Today's date is {today}. Use this as the reference for relative date expressions like 'yesterday', 'this morning', 'last Monday'.\n"
                 'Format: {{"amount": number, "category": "category_key", "note": "note", "date": "YYYY-MM-DD or null", "time": "HH:MM or null", "currency": "HKD/CNY/USD/null"}}\n'
-                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, health, other\n"
                 "currency: detect from the sentence. Return 'HKD' for HKD/港币/港元/HK$, 'CNY' for CNY/人民币/RMB/¥/rmb, 'USD' for USD/美元/美金/US$/dollar/dollars. If currency is not mentioned, return null.\n"
                 "For date/time: extract only if explicitly mentioned in the sentence (e.g. 'yesterday', 'this morning', '3pm'). If not mentioned, return null.\n"
                 "Return JSON only, no other content."
@@ -108,7 +108,7 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 '句子："{text}"\n'
                 "今天的日期是{today}。請以此為基準推算「昨天」「今天早上」「上週」等相對時間。\n"
                 '返回格式：{{"amount": 金額數字, "category": "category_key", "note": "備註", "date": "YYYY-MM-DD或null", "time": "HH:MM或null", "currency": "HKD/CNY/USD/null"}}\n'
-                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, health, other\n"
                 'currency：從句子中識別貨幣。HKD/港幣/港元/HK$返回"HKD"，CNY/人民幣/RMB/¥返回"CNY"，USD/美元/美金/US$/dollar返回"USD"，未提及返回null。\n'
                 "date和time：只在句子中明確提到時間時才提取（如「昨天」「今天早上」「下午3點」）。未提及則返回null。\n"
                 "只返回JSON，不要任何其他內容。"
@@ -138,7 +138,7 @@ def get_lang_config(lang: str, currency: str = "HKD") -> dict:
                 '句子："{text}"\n'
                 "今天的日期是{today}。请以此为基准推算「昨天」「今天早上」「上周」等相对时间。\n"
                 '返回格式：{{"amount": 金额数字, "category": "category_key", "note": "备注", "date": "YYYY-MM-DD或null", "time": "HH:MM或null", "currency": "HKD/CNY/USD/null"}}\n'
-                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, medical, other\n"
+                "category must be exactly one of: food, transport, shopping, entertainment, housing, education, health, other\n"
                 'currency：从句子中识别货币。HKD/港币/港元/HK$返回"HKD"，CNY/人民币/RMB/¥返回"CNY"，USD/美元/美金/US$/dollar返回"USD"，未提及返回null。\n'
                 'date和time：只在句子中明确提到时间时才提取（如"昨天"、"今天早上"、"下午3点"）。未提及则返回null。\n'
                 "只返回JSON，不要任何其他内容。"
@@ -618,10 +618,11 @@ def check_in_status(
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     from subscription import get_token_balance
-    with __import__('subscription')._conn() as conn:
+
+    with __import__("subscription")._conn() as conn:
         row = conn.execute(
             "SELECT streak FROM check_in_records WHERE uid = ? AND date = ?",
-            (uid, today)
+            (uid, today),
         ).fetchone()
         already_checked_in = row is not None
         streak_today = row["streak"] if row else None
@@ -629,7 +630,7 @@ def check_in_status(
         if streak_today is None:
             last_row = conn.execute(
                 "SELECT streak FROM check_in_records WHERE uid = ? ORDER BY date DESC LIMIT 1",
-                (uid,)
+                (uid,),
             ).fetchone()
             current_streak = last_row["streak"] if last_row else 0
         else:
